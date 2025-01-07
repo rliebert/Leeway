@@ -401,7 +401,7 @@ export function registerRoutes(app: Express): Server {
       console.log('Full request query:', req.query);
       console.log('Full request URL:', req.url);
 
-      const query = req.query.query;
+      const query = req.query.q;
       console.log("Search query received:", query, "Type:", typeof query);
 
       if (!query || typeof query !== "string" || query.trim().length < 2) {

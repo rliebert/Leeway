@@ -25,11 +25,12 @@ export default function SearchMessages() {
       }
 
       try {
-        console.log('Search term:', debouncedSearch);
-        const searchParams = new URLSearchParams();
-        searchParams.append('query', debouncedSearch);
+        // Build search URL with parameters
+        const params = new URLSearchParams();
+        params.append('q', debouncedSearch);
 
-        const url = `/api/messages/search?${searchParams.toString()}`;
+        console.log('Search parameters:', params.toString());
+        const url = `/api/messages/search?${params.toString()}`;
         console.log('Request URL:', url);
 
         const response = await fetch(url, {
