@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
-import ChannelSidebar from "@/components/chat/ChannelSidebar";
+import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
@@ -35,10 +35,7 @@ function AuthenticatedApp() {
     <WSProvider>
       <div className="flex h-screen">
         <div className="w-48 border-r bg-card">
-          <ChannelSidebar 
-            selectedChannel={null}
-            onSelectChannel={() => {}}
-          />
+          <DirectMessageSidebar selectedDM={null} onSelectDM={() => {}} />
         </div>
         <div className="flex-1">
           <Switch>
