@@ -19,6 +19,15 @@ import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
 
+interface SearchResult extends Message {
+  user?: {
+    username: string;
+  };
+  channel?: {
+    name: string;
+  };
+}
+
 export default function Home() {
   const { isLoaded, isSignedIn } = useUser();
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
@@ -30,7 +39,7 @@ export default function Home() {
     enabled: isSignedIn,
   });
 
-  const { data: searchResults } = useQuery<Message[]>({
+  const { data: searchResults } = useQuery<SearchResult[]>({
     queryKey: [`/api/messages/search`, { query: searchQuery }],
     enabled: searchQuery.length > 0 && isSignedIn,
   });
@@ -111,7 +120,6 @@ export default function Home() {
       <CommandDialog 
         open={open} 
         onOpenChange={setOpen}
-        label="Search messages"
       >
         <CommandInput 
           placeholder="Search messages..." 
