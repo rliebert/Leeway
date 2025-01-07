@@ -2,8 +2,17 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
-import { messages, channels } from "@db/schema";
-import { eq, ilike, and } from "drizzle-orm";
+import { messages, channels, users } from "@db/schema";
+import { eq, ilike } from "drizzle-orm";
+import multer from "multer";
+
+// Configure multer for memory storage
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+});
 
 export function registerRoutes(app: Express): Server {
   app.get("/api/channels", async (_req, res) => {
@@ -39,6 +48,29 @@ export function registerRoutes(app: Express): Server {
     });
 
     res.json(searchResults);
+  });
+
+  // New endpoint for avatar upload
+  app.post("/api/users/:id/avatar", upload.single("avatar"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).send("No file uploaded");
+      }
+
+      // Convert the buffer to base64
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+
+      // Update user's avatar in the database
+      await db
+        .update(users)
+        .set({ avatar: base64Image })
+        .where(eq(users.id, parseInt(req.params.id)));
+
+      res.json({ message: "Avatar updated successfully" });
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      res.status(500).send("Error updating avatar");
+    }
   });
 
   const httpServer = createServer(app);
