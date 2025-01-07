@@ -6,6 +6,7 @@ import { messages, channels, users, sections, directMessages, directMessageChann
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { setupAuth } from "./auth";
+import dmRoutes from "./routes/dm";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -26,6 +27,9 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
   setupAuth(app);
+
+  // Register DM routes
+  app.use("/api/dm", requireAuth, dmRoutes);
 
   // Section routes
   app.get("/api/sections", requireAuth, async (_req, res) => {
@@ -570,28 +574,45 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          const savedMessage = await db
-            .insert(messages)
-            .values({
-              content: message.content,
-              channelId: message.channelId,
-              userId: message.userId,
-              parentMessageId: message.parentMessageId,
-            })
-            .returning();
+          const savedMessage = message.isDM ? 
+            await db
+              .insert(directMessages)
+              .values({
+                content: message.content,
+                channelId: message.channelId,
+                userId: message.userId,
+              })
+              .returning() :
+            await db
+              .insert(messages)
+              .values({
+                content: message.content,
+                channelId: message.channelId,
+                userId: message.userId,
+                parentMessageId: message.parentMessageId,
+              })
+              .returning();
 
-          const fullMessage = await db.query.messages.findFirst({
-            where: eq(messages.id, savedMessage[0].id),
-            with: {
-              user: true,
-              replies: true,
-            },
-          });
+          const fullMessage = message.isDM ?
+            await db.query.directMessages.findFirst({
+              where: eq(directMessages.id, savedMessage[0].id),
+              with: {
+                user: true,
+              },
+            }) :
+            await db.query.messages.findFirst({
+              where: eq(messages.id, savedMessage[0].id),
+              with: {
+                user: true,
+                replies: true,
+              },
+            });
 
           if (fullMessage) {
             const broadcastMessage = JSON.stringify({
               type: "message",
               message: fullMessage,
+              isDM: message.isDM,
             });
 
             wss.clients.forEach((client) => {
