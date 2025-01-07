@@ -62,6 +62,10 @@ export default function ChannelSidebar({
   onSelectChannel,
   onSelectDM,
 }: ChannelSidebarProps) {
+  const { user } = useUser();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
   });
@@ -83,9 +87,6 @@ export default function ChannelSidebar({
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [channelFormData, setChannelFormData] = useState<ChannelFormData>({ name: "" });
   const [sectionFormData, setSectionFormData] = useState<SectionFormData>({ name: "" });
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const { user } = useUser();
   const [isDMsOpen, setIsDMsOpen] = useState(true);
 
   const selectedChannelData = channels?.find(channel => channel.id === selectedChannel);
