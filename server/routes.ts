@@ -395,23 +395,30 @@ export function registerRoutes(app: Express): Server {
     res.json(replies);
   });
 
+  // Search messages for a query
   app.get("/api/messages/search", async (req, res) => {
     const { query } = req.query;
     if (!query || typeof query !== "string") {
       return res.status(400).send("Search query is required");
     }
 
-    const searchResults = await db.query.messages.findMany({
-      where: ilike(messages.content, `%${query}%`),
-      with: {
-        user: true,
-        channel: true,
-      },
-      orderBy: messages.createdAt,
-      limit: 20,
-    });
+    try {
+      // Search for messages by content, including user and channel info
+      const searchResults = await db.query.messages.findMany({
+        where: ilike(messages.content, `%${query}%`),
+        with: {
+          user: true,
+          channel: true,
+        },
+        orderBy: messages.createdAt,
+        limit: 20,
+      });
 
-    res.json(searchResults);
+      res.json(searchResults);
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      res.status(500).send("Failed to search messages");
+    }
   });
 
   // Avatar upload endpoint
