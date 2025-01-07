@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import {
   Dialog,
@@ -17,12 +16,9 @@ interface DirectMessageSidebarProps {
 }
 
 export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
-  const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
   return (
     <div className="p-4">
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog>
         <DialogTrigger asChild>
           <Button variant="outline" className="w-full justify-start">
             <Plus className="mr-2 h-4 w-4" />
@@ -31,19 +27,11 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Direct Message</DialogTitle>
+            <DialogTitle>Test Dialog</DialogTitle>
             <DialogDescription>
-              Search for a user to start a conversation
+              This is a test dialog to verify it works
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4">
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-            />
-          </div>
         </DialogContent>
       </Dialog>
     </div>
