@@ -38,10 +38,33 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// New table for direct message conversations
+export const directMessageChannels = pgTable("direct_message_channels", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Junction table for DM participants
+export const directMessageParticipants = pgTable("direct_message_participants", {
+  channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Table for direct messages
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  content: text("content").notNull(),
+  channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   channels: many(channels, { relationName: "channelCreator" }),
   sections: many(sections, { relationName: "sectionCreator" }),
+  directMessageParticipations: many(directMessageParticipants),
 }));
 
 export const sectionsRelations = relations(sections, ({ many, one }) => ({
@@ -87,6 +110,33 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   }),
 }));
 
+export const directMessageChannelsRelations = relations(directMessageChannels, ({ many }) => ({
+  participants: many(directMessageParticipants),
+  messages: many(directMessages),
+}));
+
+export const directMessageParticipantsRelations = relations(directMessageParticipants, ({ one }) => ({
+  channel: one(directMessageChannels, {
+    fields: [directMessageParticipants.channelId],
+    references: [directMessageChannels.id],
+  }),
+  user: one(users, {
+    fields: [directMessageParticipants.userId],
+    references: [users.id],
+  }),
+}));
+
+export const directMessagesRelations = relations(directMessages, ({ one }) => ({
+  channel: one(directMessageChannels, {
+    fields: [directMessages.channelId],
+    references: [directMessageChannels.id],
+  }),
+  user: one(users, {
+    fields: [directMessages.userId],
+    references: [users.id],
+  }),
+}));
+
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertChannelSchema = createInsertSchema(channels);
@@ -95,6 +145,12 @@ export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
 export const insertSectionSchema = createInsertSchema(sections);
 export const selectSectionSchema = createSelectSchema(sections);
+export const insertDirectMessageChannelSchema = createInsertSchema(directMessageChannels);
+export const selectDirectMessageChannelSchema = createSelectSchema(directMessageChannels);
+export const insertDirectMessageParticipantSchema = createInsertSchema(directMessageParticipants);
+export const selectDirectMessageParticipantSchema = createSelectSchema(directMessageParticipants);
+export const insertDirectMessageSchema = createInsertSchema(directMessages);
+export const selectDirectMessageSchema = createSelectSchema(directMessages);
 
 export type User = typeof users.$inferSelect;
 export type Channel = typeof channels.$inferSelect & {
@@ -109,4 +165,11 @@ export type Message = typeof messages.$inferSelect & {
 export type Section = typeof sections.$inferSelect & {
   creator?: User;
   channels?: Channel[];
+};
+export type DirectMessageChannel = typeof directMessageChannels.$inferSelect & {
+  participants?: User[];
+  messages?: DirectMessage[];
+};
+export type DirectMessage = typeof directMessages.$inferSelect & {
+  user?: User;
 };

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/command";
 import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
+import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
 import UserProfile from "@/components/UserProfile";
@@ -33,6 +33,7 @@ interface SearchResult extends Message {
 export default function Home() {
   const { user, isLoading } = useUser();
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
+  const [selectedDM, setSelectedDM] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -52,10 +53,14 @@ export default function Home() {
     setSearchQuery(value);
   }, 300);
 
-  const handleSelectResult = (channelId: number) => {
+  const handleSelectChannel = (channelId: number) => {
     setSelectedChannel(channelId);
-    setOpen(false);
-    setSearchQuery("");
+    setSelectedDM(null);
+  };
+
+  const handleSelectDM = (dmId: number) => {
+    setSelectedDM(dmId);
+    setSelectedChannel(-1);
   };
 
   if (isLoading) {
@@ -96,25 +101,32 @@ export default function Home() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
-          <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+          <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={handleSelectChannel} />
+          <DirectMessageSidebar selectedDM={selectedDM} onSelectDM={handleSelectDM} />
           <UserProfile />
         </div>
         <div className="flex-1 flex flex-col">
-          <div className="border-b px-6 py-3">
-            <div className="flex items-center gap-2">
-              <Hash className="h-5 w-5 text-muted-foreground" />
-              <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
-            </div>
-            {currentChannel?.description && (
-              <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
-            )}
-          </div>
-          <ScrollArea className="flex-1">
-            <MessageList channelId={selectedChannel} />
-          </ScrollArea>
-          <div className="px-4 py-3 border-t">
-            <ChatInput channelId={selectedChannel} />
-          </div>
+          {selectedDM ? (
+            <div>DM View - Not implemented yet</div>
+          ) : (
+            <>
+              <div className="border-b px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <Hash className="h-5 w-5 text-muted-foreground" />
+                  <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
+                </div>
+                {currentChannel?.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
+                )}
+              </div>
+              <ScrollArea className="flex-1">
+                <MessageList channelId={selectedChannel} />
+              </ScrollArea>
+              <div className="px-4 py-3 border-t">
+                <ChatInput channelId={selectedChannel} />
+              </div>
+            </>
+          )}
         </div>
       </div>
       <CommandDialog 
@@ -136,7 +148,7 @@ export default function Home() {
               {searchResults.map((message) => (
                 <CommandItem
                   key={message.id}
-                  onSelect={() => handleSelectResult(message.channelId)}
+                  onSelect={() => handleSelectChannel(message.channelId)}
                   className="flex flex-col items-start gap-1"
                 >
                   <div className="flex items-center gap-2 text-sm">
