@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Hash, ChevronDown, Plus, Settings, Trash2 } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
   Collapsible,
   CollapsibleContent,
@@ -76,7 +77,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
 
   const selectedChannelData = channels?.find(channel => channel.id === selectedChannel);
 
-  // Group channels by section
   const channelsBySection = channels?.reduce((acc, channel) => {
     const sectionId = channel.sectionId || 'unsectioned';
     if (!acc[sectionId]) {
@@ -158,7 +158,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
       toast({ description: "Channel deleted successfully" });
-      // Select first available channel after deletion
       const remainingChannels = channels?.filter(c => c.id !== selectedChannel);
       if (remainingChannels?.length) {
         onSelectChannel(remainingChannels[0].id);
@@ -349,370 +348,418 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     }));
   };
 
-  const renderChannelList = (channelList: Channel[]) => {
-    return channelList.map((channel) => (
-      <div key={channel.id} className="group relative">
-        <Button
-          variant="ghost"
-          className={cn(
-            "w-full justify-start gap-2",
-            channel.id === selectedChannel && "bg-accent text-accent-foreground"
-          )}
-          onClick={() => onSelectChannel(channel.id)}
-        >
-          <Hash className="h-4 w-4" />
-          {channel.name}
-        </Button>
-        {channel.creator?.id === user?.id && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 h-8 w-8"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => {
-                setEditingChannel(channel);
-                setChannelFormData({
-                  name: channel.name,
-                  description: channel.description || "",
-                });
-                setShowEditDialog(true);
-              }}>
-                <Settings className="mr-2 h-4 w-4" />
-                Edit Channel
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Select
-                  value={channel.sectionId?.toString() || "unsectioned"}
-                  onValueChange={(value) => handleMoveChannel(channel.id, value === "unsectioned" ? null : parseInt(value))}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Move to section" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unsectioned">Unsectioned</SelectItem>
-                    {sections?.map((section) => (
-                      <SelectItem key={section.id} value={section.id.toString()}>
-                        {section.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => handleDeleteChannel(channel.id)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Channel
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-    ));
+  const handleDragEnd = async (result: any) => {
+    if (!result.destination) return;
+
+    const sourceId = result.draggableId;
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    const sourceDroppableId = result.source.droppableId;
+    const destinationDroppableId = result.destination.droppableId;
+
+    if (sourceDroppableId !== destinationDroppableId) {
+      const newSectionId = destinationDroppableId === "unsectioned"
+        ? null
+        : parseInt(destinationDroppableId);
+
+      handleMoveChannel(parseInt(sourceId), newSectionId);
+    }
+
+    const channelIds = channelsBySection[destinationDroppableId]?.map(c => c.id) || [];
+    const [removed] = channelIds.splice(sourceIndex, 1);
+    channelIds.splice(destinationIndex, 0, removed);
+
+    try {
+      await fetch("/api/channels/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channelIds }),
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        description: "Failed to reorder channels",
+      });
+    }
   };
 
-  return (
-    <ScrollArea className="flex-1">
-      <Collapsible open={isChannelsOpen} onOpenChange={setIsChannelsOpen}>
-        <div className="flex items-center px-4">
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
+  const renderChannelList = (channelList: Channel[], droppableId: string) => (
+    <Droppable droppableId={droppableId}>
+      {(provided) => (
+        <div
+          {...provided.droppableProps}
+          ref={provided.innerRef}
+          className="space-y-1"
+        >
+          {channelList.map((channel, index) => (
+            <Draggable
+              key={channel.id}
+              draggableId={channel.id.toString()}
+              index={index}
+              isDragDisabled={channel.creator?.id !== user?.id}
             >
-              <svg
-                className={cn(
-                  "h-3 w-3 transition-transform fill-current",
-                  !isChannelsOpen && "-rotate-90"
-                )}
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 21L2 6h20L12 21z" />
-              </svg>
-            </Button>
-          </CollapsibleTrigger>
-          <div className="flex-1 flex">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="px-2 font-semibold text-lg group relative inline-flex items-center"
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  className="group relative"
                 >
-                  <span>Channels</span>
-                  <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-48">
-                <DropdownMenuItem onClick={() => {
-                  setChannelFormData({ name: "" });
-                  setShowCreateDialog(true);
-                }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create New Channel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  setSectionFormData({ name: "" });
-                  setShowCreateSectionDialog(true);
-                }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create New Section
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Selected channel always visible */}
-        {!isChannelsOpen && selectedChannelData && (
-          <div className="px-2 mt-2">
-            <Button
-              variant="ghost"
-              className={cn(
-                "w-full justify-start gap-2",
-                "bg-accent text-accent-foreground"
-              )}
-              onClick={() => onSelectChannel(selectedChannelData.id)}
-            >
-              <Hash className="h-4 w-4" />
-              {selectedChannelData.name}
-            </Button>
-          </div>
-        )}
-
-        <CollapsibleContent className="space-y-4 mt-2">
-          {/* Unsectioned channels */}
-          {channelsBySection.unsectioned?.length > 0 && (
-            <div className="px-2">
-              <div className="text-xs font-semibold text-muted-foreground mb-2 px-2">
-                CHANNELS
-              </div>
-              {renderChannelList(channelsBySection.unsectioned)}
-            </div>
-          )}
-
-          {/* Sections */}
-          {sections?.map((section) => (
-            <div key={section.id} className="px-2">
-              <Collapsible
-                open={openSections[section.id]}
-                onOpenChange={() => toggleSection(section.id)}
-              >
-                <div className="flex items-center px-2 group">
-                  <CollapsibleTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-4 w-4 p-0"
-                    >
-                      <svg
-                        className={cn(
-                          "h-3 w-3 transition-transform fill-current",
-                          !openSections[section.id] && "-rotate-90"
-                        )}
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M12 21L2 6h20L12 21z" />
-                      </svg>
-                    </Button>
-                  </CollapsibleTrigger>
-                  <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
-                    {section.name.toUpperCase()}
-                  </span>
-                  {section.creator?.id === user?.id && (
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start gap-2",
+                      channel.id === selectedChannel && "bg-accent text-accent-foreground"
+                    )}
+                    onClick={() => onSelectChannel(channel.id)}
+                  >
+                    <Hash className="h-4 w-4" />
+                    {channel.name}
+                  </Button>
+                  {channel.creator?.id === user?.id && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 h-8 w-8"
                         >
-                          <Settings className="h-3 w-3" />
+                          <Settings className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem onClick={() => {
-                          setEditingSection(section);
-                          setSectionFormData({ name: section.name });
-                          setShowEditSectionDialog(true);
+                          setEditingChannel(channel);
+                          setChannelFormData({
+                            name: channel.name,
+                            description: channel.description || "",
+                          });
+                          setShowEditDialog(true);
                         }}>
                           <Settings className="mr-2 h-4 w-4" />
-                          Edit Section
+                          Edit Channel
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <Select
+                            value={channel.sectionId?.toString() || "unsectioned"}
+                            onValueChange={(value) => handleMoveChannel(channel.id, value === "unsectioned" ? null : parseInt(value))}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Move to section" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unsectioned">Unsectioned</SelectItem>
+                              {sections?.map((section) => (
+                                <SelectItem key={section.id} value={section.id.toString()}>
+                                  {section.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeleteSection(section.id)}
+                          onClick={() => handleDeleteChannel(channel.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Section
+                          Delete Channel
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
                 </div>
-                <CollapsibleContent className="mt-1">
-                  {channelsBySection[section.id]?.length > 0 ? (
-                    renderChannelList(channelsBySection[section.id])
-                  ) : (
-                    <p className="text-sm text-muted-foreground px-4 py-2">
-                      No channels in this section
-                    </p>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
+              )}
+            </Draggable>
           ))}
-        </CollapsibleContent>
-      </Collapsible>
+          {provided.placeholder}
+        </div>
+      )}
+    </Droppable>
+  );
 
-      {/* Create Channel Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Channel</DialogTitle>
-            <DialogDescription>
-              Add a new channel to your server
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="name">Channel Name</Label>
-              <Input
-                id="name"
-                value={channelFormData.name}
-                onChange={(e) => setChannelFormData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. announcements"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                value={channelFormData.description}
-                onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="What's this channel about?"
-              />
+  return (
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <ScrollArea className="flex-1">
+        <Collapsible open={isChannelsOpen} onOpenChange={setIsChannelsOpen}>
+          <div className="flex items-center px-4">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 p-0"
+              >
+                <svg
+                  className={cn(
+                    "h-3 w-3 transition-transform fill-current",
+                    !isChannelsOpen && "-rotate-90"
+                  )}
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 21L2 6h20L12 21z" />
+                </svg>
+              </Button>
+            </CollapsibleTrigger>
+            <div className="flex-1 flex">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="px-2 font-semibold text-lg group relative inline-flex items-center"
+                  >
+                    <span>Channels</span>
+                    <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem onClick={() => {
+                    setChannelFormData({ name: "" });
+                    setShowCreateDialog(true);
+                  }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Channel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setSectionFormData({ name: "" });
+                    setShowCreateSectionDialog(true);
+                  }}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Section
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateChannel}>
-              Create Channel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Edit Channel Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Channel</DialogTitle>
-            <DialogDescription>
-              Modify channel settings
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-name">Channel Name</Label>
-              <Input
-                id="edit-name"
-                value={channelFormData.name}
-                onChange={(e) => setChannelFormData(prev => ({ ...prev, name: e.target.value }))}
-              />
+          {!isChannelsOpen && selectedChannelData && (
+            <div className="px-2 mt-2">
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2",
+                  "bg-accent text-accent-foreground"
+                )}
+                onClick={() => onSelectChannel(selectedChannelData.id)}
+              >
+                <Hash className="h-4 w-4" />
+                {selectedChannelData.name}
+              </Button>
             </div>
-            <div>
-              <Label htmlFor="edit-description">Description (optional)</Label>
-              <Textarea
-                id="edit-description"
-                value={channelFormData.description}
-                onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateChannel}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
 
-      {/* Create Section Dialog */}
-      <Dialog open={showCreateSectionDialog} onOpenChange={setShowCreateSectionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Section</DialogTitle>
-            <DialogDescription>
-              Add a new section to organize your channels
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="section-name">Section Name</Label>
-              <Input
-                id="section-name"
-                value={sectionFormData.name}
-                onChange={(e) => setSectionFormData({ name: e.target.value })}
-                placeholder="e.g. Important"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateSectionDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateSection}>
-              Create Section
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <CollapsibleContent className="space-y-4 mt-2">
+            {channelsBySection.unsectioned?.length > 0 && (
+              <div className="px-2">
+                {renderChannelList(channelsBySection.unsectioned, "unsectioned")}
+              </div>
+            )}
 
-      {/* Edit Section Dialog */}
-      <Dialog open={showEditSectionDialog} onOpenChange={setShowEditSectionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Section</DialogTitle>
-            <DialogDescription>
-              Modify section settings
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-section-name">Section Name</Label>
-              <Input
-                id="edit-section-name"
-                value={sectionFormData.name}
-                onChange={(e) => setSectionFormData({ name: e.target.value })}
-              />
+            {sections?.map((section) => (
+              <div key={section.id} className="px-2">
+                <Collapsible
+                  open={openSections[section.id]}
+                  onOpenChange={() => toggleSection(section.id)}
+                >
+                  <div className="flex items-center px-2 group">
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 p-0"
+                      >
+                        <svg
+                          className={cn(
+                            "h-3 w-3 transition-transform fill-current",
+                            !openSections[section.id] && "-rotate-90"
+                          )}
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 21L2 6h20L12 21z" />
+                        </svg>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
+                      {section.name.toUpperCase()}
+                    </span>
+                    {section.creator?.id === user?.id && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                          >
+                            <Settings className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => {
+                            setEditingSection(section);
+                            setSectionFormData({ name: section.name });
+                            setShowEditSectionDialog(true);
+                          }}>
+                            <Settings className="mr-2 h-4 w-4" />
+                            Edit Section
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDeleteSection(section.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Section
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                  </div>
+                  <CollapsibleContent className="mt-1">
+                    {renderChannelList(channelsBySection[section.id] || [], section.id.toString())}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
+
+        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Channel</DialogTitle>
+              <DialogDescription>
+                Add a new channel to your server
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="name">Channel Name</Label>
+                <Input
+                  id="name"
+                  value={channelFormData.name}
+                  onChange={(e) => setChannelFormData(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g. announcements"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description (optional)</Label>
+                <Textarea
+                  id="description"
+                  value={channelFormData.description}
+                  onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="What's this channel about?"
+                />
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditSectionDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateSection}>
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </ScrollArea>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateChannel}>
+                Create Channel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Channel</DialogTitle>
+              <DialogDescription>
+                Modify channel settings
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-name">Channel Name</Label>
+                <Input
+                  id="edit-name"
+                  value={channelFormData.name}
+                  onChange={(e) => setChannelFormData(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description (optional)</Label>
+                <Textarea
+                  id="edit-description"
+                  value={channelFormData.description}
+                  onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateChannel}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showCreateSectionDialog} onOpenChange={setShowCreateSectionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Section</DialogTitle>
+              <DialogDescription>
+                Add a new section to organize your channels
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="section-name">Section Name</Label>
+                <Input
+                  id="section-name"
+                  value={sectionFormData.name}
+                  onChange={(e) => setSectionFormData({ name: e.target.value })}
+                  placeholder="e.g. Important"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreateSectionDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateSection}>
+                Create Section
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEditSectionDialog} onOpenChange={setShowEditSectionDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Section</DialogTitle>
+              <DialogDescription>
+                Modify section settings
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-section-name">Section Name</Label>
+                <Input
+                  id="edit-section-name"
+                  value={sectionFormData.name}
+                  onChange={(e) => setSectionFormData({ name: e.target.value })}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowEditSectionDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateSection}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </ScrollArea>
+    </DragDropContext>
   );
 }

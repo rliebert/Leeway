@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { db } from "@db";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -24,6 +25,7 @@ export const channels = pgTable("channels", {
   description: text("description"),
   creatorId: integer("creator_id").references(() => users.id),
   sectionId: integer("section_id").references(() => sections.id),
+  position: integer("position").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -109,3 +111,49 @@ export type Section = typeof sections.$inferSelect & {
   creator?: User;
   channels?: Channel[];
 };
+
+// Initialize default channels and sections
+export async function initializeDefaultChannels(userId: number) {
+  try {
+    // Create Main section
+    const [mainSection] = await db
+      .insert(sections)
+      .values({
+        name: "Main",
+        creatorId: userId,
+      })
+      .returning();
+
+    // Create default channels
+    const defaultChannels = [
+      {
+        name: "general",
+        description: "General discussions",
+        creatorId: userId,
+        sectionId: mainSection.id,
+        position: 0,
+      },
+      {
+        name: "announcements",
+        description: "Important announcements",
+        creatorId: userId,
+        sectionId: mainSection.id,
+        position: 1,
+      },
+      {
+        name: "help",
+        description: "Get help and support",
+        creatorId: userId,
+        sectionId: mainSection.id,
+        position: 2,
+      },
+    ];
+
+    await db.insert(channels).values(defaultChannels);
+
+    return mainSection;
+  } catch (error) {
+    console.error("Error initializing default channels:", error);
+    throw error;
+  }
+}

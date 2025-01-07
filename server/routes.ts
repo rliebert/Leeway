@@ -334,6 +334,32 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add this new endpoint for handling channel reordering
+  app.post("/api/channels/reorder", requireAuth, async (req, res) => {
+    const { channelIds } = req.body;
+
+    if (!Array.isArray(channelIds)) {
+      return res.status(400).send("Invalid channel order data");
+    }
+
+    try {
+      // Update each channel's position
+      await Promise.all(
+        channelIds.map((id, index) =>
+          db
+            .update(channels)
+            .set({ position: index, updatedAt: new Date() })
+            .where(eq(channels.id, id))
+        )
+      );
+
+      res.json({ message: "Channels reordered successfully" });
+    } catch (error) {
+      console.error("Error reordering channels:", error);
+      res.status(500).send("Failed to reorder channels");
+    }
+  });
+
   app.get("/api/channels/:id/messages", async (req, res) => {
     const channelMessages = await db.query.messages.findMany({
       where: eq(messages.channelId, parseInt(req.params.id)),
