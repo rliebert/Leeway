@@ -18,6 +18,7 @@ import ChatInput from "@/components/chat/ChatInput";
 import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
+import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface SearchResult extends Message {
   user?: {
@@ -117,6 +118,10 @@ export default function Home() {
         open={open} 
         onOpenChange={setOpen}
       >
+        <DialogTitle className="sr-only">Search Messages</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search for messages across all channels
+        </DialogDescription>
         <CommandInput 
           placeholder="Search messages..." 
           onValueChange={handleSearch}

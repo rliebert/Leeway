@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useWS } from "@/lib/ws.tsx";
+import { useUser } from "@/hooks/use-user";
 
 interface ChatInputProps {
   channelId: number;
@@ -13,6 +14,7 @@ interface FormData {
 
 export default function ChatInput({ channelId }: ChatInputProps) {
   const { send } = useWS();
+  const { user } = useUser();
   const form = useForm<FormData>({
     defaultValues: {
       message: "",
@@ -20,12 +22,13 @@ export default function ChatInput({ channelId }: ChatInputProps) {
   });
 
   const onSubmit = (data: FormData) => {
-    if (!data.message.trim()) return;
+    if (!data.message.trim() || !user) return;
 
     send({
       type: "message",
       channelId,
       content: data.message,
+      userId: user.id,
     });
 
     form.reset();
