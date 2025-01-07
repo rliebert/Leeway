@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown, ChevronUp } from "lucide-react";
+import { Hash, ChevronDown } from "lucide-react";
 import type { Channel } from "@db/schema";
 import {
   Collapsible,
@@ -54,7 +54,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               <Button
                 variant="ghost"
                 className="px-2 font-semibold text-lg flex-1 justify-start group"
-                style={{ width: 'fit-content' }}
               >
                 <span>Channels</span>
                 <ChevronDown className="ml-2 h-4 w-4" />
@@ -72,23 +71,26 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
         </div>
         <CollapsibleContent>
           <div className="px-2">
-            {channels?.map((channel) => (
-              <Button
-                key={channel.id}
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start gap-2",
-                  selectedChannel === channel.id && "bg-accent text-accent-foreground"
-                )}
-                onClick={() => onSelectChannel(channel.id)}
-                style={{
-                  display: !isOpen && selectedChannel !== channel.id ? 'none' : undefined
-                }}
-              >
-                <Hash className="h-4 w-4" />
-                {channel.name}
-              </Button>
-            ))}
+            {channels?.map((channel) => {
+              const isSelected = selectedChannel === channel.id;
+              return (
+                <Button
+                  key={channel.id}
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start gap-2",
+                    isSelected && "bg-accent text-accent-foreground"
+                  )}
+                  onClick={() => onSelectChannel(channel.id)}
+                  style={{
+                    display: !isOpen && !isSelected ? 'none' : undefined
+                  }}
+                >
+                  <Hash className="h-4 w-4" />
+                  {channel.name}
+                </Button>
+              );
+            })}
           </div>
         </CollapsibleContent>
       </Collapsible>
