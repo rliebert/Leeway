@@ -337,9 +337,18 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     }
   };
 
-  const handleMoveChannel = (channelId: number, sectionId: number | null) => {
-    updateChannelSectionMutation.mutate({ channelId, sectionId });
+  const handleMoveChannel = async (channelId: number, sectionId: number | null) => {
+    try {
+      await updateChannelSectionMutation.mutateAsync({ channelId, sectionId });
+    } catch (error) {
+      console.error("Failed to move channel:", error);
+      toast({
+        variant: "destructive",
+        description: "Failed to move channel",
+      });
+    }
   };
+
 
   const toggleSection = (sectionId: number | string) => {
     setOpenSections(prev => ({
@@ -357,13 +366,18 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     const sourceDroppableId = result.source.droppableId;
     const destinationDroppableId = result.destination.droppableId;
 
+    // If moving between sections
     if (sourceDroppableId !== destinationDroppableId) {
-      // Handle moving between sections
       const newSectionId = destinationDroppableId === "unsectioned"
         ? null
         : parseInt(destinationDroppableId);
 
-      handleMoveChannel(parseInt(sourceId), newSectionId);
+      try {
+        await handleMoveChannel(parseInt(sourceId), newSectionId);
+      } catch (error) {
+        console.error("Failed to move channel between sections:", error);
+        return;
+      }
     }
 
     // Update channel positions
@@ -372,14 +386,19 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     channelIds.splice(destinationIndex, 0, parseInt(sourceId));
 
     try {
-      await fetch("/api/channels/reorder", {
+      const response = await fetch("/api/channels/reorder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channelIds }),
       });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
     } catch (error) {
+      console.error("Failed to reorder channels:", error);
       toast({
         variant: "destructive",
         description: "Failed to reorder channels",
@@ -402,12 +421,15 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               index={index}
               isDragDisabled={channel.creator?.id !== user?.id}
             >
-              {(provided) => (
+              {(provided, snapshot) => (
                 <div
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
-                  className="group relative"
+                  className={cn(
+                    "group relative",
+                    snapshot.isDragging && "opacity-70"
+                  )}
                 >
                   <Button
                     variant="ghost"
