@@ -17,9 +17,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
 
-  const { data: replies = [] } = useQuery<MessageType[]>({
+  const { data: replies = message.replies || [] } = useQuery<MessageType[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
-    enabled: showReplies || showThread, // Only fetch when replies are shown
+    enabled: true, // Always fetch replies to show correct count
   });
 
   // Combine initial replies with new WebSocket messages
