@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
 import { messages, channels } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, ilike, and } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
   app.get("/api/channels", async (_req, res) => {
@@ -22,15 +22,32 @@ export function registerRoutes(app: Express): Server {
     res.json(channelMessages);
   });
 
+  app.get("/api/messages/search", async (req, res) => {
+    const { query } = req.query;
+    if (!query || typeof query !== "string") {
+      return res.status(400).send("Search query is required");
+    }
+
+    const searchResults = await db.query.messages.findMany({
+      where: ilike(messages.content, `%${query}%`),
+      with: {
+        user: true,
+        channel: true,
+      },
+      orderBy: messages.createdAt,
+      limit: 20,
+    });
+
+    res.json(searchResults);
+  });
+
   const httpServer = createServer(app);
 
   const wss = new WebSocketServer({ 
     noServer: true,
   });
 
-  // Handle WebSocket upgrade requests
   httpServer.on('upgrade', (request, socket, head) => {
-    // Skip Vite HMR connections
     const protocol = request.headers['sec-websocket-protocol'];
     if (protocol === 'vite-hmr') {
       return;

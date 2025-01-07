@@ -7,20 +7,41 @@ import {
   CommandDialog,
   CommandInput,
   CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
 } from "@/components/ui/command";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
-import type { Channel } from "@db/schema";
+import type { Channel, Message } from "@db/schema";
+import { useDebouncedCallback } from "use-debounce";
 
 export default function Home() {
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
   });
 
+  const { data: searchResults } = useQuery<Message[]>({
+    queryKey: [`/api/messages/search`, { query: searchQuery }],
+    enabled: searchQuery.length > 0,
+  });
+
   const currentChannel = channels?.find(channel => channel.id === selectedChannel);
+
+  const handleSearch = useDebouncedCallback((value: string) => {
+    setSearchQuery(value);
+  }, 300);
+
+  const handleSelectResult = (channelId: number) => {
+    setSelectedChannel(channelId);
+    setOpen(false);
+    setSearchQuery("");
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -65,9 +86,33 @@ export default function Home() {
         </div>
       </div>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput placeholder="Search messages..." />
+        <CommandInput 
+          placeholder="Search messages..." 
+          onValueChange={handleSearch}
+        />
         <CommandList>
-          {/* Search results will be implemented later */}
+          <CommandEmpty>No results found.</CommandEmpty>
+          {searchResults && searchResults.length > 0 && (
+            <CommandGroup heading="Messages">
+              {searchResults.map((message) => (
+                <CommandItem
+                  key={message.id}
+                  onSelect={() => handleSelectResult(message.channelId)}
+                  className="flex flex-col items-start gap-1"
+                >
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">{message.user?.username}</span>
+                    <span className="text-muted-foreground">
+                      in #{message.channel?.name}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-1">
+                    {message.content}
+                  </p>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
         </CommandList>
       </CommandDialog>
     </div>
