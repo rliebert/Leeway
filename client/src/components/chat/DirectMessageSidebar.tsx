@@ -22,7 +22,6 @@ interface DirectMessageSidebarProps {
 }
 
 export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,7 +55,6 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     },
     onSuccess: (newChannel) => {
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
-      setDialogOpen(false);
       setSearchQuery("");
       onSelectDM(newChannel.id);
       toast({
@@ -74,98 +72,100 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   });
 
   return (
-    <div className="p-4 space-y-4">
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-full justify-start">
-            <Plus className="mr-2 h-4 w-4" />
-            New Direct Message
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Direct Message</DialogTitle>
-            <DialogDescription>
-              Search for a user to start a conversation
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-              autoFocus
-            />
+    <div className="flex flex-col h-full">
+      <div className="p-4 space-y-4">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full justify-start">
+              <Plus className="mr-2 h-4 w-4" />
+              New Direct Message
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>New Direct Message</DialogTitle>
+              <DialogDescription>
+                Search for a user to start a conversation
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <Input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full"
+                autoFocus
+              />
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {loadingSearch ? (
+                  <div className="flex justify-center py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : searchResults?.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No users found
+                  </p>
+                ) : (
+                  searchResults?.map((user) => (
+                    <Button
+                      key={user.id}
+                      variant="ghost"
+                      className="w-full justify-start gap-2"
+                      onClick={() => createDMChannel.mutate(user.id)}
+                      disabled={createDMChannel.isPending}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={user.avatar || undefined} />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.username}
+                    </Button>
+                  ))
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* List of existing DM channels */}
+        {loadingChannels ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : dmChannels?.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            No conversations yet
+          </p>
+        ) : (
+          <ScrollArea className="h-[calc(100vh-8rem)]">
             <div className="space-y-2">
-              {loadingSearch ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-              ) : searchResults?.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No users found
-                </p>
-              ) : (
-                searchResults?.map((user) => (
+              {dmChannels?.map((channel) => {
+                const otherUser = channel.participants?.[0];
+                if (!otherUser) return null;
+
+                return (
                   <Button
-                    key={user.id}
-                    variant="ghost"
+                    key={channel.id}
+                    variant={selectedDM === channel.id ? "secondary" : "ghost"}
                     className="w-full justify-start gap-2"
-                    onClick={() => createDMChannel.mutate(user.id)}
-                    disabled={createDMChannel.isPending}
+                    onClick={() => onSelectDM(channel.id)}
                   >
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={user.avatar || undefined} />
+                      <AvatarImage src={otherUser.avatar || undefined} />
                       <AvatarFallback>
                         <User className="h-4 w-4" />
                       </AvatarFallback>
                     </Avatar>
-                    {user.username}
+                    {otherUser.username}
                   </Button>
-                ))
-              )}
+                );
+              })}
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* List of existing DM channels */}
-      {loadingChannels ? (
-        <div className="flex justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin" />
-        </div>
-      ) : dmChannels?.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No conversations yet
-        </p>
-      ) : (
-        <ScrollArea className="h-[calc(100vh-8rem)]">
-          <div className="space-y-2">
-            {dmChannels?.map((channel) => {
-              const otherUser = channel.participants?.[0];
-              if (!otherUser) return null;
-
-              return (
-                <Button
-                  key={channel.id}
-                  variant={selectedDM === channel.id ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-2"
-                  onClick={() => onSelectDM(channel.id)}
-                >
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={otherUser.avatar || undefined} />
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                  {otherUser.username}
-                </Button>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      )}
+          </ScrollArea>
+        )}
+      </div>
     </div>
   );
 }
