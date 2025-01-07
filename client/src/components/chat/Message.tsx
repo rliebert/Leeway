@@ -2,10 +2,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Reply, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message as MessageType } from "@db/schema";
-import { forwardRef, useState, useEffect } from "react";
+import { forwardRef, useState } from "react";
 import ThreadModal from "./ThreadModal";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWS } from "@/lib/ws";
 
 interface MessageProps {
   message: MessageType;
@@ -14,37 +12,15 @@ interface MessageProps {
 const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
-  const queryClient = useQueryClient();
-  const { messages: wsMessages } = useWS();
 
-  const { data: replies = [] } = useQuery<MessageType[]>({
-    queryKey: [`/api/messages/${message.id}/replies`],
-    enabled: true, // Always fetch replies to show correct count
-  });
-
-  // Update reply count when new messages come in via WebSocket
-  const allReplies = [
-    ...replies,
-    ...wsMessages.filter(
-      wsMsg => 
-        wsMsg.parentMessageId === message.id &&
-        !replies.some(reply => reply.id === wsMsg.id)
-    ),
-  ];
-
-  const replyCount = allReplies.length;
-
-  // Invalidate replies query when new messages come in
-  useEffect(() => {
-    const newReplies = wsMessages.filter(msg => msg.parentMessageId === message.id);
-    if (newReplies.length > 0) {
-      queryClient.invalidateQueries({ queryKey: [`/api/messages/${message.id}/replies`] });
-    }
-  }, [wsMessages, message.id, queryClient]);
+  const replyCount = message.replies?.length || 0;
 
   return (
     <>
-      <div ref={ref} className="group hover:bg-accent/10 rounded-lg -mx-4 px-4 py-2 transition-colors">
+      <div 
+        ref={ref} 
+        className="group hover:bg-accent/10 rounded-lg -mx-4 px-4 py-2 transition-colors"
+      >
         <div className="flex gap-4">
           <Avatar>
             <AvatarImage src={message.user?.avatar} />
@@ -61,7 +37,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="h-8 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2"
                 onClick={() => setShowThread(true)}
               >
                 <Reply className="h-4 w-4 mr-1" />
@@ -86,9 +62,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             )}
           </div>
         </div>
-        {showReplies && allReplies.length > 0 && (
+        {showReplies && message.replies && message.replies.length > 0 && (
           <div className="ml-12 pl-4 border-l mt-2">
-            {allReplies.map((reply) => (
+            {message.replies.map((reply) => (
               <div key={reply.id} className="flex gap-4 mt-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={reply.user?.avatar} />

@@ -36,7 +36,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="p-4 border-t mt-auto">
+    <div className="p-4">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="w-full justify-start gap-2 px-2">
