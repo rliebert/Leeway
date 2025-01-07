@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Hash, ChevronDown } from "lucide-react";
-import type { Channel } from "@db/schema";
 import {
   Collapsible,
   CollapsibleContent,
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
+import type { Channel } from "@db/schema";
 
 interface ChannelSidebarProps {
   selectedChannel: number;
@@ -76,7 +76,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
 
         {/* Selected channel always visible */}
         {!isOpen && selectedChannelData && (
-          <div className="px-2 mt-2">
+          <div className="px-2">
             <Button
               variant="ghost"
               className={cn(
