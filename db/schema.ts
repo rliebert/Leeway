@@ -43,11 +43,14 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.channelId],
     references: [channels.id],
   }),
+  replies: many(messages, {
+    fields: [messages.id],
+    references: [messages.parentMessageId],
+  }),
   parentMessage: one(messages, {
     fields: [messages.parentMessageId],
     references: [messages.id],
   }),
-  replies: many(messages, { relationName: "thread" }),
 }));
 
 export const insertUserSchema = createInsertSchema(users);
