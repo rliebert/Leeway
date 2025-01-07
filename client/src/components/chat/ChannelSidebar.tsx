@@ -358,6 +358,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     const destinationDroppableId = result.destination.droppableId;
 
     if (sourceDroppableId !== destinationDroppableId) {
+      // Handle moving between sections
       const newSectionId = destinationDroppableId === "unsectioned"
         ? null
         : parseInt(destinationDroppableId);
@@ -365,9 +366,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
       handleMoveChannel(parseInt(sourceId), newSectionId);
     }
 
+    // Update channel positions
     const channelIds = channelsBySection[destinationDroppableId]?.map(c => c.id) || [];
-    const [removed] = channelIds.splice(sourceIndex, 1);
-    channelIds.splice(destinationIndex, 0, removed);
+    channelIds.splice(sourceIndex, 1);
+    channelIds.splice(destinationIndex, 0, parseInt(sourceId));
 
     try {
       await fetch("/api/channels/reorder", {
