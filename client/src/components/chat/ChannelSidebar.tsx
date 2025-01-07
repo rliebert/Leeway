@@ -2,8 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown, Plus, Settings, Trash2 } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { Hash, ChevronDown, Plus, Settings, Trash2, User } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -36,12 +35,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Channel, Section } from "@db/schema";
+import type { Channel, Section, DirectMessageChannel } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 interface ChannelSidebarProps {
   selectedChannel: number;
+  selectedDM: number | null;
   onSelectChannel: (id: number) => void;
+  onSelectDM: (id: number) => void;
 }
 
 interface ChannelFormData {
@@ -53,12 +56,21 @@ interface SectionFormData {
   name: string;
 }
 
-export default function ChannelSidebar({ selectedChannel, onSelectChannel }: ChannelSidebarProps) {
+export default function ChannelSidebar({
+  selectedChannel,
+  selectedDM,
+  onSelectChannel,
+  onSelectDM,
+}: ChannelSidebarProps) {
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
   });
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
+  });
+  const { data: dmChannels } = useQuery<DirectMessageChannel[]>({
+    queryKey: ["/api/dm/channels"],
+    enabled: !!user,
   });
 
   const [isChannelsOpen, setIsChannelsOpen] = useState(true);
@@ -74,6 +86,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useUser();
+  const [isDMsOpen, setIsDMsOpen] = useState(true);
 
   const selectedChannelData = channels?.find(channel => channel.id === selectedChannel);
 
@@ -648,6 +661,103 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
             ))}
           </CollapsibleContent>
         </Collapsible>
+
+        <div className="mt-4">
+          <Collapsible open={isDMsOpen} onOpenChange={setIsDMsOpen}>
+            <div className="flex items-center px-4">
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 p-0"
+                >
+                  <svg
+                    className={cn(
+                      "h-3 w-3 transition-transform fill-current",
+                      !isDMsOpen && "-rotate-90"
+                    )}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 21L2 6h20L12 21z" />
+                  </svg>
+                </Button>
+              </CollapsibleTrigger>
+              <div className="flex-1 flex">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="px-2 font-semibold text-lg group relative inline-flex items-center"
+                    >
+                      <span>Direct Messages</span>
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem>
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Direct Message
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+
+            {!isDMsOpen && selectedDM && dmChannels && (
+              <div className="px-2 mt-2">
+                {dmChannels.map(channel => {
+                  const otherUser = channel.participants?.find(p => p.id !== user?.id);
+                  if (!otherUser || channel.id !== selectedDM) return null;
+                  return (
+                    <Button
+                      key={channel.id}
+                      variant="ghost"
+                      className="w-full justify-start gap-2 bg-accent text-accent-foreground"
+                      onClick={() => onSelectDM(channel.id)}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={otherUser.avatar || undefined} />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      {otherUser.username}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
+
+            <CollapsibleContent className="space-y-4 mt-2">
+              <div className="px-2">
+                {dmChannels?.map((channel) => {
+                  const otherUser = channel.participants?.find(p => p.id !== user?.id);
+                  if (!otherUser) return null;
+
+                  return (
+                    <Button
+                      key={channel.id}
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-start gap-2",
+                        channel.id === selectedDM && "bg-accent text-accent-foreground"
+                      )}
+                      onClick={() => onSelectDM(channel.id)}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={otherUser.avatar || undefined} />
+                        <AvatarFallback>
+                          <User className="h-4 w-4" />
+                        </AvatarFallback>
+                      </Avatar>
+                      {otherUser.username}
+                    </Button>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
 
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
           <DialogContent>

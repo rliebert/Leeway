@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/command";
 import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
-import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
 import UserProfile from "@/components/UserProfile";
@@ -101,8 +100,12 @@ export default function Home() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
-          <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={handleSelectChannel} />
-          <DirectMessageSidebar selectedDM={selectedDM} onSelectDM={handleSelectDM} />
+          <ChannelSidebar 
+            selectedChannel={selectedChannel} 
+            selectedDM={selectedDM}
+            onSelectChannel={handleSelectChannel} 
+            onSelectDM={handleSelectDM}
+          />
           <UserProfile />
         </div>
         <div className="flex-1 flex flex-col">
