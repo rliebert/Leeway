@@ -34,17 +34,20 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   });
 
   const onSubmit = (data: FormData) => {
-    if (!data.message.trim() || !user) return;
+    // Ensure data.message exists and is not empty
+    const message = data?.message || "";
+    if (!message.trim() || !user) return;
 
     send({
       type: "message",
       channelId,
-      content: data.message,
+      content: message,
       userId: user.id,
       parentMessageId,
     });
 
     form.reset();
+    setShowEmojiPicker(false);
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
@@ -53,14 +56,14 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const currentValue = form.getValues("message");
+    const currentValue = form.getValues("message") || "";
 
     const newValue = 
       currentValue.substring(0, start) + 
       emojiData.emoji + 
       currentValue.substring(end);
 
-    form.setValue("message", newValue);
+    form.setValue("message", newValue, { shouldValidate: true });
 
     // Set cursor position after emoji
     setTimeout(() => {
