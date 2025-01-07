@@ -64,7 +64,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
         try {
           const data = JSON.parse(event.data) as WSMessage;
           if (data.type === 'message' && data.message) {
-            setMessages((prev) => [...prev, data.message!]);
+            // Only add the message if it's not already in the list
+            setMessages((prev) => {
+              const exists = prev.some(msg => msg.id === data.message!.id);
+              if (exists) {
+                return prev;
+              }
+              return [...prev, data.message!];
+            });
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
