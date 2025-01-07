@@ -5,10 +5,10 @@ import { sections, channels } from "./schema";
 export async function initializeDefaultChannels(userId: number) {
   try {
     // Create Main section
-    const [mainSection] = await db
+    const [section] = await db
       .insert(sections)
       .values({
-        name: "Main",
+        name: "Default",
         creatorId: userId,
       })
       .returning();
@@ -19,28 +19,28 @@ export async function initializeDefaultChannels(userId: number) {
         name: "general",
         description: "General discussions",
         creatorId: userId,
-        sectionId: mainSection.id,
+        sectionId: section.id,
         position: 0,
       },
       {
         name: "announcements",
         description: "Important announcements",
         creatorId: userId,
-        sectionId: mainSection.id,
+        sectionId: section.id,
         position: 1,
       },
       {
         name: "help",
         description: "Get help and support",
         creatorId: userId,
-        sectionId: mainSection.id,
+        sectionId: section.id,
         position: 2,
       },
     ];
 
     await db.insert(channels).values(defaultChannels);
 
-    return mainSection;
+    return section;
   } catch (error) {
     console.error("Error initializing default channels:", error);
     throw error;
