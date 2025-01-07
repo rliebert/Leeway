@@ -597,13 +597,6 @@ export default function ChannelSidebar({
 
             {sections?.map((section) => {
               const sectionChannels = channelsBySection[section.id] || [];
-              const hasSelectedChannel = sectionChannels.some(
-                channel => channel.id === selectedChannel
-              );
-              const selectedChannelInSection = sectionChannels.find(
-                channel => channel.id === selectedChannel
-              );
-
               return (
                 <div key={section.id} className="px-2">
                   <Collapsible
@@ -661,14 +654,14 @@ export default function ChannelSidebar({
                       )}
                     </div>
                     <CollapsibleContent className="mt-1 ml-2">
-                      {!openSections[section.id] && hasSelectedChannel && selectedChannelInSection ? (
+                      {!openSections[section.id] && selectedChannel && sectionChannels.some(c => c.id === selectedChannel) ? (
                         <Button
                           variant="ghost"
                           className="w-full justify-start gap-2 bg-accent text-accent-foreground"
-                          onClick={() => onSelectChannel(selectedChannelInSection.id)}
+                          onClick={() => onSelectChannel(selectedChannel)}
                         >
                           <Hash className="h-4 w-4" />
-                          {selectedChannelInSection.name}
+                          {sectionChannels.find(c => c.id === selectedChannel)?.name}
                         </Button>
                       ) : openSections[section.id] ? (
                         renderChannelList(sectionChannels, section.id.toString())
