@@ -18,7 +18,16 @@ export default function SearchMessages() {
   const [, setLocation] = useLocation();
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
-    queryKey: [`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`],
+    queryKey: ['/api/messages/search', debouncedSearch],
+    queryFn: async () => {
+      const response = await fetch(`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      return response.json();
+    },
     enabled: debouncedSearch.length >= 2,
   });
 
