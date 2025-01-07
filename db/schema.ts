@@ -94,7 +94,7 @@ export const channelsRelations = relations(channels, ({ many, one }) => ({
   }),
 }));
 
-export const messagesRelations = relations(messages, ({ one, many }) => ({
+export const messagesRelations = relations(messages, ({ one }) => ({
   user: one(users, {
     fields: [messages.userId],
     references: [users.id],
@@ -103,7 +103,6 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.channelId],
     references: [channels.id],
   }),
-  replies: many(messages),
   parentMessage: one(messages, {
     fields: [messages.parentMessageId],
     references: [messages.id],
@@ -152,9 +151,8 @@ export const selectDirectMessageParticipantSchema = createSelectSchema(directMes
 export const insertDirectMessageSchema = createInsertSchema(directMessages);
 export const selectDirectMessageSchema = createSelectSchema(directMessages);
 
-export type User = typeof users.$inferSelect & {
-  lastActiveAt?: Date | null;
-};
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
 export type Channel = typeof channels.$inferSelect & {
   creator?: User;
   section?: Section;

@@ -8,7 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,21 +23,11 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   const [isOpen, setIsOpen] = useState(true);
   const { user: currentUser } = useUser();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Fetch all users
-  const { data: users = [], error: usersError } = useQuery<User[]>({
+  const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: !!currentUser,
-    refetchInterval: 30000, // Refresh every 30 seconds to update online status
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to fetch users list",
-        variant: "destructive",
-      });
-      console.error("Error fetching users:", error);
-    },
   });
 
   // Create DM channel mutation
@@ -67,32 +57,23 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     },
   });
 
+  // Helper function to check if user is online (active in last 5 minutes)
+  function isUserOnline(lastActiveAt: Date | null): boolean {
+    if (!lastActiveAt) return false;
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    return new Date(lastActiveAt) > fiveMinutesAgo;
+  }
+
   // Sort users: online users first, then alphabetically by username
   const sortedUsers = [...users].sort((a, b) => {
-    if (!a.lastActiveAt || !b.lastActiveAt) return 0;
-    const aIsOnline = isUserOnline(new Date(a.lastActiveAt));
-    const bIsOnline = isUserOnline(new Date(b.lastActiveAt));
+    const aIsOnline = isUserOnline(a.lastActiveAt);
+    const bIsOnline = isUserOnline(b.lastActiveAt);
 
     if (aIsOnline && !bIsOnline) return -1;
     if (!aIsOnline && bIsOnline) return 1;
 
     return a.username.localeCompare(b.username);
   });
-
-  // Helper function to check if user is online (active in last 5 minutes)
-  function isUserOnline(lastActiveAt: Date | null): boolean {
-    if (!lastActiveAt) return false;
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    return lastActiveAt > fiveMinutesAgo;
-  }
-
-  if (usersError) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        Failed to load users list
-      </div>
-    );
-  }
 
   return (
     <ScrollArea className="flex-1">
@@ -120,7 +101,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
         <CollapsibleContent className="space-y-4 mt-2">
           <div className="px-2 space-y-1">
             {sortedUsers.map((user) => {
-              const isOnline = user.lastActiveAt ? isUserOnline(new Date(user.lastActiveAt)) : false;
+              const isOnline = isUserOnline(user.lastActiveAt);
 
               return (
                 <div

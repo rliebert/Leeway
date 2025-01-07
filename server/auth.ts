@@ -8,7 +8,6 @@ import { promisify } from "util";
 import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import { initializeDefaultChannels } from "@db/init";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -63,13 +62,7 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const [user] = await db
-          .select({
-            id: users.id,
-            username: users.username,
-            password: users.password,
-            avatar: users.avatar,
-            lastActiveAt: users.lastActiveAt,
-          })
+          .select()
           .from(users)
           .where(eq(users.username, username))
           .limit(1);
@@ -102,12 +95,7 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: number, done) => {
     try {
       const [user] = await db
-        .select({
-          id: users.id,
-          username: users.username,
-          avatar: users.avatar,
-          lastActiveAt: users.lastActiveAt,
-        })
+        .select()
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
@@ -154,9 +142,6 @@ export function setupAuth(app: Express) {
           lastActiveAt: new Date(),
         })
         .returning();
-
-      // Initialize default channels
-      await initializeDefaultChannels(newUser.id);
 
       // Log the user in after registration
       req.login(newUser, (err) => {
