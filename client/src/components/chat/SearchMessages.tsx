@@ -24,20 +24,31 @@ export default function SearchMessages() {
         return [];
       }
 
-      const queryParams = new URLSearchParams({ query: debouncedSearch });
-      const response = await fetch(`/api/messages/search?${queryParams}`, {
-        credentials: 'include'
-      });
+      try {
+        console.log('Sending search request with query:', debouncedSearch);
+        const response = await fetch(`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`, {
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+          }
+        });
 
-      if (!response.ok) {
-        if (response.status === 400) {
-          console.error('Search failed:', await response.text());
-          return [];
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Search failed:', errorText);
+          if (response.status === 400) {
+            return [];
+          }
+          throw new Error(`Search failed: ${errorText}`);
         }
-        throw new Error('Search failed');
-      }
 
-      return response.json();
+        const results = await response.json();
+        console.log('Search results:', results);
+        return results;
+      } catch (error) {
+        console.error('Search error:', error);
+        return [];
+      }
     },
     enabled: debouncedSearch.length >= 2,
   });

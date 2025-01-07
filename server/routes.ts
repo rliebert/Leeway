@@ -397,15 +397,15 @@ export function registerRoutes(app: Express): Server {
 
   // Search messages for a query
   app.get("/api/messages/search", requireAuth, async (req, res) => {
-    const query = req.query.query as string;
-    console.log("Search query received:", query);
-
-    if (!query || typeof query !== "string") {
-      console.log("Invalid search query:", query);
-      return res.status(400).send("Search query is required");
-    }
-
     try {
+      const query = req.query.query as string;
+      console.log("Search query received:", query);
+
+      if (!query || typeof query !== "string" || query.trim().length < 2) {
+        console.log("Invalid search query:", query);
+        return res.status(400).json({ error: "Search query must be at least 2 characters" });
+      }
+
       console.log("Executing search with query:", query);
       // Search for messages by content, including user and channel info
       const searchResults = await db.query.messages.findMany({
@@ -422,11 +422,11 @@ export function registerRoutes(app: Express): Server {
         limit: 10,
       });
 
-      console.log("Search results:", searchResults.length);
+      console.log("Search results count:", searchResults.length);
       res.json(searchResults);
     } catch (error) {
       console.error("Error searching messages:", error);
-      res.status(500).send("Failed to search messages");
+      res.status(500).json({ error: "Failed to search messages" });
     }
   });
 
