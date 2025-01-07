@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown, TriangleRight } from "lucide-react";
+import { Hash, ChevronDown, ChevronUp } from "lucide-react";
 import type { Channel } from "@db/schema";
 import {
   Collapsible,
@@ -38,12 +38,15 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               size="icon"
               className="h-4 w-4 p-0"
             >
-              <TriangleRight 
+              <svg 
                 className={cn(
                   "h-3 w-3 transition-transform fill-current",
-                  isOpen && "rotate-90"
+                  !isOpen && "-rotate-90"
                 )}
-              />
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 21L2 6h20L12 21z" />
+              </svg>
             </Button>
           </CollapsibleTrigger>
           <DropdownMenu>
@@ -51,9 +54,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               <Button
                 variant="ghost"
                 className="px-2 font-semibold text-lg flex-1 justify-start group"
+                style={{ width: 'fit-content' }}
               >
                 <span>Channels</span>
-                <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
