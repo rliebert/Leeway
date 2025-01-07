@@ -2,31 +2,16 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronDown, Plus, User } from "lucide-react";
+import { ChevronDown, MessageSquare, User } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
-import type { DirectMessageChannel } from "@db/schema";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import type { SelectUser } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button as DialogButton } from "@/components/ui/button";
 
 interface DirectMessageSidebarProps {
   selectedDM: number | null;
@@ -35,129 +20,101 @@ interface DirectMessageSidebarProps {
 
 export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [showNewDMDialog, setShowNewDMDialog] = useState(false);
-  const { user } = useUser();
+  const { user: currentUser } = useUser();
 
-  const { data: dmChannels } = useQuery<DirectMessageChannel[]>({
-    queryKey: ["/api/dm/channels"],
-    enabled: !!user,
+  // Fetch all users
+  const { data: users = [] } = useQuery<SelectUser[]>({
+    queryKey: ["/api/users"],
+    enabled: !!currentUser,
+  });
+
+  // Create DM channel mutation
+  const createDMMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const response = await fetch("/api/dm/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      const data = await response.json();
+      onSelectDM(data.id);
+      return data;
+    },
   });
 
   return (
-    <>
-      <ScrollArea className="flex-1">
-        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <div className="flex items-center px-4">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-4 w-4 p-0"
-              >
-                <svg
-                  className={cn(
-                    "h-3 w-3 transition-transform fill-current",
-                    !isOpen && "-rotate-90"
-                  )}
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 21L2 6h20L12 21z" />
-                </svg>
-              </Button>
-            </CollapsibleTrigger>
-            <div className="flex-1 flex">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="px-2 font-semibold text-lg group relative inline-flex items-center"
-                  >
-                    <span>Direct Messages</span>
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem onClick={() => setShowNewDMDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Direct Message
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-
-          <CollapsibleContent className="space-y-4 mt-2">
-            <div className="px-2">
-              {/* Show current user as the first option */}
-              <Button
-                variant="ghost"
+    <ScrollArea className="flex-1">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center px-4">
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-4 w-4 p-0"
+            >
+              <svg
                 className={cn(
-                  "w-full justify-start gap-2",
-                  selectedDM === user?.id && "bg-accent text-accent-foreground"
+                  "h-3 w-3 transition-transform fill-current",
+                  !isOpen && "-rotate-90"
                 )}
-                onClick={() => onSelectDM(user!.id)}
+                viewBox="0 0 24 24"
               >
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={user?.avatar || undefined} />
-                  <AvatarFallback>
-                    <User className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                {user?.username} (You)
-              </Button>
-
-              {dmChannels?.map((channel) => {
-                const otherUser = channel.participants?.find(p => p.id !== user?.id);
-                if (!otherUser) return null;
-
-                return (
-                  <Button
-                    key={channel.id}
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-start gap-2",
-                      channel.id === selectedDM && "bg-accent text-accent-foreground"
-                    )}
-                    onClick={() => onSelectDM(channel.id)}
-                  >
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={otherUser.avatar || undefined} />
-                      <AvatarFallback>
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    {otherUser.username}
-                  </Button>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </ScrollArea>
-
-      <Dialog open={showNewDMDialog} onOpenChange={setShowNewDMDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Direct Message</DialogTitle>
-            <DialogDescription>
-              Send direct messages to other users
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground">
-              Search for users and start a conversation!
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Coming soon...
-            </p>
+                <path d="M12 21L2 6h20L12 21z" />
+              </svg>
+            </Button>
+          </CollapsibleTrigger>
+          <div className="flex-1">
+            <Button
+              variant="ghost"
+              className="px-2 font-semibold text-lg"
+            >
+              Users
+            </Button>
           </div>
-          <DialogFooter>
-            <DialogButton variant="outline" onClick={() => setShowNewDMDialog(false)}>
-              Close
-            </DialogButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+
+        <CollapsibleContent className="space-y-4 mt-2">
+          <div className="px-2 space-y-1">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between p-2 rounded-md hover:bg-accent group"
+              >
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 relative">
+                    <AvatarImage src={user.avatar || undefined} />
+                    <AvatarFallback>
+                      {user.username?.[0]?.toUpperCase()}
+                    </AvatarFallback>
+                    {/* Online status indicator */}
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                  </Avatar>
+                  <span className="font-medium">
+                    {user.username}
+                    {user.id === currentUser?.id && " (You)"}
+                  </span>
+                </div>
+                {user.id !== currentUser?.id && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => createDMMutation.mutate(user.id)}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </ScrollArea>
   );
 }

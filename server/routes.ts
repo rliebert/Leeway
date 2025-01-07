@@ -29,6 +29,19 @@ export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
   setupAuth(app);
 
+  // Add this endpoint near the beginning of the routes registration
+  app.get("/api/users", requireAuth, async (_req, res) => {
+    try {
+      const allUsers = await db.query.users.findMany({
+        orderBy: (users, { desc }) => [desc(users.lastActiveAt)],
+      });
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
   // Register DM routes
   app.use("/api/dm", requireAuth, dmRoutes);
 
