@@ -18,7 +18,7 @@ export default function SearchMessages() {
   const [, setLocation] = useLocation();
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
-    queryKey: [`/api/messages/search?query=${debouncedSearch}`],
+    queryKey: [`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`],
     enabled: debouncedSearch.length >= 2,
   });
 
