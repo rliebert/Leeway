@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Reply, ChevronDown, ChevronRight } from "lucide-react";
+import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink } from "lucide-react";
 import type { Message as MessageType } from "@db/schema";
 import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
@@ -33,6 +33,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   ];
 
   const replyCount = allReplies.length;
+
+  // Helper function to check if file is an image
+  const isImageFile = (mimetype: string) => {
+    return mimetype.startsWith('image/');
+  };
 
   // Invalidate replies query when new messages come in
   useEffect(() => {
@@ -74,6 +79,52 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               </Button>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
+
+            {/* Display attachments */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {/* Display image previews */}
+                <div className="flex flex-wrap gap-2">
+                  {message.attachments
+                    .filter(file => isImageFile(file.mimetype))
+                    .map((file, index) => (
+                      <a 
+                        key={index}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block max-w-xs hover:opacity-90 transition-opacity"
+                      >
+                        <img
+                          src={file.url}
+                          alt={file.originalName}
+                          className="rounded-md max-h-48 object-cover"
+                        />
+                      </a>
+                    ))}
+                </div>
+
+                {/* Display non-image file links */}
+                <div className="flex flex-wrap gap-2">
+                  {message.attachments
+                    .filter(file => !isImageFile(file.mimetype))
+                    .map((file, index) => (
+                      <a
+                        key={index}
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
+                      >
+                        <FileIcon className="h-4 w-4" />
+                        {file.originalName}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ))}
+                </div>
+              </div>
+            )}
+
             {replyCount > 0 && (
               <Button
                 variant="ghost"
@@ -109,6 +160,51 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                     </span>
                   </div>
                   <p className="text-sm mt-1">{reply.content}</p>
+
+                  {/* Display attachments in replies */}
+                  {reply.attachments && reply.attachments.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {/* Display image previews */}
+                      <div className="flex flex-wrap gap-2">
+                        {reply.attachments
+                          .filter(file => isImageFile(file.mimetype))
+                          .map((file, index) => (
+                            <a 
+                              key={index}
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block max-w-xs hover:opacity-90 transition-opacity"
+                            >
+                              <img
+                                src={file.url}
+                                alt={file.originalName}
+                                className="rounded-md max-h-48 object-cover"
+                              />
+                            </a>
+                          ))}
+                      </div>
+
+                      {/* Display non-image file links */}
+                      <div className="flex flex-wrap gap-2">
+                        {reply.attachments
+                          .filter(file => !isImageFile(file.mimetype))
+                          .map((file, index) => (
+                            <a
+                              key={index}
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
+                            >
+                              <FileIcon className="h-4 w-4" />
+                              {file.originalName}
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                          ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
