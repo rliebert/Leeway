@@ -28,6 +28,9 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  console.log('ChatInput: Current files:', files.map(f => f.name));
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -36,12 +39,14 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   });
 
   const onSubmit = async (data: FormData) => {
+    console.log('ChatInput: Submitting form with files:', files.map(f => f.name));
     const message = data?.message || "";
     if ((!message.trim() && files.length === 0) || !user) return;
 
     // Upload files if any
     let attachments = [];
     if (files.length > 0) {
+      console.log('ChatInput: Uploading files');
       const formData = new FormData();
       files.forEach((file) => {
         formData.append('files', file);
@@ -59,6 +64,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         }
 
         attachments = await response.json();
+        console.log('ChatInput: Files uploaded successfully:', attachments);
       } catch (error) {
         console.error('Error uploading files:', error);
         return;
@@ -107,10 +113,12 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   };
 
   const handleFileSelect = (selectedFiles: File[]) => {
+    console.log('ChatInput: Handling file selection:', selectedFiles.map(f => f.name));
     setFiles(prev => [...prev, ...selectedFiles]);
   };
 
   const handleFileRemove = (index: number) => {
+    console.log('ChatInput: Removing file at index:', index);
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -172,6 +180,19 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
               className="h-11 w-11"
               onClick={() => document.getElementById('file-upload')?.click()}
             >
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                multiple
+                onChange={(e) => {
+                  console.log('ChatInput: File input change event triggered');
+                  const selectedFiles = Array.from(e.target.files || []);
+                  handleFileSelect(selectedFiles);
+                  e.target.value = ''; // Reset input
+                }}
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              />
               <PaperclipIcon className="h-5 w-5" />
             </Button>
           )}
