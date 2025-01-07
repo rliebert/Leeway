@@ -19,26 +19,31 @@ export default function SearchMessages() {
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
     queryKey: ['/api/messages/search', debouncedSearch],
-    queryFn: async ({ queryKey }) => {
-      console.log('Searching with term:', debouncedSearch);
-      if (debouncedSearch.length < 2) return [];
+    queryFn: async () => {
+      if (!debouncedSearch || debouncedSearch.length < 2) {
+        return [];
+      }
 
-      const response = await fetch(`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`, {
+      const queryParams = new URLSearchParams({ query: debouncedSearch });
+      const response = await fetch(`/api/messages/search?${queryParams}`, {
         credentials: 'include'
       });
+
       if (!response.ok) {
+        if (response.status === 400) {
+          console.error('Search failed:', await response.text());
+          return [];
+        }
         throw new Error('Search failed');
       }
+
       return response.json();
     },
     enabled: debouncedSearch.length >= 2,
   });
 
   const handleResultClick = (channelId: number, messageId: number) => {
-    // Navigate to the channel
     setLocation(`/channels/${channelId}`);
-
-    // Scroll to message after a short delay to allow for channel load
     setTimeout(() => {
       const messageElement = document.getElementById(`message-${messageId}`);
       if (messageElement) {
@@ -66,11 +71,11 @@ export default function SearchMessages() {
           <ScrollArea className="max-h-[300px]">
             {isLoading ? (
               <p className="text-sm text-muted-foreground p-2">Searching...</p>
-            ) : searchResults?.length === 0 ? (
+            ) : !searchResults || searchResults.length === 0 ? (
               <p className="text-sm text-muted-foreground p-2">No results found</p>
             ) : (
               <div className="space-y-2">
-                {searchResults?.map((result) => (
+                {searchResults.map((result) => (
                   <button
                     key={result.id}
                     onClick={() => handleResultClick(result.channelId, result.id)}
