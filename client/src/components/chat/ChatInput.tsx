@@ -51,6 +51,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         const response = await fetch(`/api/channels/${channelId}/upload`, {
           method: 'POST',
           body: formData,
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -151,7 +152,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
             {...form.register("message")}
             ref={(e) => {
               form.register("message").ref(e);
-              textareaRef.current = e;
+              if (e) textareaRef.current = e;
             }}
             placeholder="Type your message..."
             className="resize-none min-h-[2.75rem] py-2.5"
