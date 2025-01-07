@@ -441,26 +441,25 @@ export function registerRoutes(app: Express): Server {
   // Direct Message routes
   app.get("/api/dm/channels", requireAuth, async (req, res) => {
     try {
-      const userDmChannels = await db.query.directMessageChannels.findMany({
+      const userDmChannels = await db.query.directMessageParticipants.findMany({
+        where: eq(directMessageParticipants.userId, req.user!.id),
         with: {
-          participants: {
+          channel: {
             with: {
-              user: true,
+              participants: {
+                with: {
+                  user: true,
+                },
+              },
             },
           },
         },
-        where: (channels, { inArray, eq }) => inArray(
-          channels.id,
-          db.select({ id: directMessageParticipants.channelId })
-            .from(directMessageParticipants)
-            .where(eq(directMessageParticipants.userId, req.user!.id))
-        ),
       });
 
       // Transform the data to match our DirectMessageChannel type
-      const channels = userDmChannels.map(channel => ({
-        ...channel,
-        participants: channel.participants.map(p => p.user),
+      const channels = userDmChannels.map(participant => ({
+        ...participant.channel,
+        participants: participant.channel.participants.map(p => p.user),
       }));
 
       res.json(channels);
