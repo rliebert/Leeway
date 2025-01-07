@@ -93,6 +93,7 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
           <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+          {/* Removed border-t from UserProfile wrapper */}
           <UserProfile />
         </div>
         <div className="flex-1 flex flex-col">

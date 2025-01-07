@@ -44,7 +44,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   return (
     <>
-      <div ref={ref} className="group hover:bg-accent/5 rounded-lg -mx-4 px-4 py-2">
+      <div ref={ref} className="group hover:bg-accent/10 rounded-lg -mx-4 px-4 py-2 transition-colors">
         <div className="flex gap-4">
           <Avatar>
             <AvatarImage src={message.user?.avatar} />

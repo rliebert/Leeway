@@ -47,7 +47,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
                   variant="ghost"
                   className={cn(
                     "w-full justify-start gap-2",
-                    selectedChannel === channel.id && "bg-sidebar-accent"
+                    selectedChannel === channel.id && "bg-sidebar-accent text-sidebar-accent-foreground"
                   )}
                   onClick={() => onSelectChannel(channel.id)}
                 >
