@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -113,23 +114,74 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               </Button>
             </CollapsibleTrigger>
             <div className="flex-1 flex">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="px-2 font-semibold text-lg group relative inline-flex items-center"
-                  >
-                    <span>Direct Messages</span>
-                    <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem onClick={() => setShowNewDMDialog(true)}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Direct Message
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Dialog open={showNewDMDialog} onOpenChange={setShowNewDMDialog}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="px-2 font-semibold text-lg group relative inline-flex items-center"
+                    >
+                      <span>Direct Messages</span>
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onClick={() => setShowNewDMDialog(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      New Direct Message
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>New Direct Message</DialogTitle>
+                    <DialogDescription>
+                      Search for a user to start a conversation
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <Search className="w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search users..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-1"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {loadingSearch ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                      ) : searchResults?.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          No users found
+                        </p>
+                      ) : (
+                        searchResults?.map((searchUser) => (
+                          <Button
+                            key={searchUser.id}
+                            variant="ghost"
+                            className="w-full justify-start gap-2"
+                            onClick={() => handleCreateDM(searchUser.id)}
+                          >
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={searchUser.avatar || undefined} />
+                              <AvatarFallback>
+                                <User className="h-4 w-4" />
+                              </AvatarFallback>
+                            </Avatar>
+                            {searchUser.username}
+                            {searchUser.id === user?.id && " (You)"}
+                          </Button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
@@ -192,58 +244,6 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
           </CollapsibleContent>
         </Collapsible>
       </ScrollArea>
-
-      <Dialog open={showNewDMDialog} onOpenChange={setShowNewDMDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Direct Message</DialogTitle>
-            <DialogDescription>
-              Search for a user to start a conversation
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              {loadingSearch ? (
-                <div className="flex justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                </div>
-              ) : searchResults?.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No users found
-                </p>
-              ) : (
-                searchResults?.map((searchUser) => (
-                  <Button
-                    key={searchUser.id}
-                    variant="ghost"
-                    className="w-full justify-start gap-2"
-                    onClick={() => handleCreateDM(searchUser.id)}
-                  >
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={searchUser.avatar || undefined} />
-                      <AvatarFallback>
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                    {searchUser.username}
-                    {searchUser.id === user?.id && " (You)"}
-                  </Button>
-                ))
-              )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
