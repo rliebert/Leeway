@@ -34,7 +34,6 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   });
 
   const onSubmit = (data: FormData) => {
-    // Ensure data.message exists and is not empty
     const message = data?.message || "";
     if (!message.trim() || !user) return;
 
@@ -63,14 +62,12 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       emojiData.emoji + 
       currentValue.substring(end);
 
-    // Update the form value and trigger re-render
     form.setValue("message", newValue, { 
       shouldValidate: true,
       shouldDirty: true,
       shouldTouch: true,
     });
 
-    // Set cursor position after emoji
     setTimeout(() => {
       if (textarea) {
         textarea.focus();
@@ -88,7 +85,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10"
+              className="h-9 w-9"
             >
               <Smile className="h-5 w-5" />
             </Button>
@@ -112,7 +109,8 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
             textareaRef.current = e;
           }}
           placeholder="Type your message..."
-          className="min-h-[60px]"
+          className="resize-none min-h-0 h-9 py-2"
+          rows={1}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -121,7 +119,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
           }}
         />
       </div>
-      <Button type="submit">Send</Button>
+      <Button type="submit" size="sm" className="h-9">Send</Button>
     </form>
   );
 }

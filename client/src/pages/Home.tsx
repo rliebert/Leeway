@@ -73,7 +73,7 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-background">
       <div className="w-full border-b">
         <div className="flex items-center">
-          <div className="w-64 p-4 border-r">
+          <div className="w-64 p-4">
             <h1 className="font-bold text-xl">Leeway</h1>
           </div>
           <div className="flex-1 p-4">
@@ -108,8 +108,7 @@ export default function Home() {
           <ScrollArea className="flex-1">
             <MessageList channelId={selectedChannel} />
           </ScrollArea>
-          <Separator />
-          <div className="p-4">
+          <div className="px-4 py-3 border-t">
             <ChatInput channelId={selectedChannel} />
           </div>
         </div>

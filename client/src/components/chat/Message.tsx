@@ -44,36 +44,20 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   return (
     <>
-      <div ref={ref} className="flex flex-col gap-2">
-        <div className="flex gap-4 group">
+      <div ref={ref} className="group hover:bg-accent/5 rounded-lg -mx-4 px-4 py-2">
+        <div className="flex gap-4">
           <Avatar>
             <AvatarImage src={message.user?.avatar} />
             <AvatarFallback>{message.user?.username?.[0]?.toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold">{message.user?.username}</span>
-              <span className="text-xs text-muted-foreground">
-                {new Date(message.createdAt).toLocaleTimeString()}
-              </span>
-            </div>
-            <p className="text-sm mt-1">{message.content}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {replyCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                  onClick={() => setShowReplies(!showReplies)}
-                >
-                  {showReplies ? (
-                    <ChevronDown className="h-4 w-4 mr-1" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 mr-1" />
-                  )}
-                  {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
-                </Button>
-              )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">{message.user?.username}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(message.createdAt).toLocaleTimeString()}
+                </span>
+              </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -84,10 +68,26 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 Reply
               </Button>
             </div>
+            <p className="text-sm mt-1">{message.content}</p>
+            {replyCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 mt-2"
+                onClick={() => setShowReplies(!showReplies)}
+              >
+                {showReplies ? (
+                  <ChevronDown className="h-4 w-4 mr-1" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 mr-1" />
+                )}
+                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+              </Button>
+            )}
           </div>
         </div>
         {showReplies && allReplies.length > 0 && (
-          <div className="ml-12 pl-4 border-l">
+          <div className="ml-12 pl-4 border-l mt-2">
             {allReplies.map((reply) => (
               <div key={reply.id} className="flex gap-4 mt-2">
                 <Avatar className="h-8 w-8">
