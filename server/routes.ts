@@ -398,8 +398,11 @@ export function registerRoutes(app: Express): Server {
   // Search messages for a query
   app.get("/api/messages/search", requireAuth, async (req, res) => {
     try {
-      const query = req.query.query as string;
-      console.log("Search query received:", query);
+      console.log('Full request query:', req.query);
+      console.log('Full request URL:', req.url);
+
+      const query = req.query.query;
+      console.log("Search query received:", query, "Type:", typeof query);
 
       if (!query || typeof query !== "string" || query.trim().length < 2) {
         console.log("Invalid search query:", query);

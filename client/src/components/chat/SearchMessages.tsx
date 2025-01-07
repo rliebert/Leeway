@@ -18,15 +18,22 @@ export default function SearchMessages() {
   const [, setLocation] = useLocation();
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
-    queryKey: ['/api/messages/search', debouncedSearch],
+    queryKey: ['messages', 'search', debouncedSearch],
     queryFn: async () => {
       if (!debouncedSearch || debouncedSearch.length < 2) {
         return [];
       }
 
       try {
-        console.log('Sending search request with query:', debouncedSearch);
-        const response = await fetch(`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`, {
+        console.log('Search term:', debouncedSearch);
+        const searchParams = new URLSearchParams();
+        searchParams.append('query', debouncedSearch);
+
+        const url = `/api/messages/search?${searchParams.toString()}`;
+        console.log('Request URL:', url);
+
+        const response = await fetch(url, {
+          method: 'GET',
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
@@ -36,9 +43,6 @@ export default function SearchMessages() {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Search failed:', errorText);
-          if (response.status === 400) {
-            return [];
-          }
           throw new Error(`Search failed: ${errorText}`);
         }
 
