@@ -19,7 +19,10 @@ export default function SearchMessages() {
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
     queryKey: ['/api/messages/search', debouncedSearch],
-    queryFn: async () => {
+    queryFn: async ({ queryKey }) => {
+      console.log('Searching with term:', debouncedSearch);
+      if (debouncedSearch.length < 2) return [];
+
       const response = await fetch(`/api/messages/search?query=${encodeURIComponent(debouncedSearch)}`, {
         credentials: 'include'
       });

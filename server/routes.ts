@@ -412,10 +412,14 @@ export function registerRoutes(app: Express): Server {
         where: ilike(messages.content, `%${query}%`),
         with: {
           user: true,
-          channel: true,
+          channel: {
+            with: {
+              creator: true,
+            },
+          },
         },
-        orderBy: messages.createdAt,
-        limit: 20,
+        orderBy: (messages, { desc }) => [desc(messages.createdAt)],
+        limit: 10,
       });
 
       console.log("Search results:", searchResults.length);
