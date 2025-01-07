@@ -593,6 +593,7 @@ export function registerRoutes(app: Express): Server {
                 channelId: message.channelId,
                 userId: message.userId,
                 parentMessageId: message.parentMessageId,
+                attachments: message.attachments || null, // Add attachments to the database
               })
               .returning();
 
