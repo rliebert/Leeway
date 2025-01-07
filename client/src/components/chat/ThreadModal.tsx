@@ -3,14 +3,16 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Message } from "@db/schema";
 import ChatInput from "./ChatInput";
 import { useEffect, useRef } from "react";
+import { useWS } from "@/lib/ws";
 
 interface ThreadModalProps {
   open: boolean;
@@ -24,10 +26,23 @@ export default function ThreadModal({
   parentMessage,
 }: ThreadModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const { messages: wsMessages } = useWS();
+
   const { data: replies = [] } = useQuery<Message[]>({
     queryKey: [`/api/messages/${parentMessage.id}/replies`],
     enabled: open,
   });
+
+  // Combine initial replies with new WebSocket messages
+  const allReplies = [
+    ...replies,
+    ...wsMessages.filter(
+      msg => 
+        msg.parentMessageId === parentMessage.id &&
+        !replies.some(reply => reply.id === msg.id)
+    ),
+  ];
 
   useEffect(() => {
     if (open) {
@@ -35,13 +50,24 @@ export default function ThreadModal({
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     }
-  }, [open, replies.length]);
+  }, [open, allReplies.length]);
+
+  // Invalidate replies query when new messages come in
+  useEffect(() => {
+    const newReplies = wsMessages.filter(msg => msg.parentMessageId === parentMessage.id);
+    if (newReplies.length > 0) {
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${parentMessage.id}/replies`] });
+    }
+  }, [wsMessages, parentMessage.id, queryClient]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[80vh]">
         <DialogHeader>
           <DialogTitle>Thread</DialogTitle>
+          <DialogDescription className="sr-only">
+            Reply to message thread
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col h-full">
           <div className="p-4">
@@ -66,7 +92,7 @@ export default function ThreadModal({
           <Separator />
           <ScrollArea className="flex-1 p-4">
             <div className="flex flex-col gap-4">
-              {replies.map((reply) => (
+              {allReplies.map((reply) => (
                 <div key={reply.id} className="flex gap-4">
                   <Avatar>
                     <AvatarImage src={reply.user?.avatar} />
