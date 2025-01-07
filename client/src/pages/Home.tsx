@@ -1,34 +1,38 @@
 import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Search, Hash } from "lucide-react";
+import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CommandDialog,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
+import { SignIn, useUser } from "@clerk/clerk-react";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
+import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
 
 export default function Home() {
+  const { isLoaded, isSignedIn } = useUser();
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
+    enabled: isSignedIn,
   });
 
   const { data: searchResults } = useQuery<Message[]>({
     queryKey: [`/api/messages/search`, { query: searchQuery }],
-    enabled: searchQuery.length > 0,
+    enabled: searchQuery.length > 0 && isSignedIn,
   });
 
   const currentChannel = channels?.find(channel => channel.id === selectedChannel);
@@ -42,6 +46,22 @@ export default function Home() {
     setOpen(false);
     setSearchQuery("");
   };
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <SignIn />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -65,7 +85,10 @@ export default function Home() {
         </div>
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+        <div className="w-64 flex flex-col border-r bg-sidebar">
+          <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+          <UserProfile />
+        </div>
         <div className="flex-1 flex flex-col">
           <div className="border-b px-6 py-3">
             <div className="flex items-center gap-2">
@@ -85,7 +108,11 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog 
+        open={open} 
+        onOpenChange={setOpen}
+        label="Search messages"
+      >
         <CommandInput 
           placeholder="Search messages..." 
           onValueChange={handleSearch}

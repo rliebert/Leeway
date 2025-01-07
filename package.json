@@ -11,6 +11,8 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.21.0",
+    "@clerk/types": "^4.40.0",
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@radix-ui/react-accordion": "^1.2.1",
