@@ -71,29 +71,25 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
             </DropdownMenu>
           </div>
         </div>
-        <CollapsibleContent>
-          <div className="px-2">
-            {channels?.map((channel) => {
-              const isSelected = selectedChannel === channel.id;
-              if (!isOpen && !isSelected) {
-                return null;
-              }
-              return (
-                <Button
-                  key={channel.id}
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-2",
-                    isSelected && "bg-accent text-accent-foreground"
-                  )}
-                  onClick={() => onSelectChannel(channel.id)}
-                >
-                  <Hash className="h-4 w-4" />
-                  {channel.name}
-                </Button>
-              );
-            })}
-          </div>
+        <CollapsibleContent className="px-2">
+          {channels?.map((channel) => {
+            const isSelected = selectedChannel === channel.id;
+            return (
+              <Button
+                key={channel.id}
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-2",
+                  isSelected && "bg-accent text-accent-foreground",
+                  !isOpen && !isSelected && "hidden"
+                )}
+                onClick={() => onSelectChannel(channel.id)}
+              >
+                <Hash className="h-4 w-4" />
+                {channel.name}
+              </Button>
+            );
+          })}
         </CollapsibleContent>
       </Collapsible>
     </ScrollArea>
