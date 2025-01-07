@@ -349,7 +349,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
     }));
   };
 
-  const renderChannelList = (channelList: Channel[], sectionId?: number) => {
+  const renderChannelList = (channelList: Channel[]) => {
     return channelList.map((channel) => (
       <div key={channel.id} className="group relative">
         <Button
@@ -422,7 +422,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
 
   return (
     <ScrollArea className="flex-1">
-      {/* Main Channels Collapsible */}
       <Collapsible open={isChannelsOpen} onOpenChange={setIsChannelsOpen}>
         <div className="flex items-center px-4">
           <CollapsibleTrigger asChild>
@@ -475,7 +474,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
 
         {/* Selected channel always visible */}
         {!isChannelsOpen && selectedChannelData && (
-          <div className="px-2">
+          <div className="px-2 mt-2">
             <Button
               variant="ghost"
               className={cn(
@@ -490,8 +489,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
           </div>
         )}
 
-        {/* Channels in collapsible content */}
-        <CollapsibleContent className="space-y-4">
+        <CollapsibleContent className="space-y-4 mt-2">
           {/* Unsectioned channels */}
           {channelsBySection.unsectioned?.length > 0 && (
             <div className="px-2">
@@ -502,77 +500,78 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
             </div>
           )}
 
-          {/* Sections with their channels */}
-          {sections?.map((section) => {
-            const sectionChannels = channelsBySection[section.id] || [];
-            if (sectionChannels.length === 0) return null;
-
-            return (
-              <div key={section.id} className="px-2">
-                <Collapsible
-                  open={openSections[section.id]}
-                  onOpenChange={() => toggleSection(section.id)}
-                >
-                  <div className="flex items-center px-2 group">
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4 p-0"
+          {/* Sections */}
+          {sections?.map((section) => (
+            <div key={section.id} className="px-2">
+              <Collapsible
+                open={openSections[section.id]}
+                onOpenChange={() => toggleSection(section.id)}
+              >
+                <div className="flex items-center px-2 group">
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 p-0"
+                    >
+                      <svg
+                        className={cn(
+                          "h-3 w-3 transition-transform fill-current",
+                          !openSections[section.id] && "-rotate-90"
+                        )}
+                        viewBox="0 0 24 24"
                       >
-                        <svg
-                          className={cn(
-                            "h-3 w-3 transition-transform fill-current",
-                            !openSections[section.id] && "-rotate-90"
-                          )}
-                          viewBox="0 0 24 24"
+                        <path d="M12 21L2 6h20L12 21z" />
+                      </svg>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
+                    {section.name.toUpperCase()}
+                  </span>
+                  {section.creator?.id === user?.id && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100"
                         >
-                          <path d="M12 21L2 6h20L12 21z" />
-                        </svg>
-                      </Button>
-                    </CollapsibleTrigger>
-                    <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
-                      {section.name.toUpperCase()}
-                    </span>
-                    {section.creator?.id === user?.id && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                          >
-                            <Settings className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => {
-                            setEditingSection(section);
-                            setSectionFormData({ name: section.name });
-                            setShowEditSectionDialog(true);
-                          }}>
-                            <Settings className="mr-2 h-4 w-4" />
-                            Edit Section
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => handleDeleteSection(section.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Section
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                  <CollapsibleContent className="mt-1">
-                    {renderChannelList(sectionChannels, section.id)}
-                  </CollapsibleContent>
-                </Collapsible>
-              </div>
-            );
-          })}
+                          <Settings className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => {
+                          setEditingSection(section);
+                          setSectionFormData({ name: section.name });
+                          setShowEditSectionDialog(true);
+                        }}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          Edit Section
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => handleDeleteSection(section.id)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete Section
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+                <CollapsibleContent className="mt-1">
+                  {channelsBySection[section.id]?.length > 0 ? (
+                    renderChannelList(channelsBySection[section.id])
+                  ) : (
+                    <p className="text-sm text-muted-foreground px-4 py-2">
+                      No channels in this section
+                    </p>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          ))}
         </CollapsibleContent>
       </Collapsible>
 
