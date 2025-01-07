@@ -389,14 +389,14 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Select
-                  value={channel.sectionId?.toString() || ""}
-                  onValueChange={(value) => handleMoveChannel(channel.id, value ? parseInt(value) : null)}
+                  value={channel.sectionId?.toString() || "unsectioned"}
+                  onValueChange={(value) => handleMoveChannel(channel.id, value === "unsectioned" ? null : parseInt(value))}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Move to section" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unsectioned</SelectItem>
+                    <SelectItem value="unsectioned">Unsectioned</SelectItem>
                     {sections?.map((section) => (
                       <SelectItem key={section.id} value={section.id.toString()}>
                         {section.name}
