@@ -15,13 +15,156 @@ const upload = multer({
   },
 });
 
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).send("Not authenticated");
+  }
+  next();
+};
+
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
   setupAuth(app);
 
-  app.get("/api/channels", async (_req, res) => {
-    const allChannels = await db.query.channels.findMany();
+  app.get("/api/channels", requireAuth, async (_req, res) => {
+    const allChannels = await db.query.channels.findMany({
+      with: {
+        creator: true,
+      },
+    });
     res.json(allChannels);
+  });
+
+  app.post("/api/channels", requireAuth, async (req, res) => {
+    const { name, description } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).send("Channel name is required");
+    }
+
+    try {
+      // Check for duplicate channel name
+      const existingChannel = await db.query.channels.findFirst({
+        where: eq(channels.name, name.trim()),
+      });
+
+      if (existingChannel) {
+        return res.status(400).send("Channel name already exists");
+      }
+
+      const [newChannel] = await db
+        .insert(channels)
+        .values({
+          name: name.trim(),
+          description: description?.trim(),
+          creatorId: req.user!.id,
+        })
+        .returning();
+
+      // Fetch the created channel with creator info
+      const channelWithCreator = await db.query.channels.findFirst({
+        where: eq(channels.id, newChannel.id),
+        with: {
+          creator: true,
+        },
+      });
+
+      res.status(201).json(channelWithCreator);
+    } catch (error) {
+      console.error("Error creating channel:", error);
+      res.status(500).send("Failed to create channel");
+    }
+  });
+
+  app.put("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).send("Channel name is required");
+    }
+
+    try {
+      // Check if user is the creator
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, parseInt(id)),
+      });
+
+      if (!channel) {
+        return res.status(404).send("Channel not found");
+      }
+
+      if (channel.creatorId !== req.user!.id) {
+        return res.status(403).send("Only the channel creator can edit the channel");
+      }
+
+      // Check for duplicate name, excluding current channel
+      const existingChannel = await db.query.channels.findFirst({
+        where: eq(channels.name, name.trim()),
+      });
+
+      if (existingChannel && existingChannel.id !== parseInt(id)) {
+        return res.status(400).send("Channel name already exists");
+      }
+
+      const [updatedChannel] = await db
+        .update(channels)
+        .set({
+          name: name.trim(),
+          description: description?.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(channels.id, parseInt(id)))
+        .returning();
+
+      // Fetch the updated channel with creator info
+      const channelWithCreator = await db.query.channels.findFirst({
+        where: eq(channels.id, updatedChannel.id),
+        with: {
+          creator: true,
+        },
+      });
+
+      res.json(channelWithCreator);
+    } catch (error) {
+      console.error("Error updating channel:", error);
+      res.status(500).send("Failed to update channel");
+    }
+  });
+
+  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      // Check if user is the creator
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, parseInt(id)),
+      });
+
+      if (!channel) {
+        return res.status(404).send("Channel not found");
+      }
+
+      if (channel.creatorId !== req.user!.id) {
+        return res.status(403).send("Only the channel creator can delete the channel");
+      }
+
+      // Delete all messages in the channel first
+      await db
+        .delete(messages)
+        .where(eq(messages.channelId, parseInt(id)));
+
+      // Then delete the channel
+      await db
+        .delete(channels)
+        .where(eq(channels.id, parseInt(id)));
+
+      res.json({ message: "Channel deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting channel:", error);
+      res.status(500).send("Failed to delete channel");
+    }
   });
 
   app.get("/api/channels/:id/messages", async (req, res) => {

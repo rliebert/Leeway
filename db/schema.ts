@@ -14,7 +14,9 @@ export const channels = pgTable("channels", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),
+  creatorId: integer("creator_id").references(() => users.id), 
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
@@ -28,10 +30,16 @@ export const messages = pgTable("messages", {
 
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
+  channels: many(channels, { relationName: "channelCreator" }),
 }));
 
-export const channelsRelations = relations(channels, ({ many }) => ({
+export const channelsRelations = relations(channels, ({ many, one }) => ({
   messages: many(messages),
+  creator: one(users, {
+    fields: [channels.creatorId],
+    references: [users.id],
+    relationName: "channelCreator",
+  }),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -63,7 +71,9 @@ export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
 
 export type User = typeof users.$inferSelect;
-export type Channel = typeof channels.$inferSelect;
+export type Channel = typeof channels.$inferSelect & {
+  creator?: User;
+};
 export type Message = typeof messages.$inferSelect & {
   user?: User;
   replies?: Message[];
