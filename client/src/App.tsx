@@ -1,15 +1,17 @@
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
-import { ClerkProvider, SignIn, useUser } from "@clerk/clerk-react";
-import { Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
+import AuthForm from "@/components/auth/AuthForm";
 
 function AuthenticatedApp() {
-  const { isLoaded, user } = useUser();
+  const { user, isLoading } = useUser();
   const { toast } = useToast();
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -20,7 +22,12 @@ function AuthenticatedApp() {
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <SignIn />
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6">
+            <h2 className="text-2xl font-bold mb-4">Welcome to Leeway</h2>
+            <AuthForm />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -29,70 +36,33 @@ function AuthenticatedApp() {
     <WSProvider>
       <Switch>
         <Route path="/" component={Home} />
+        <Route component={NotFound} />
       </Switch>
     </WSProvider>
   );
 }
 
+// fallback 404 not found page
+function NotFound() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md mx-4">
+        <CardContent className="pt-6">
+          <div className="flex mb-4 gap-2">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
+          </div>
+          <p className="mt-4 text-sm text-gray-600">
+            Did you forget to add the page to the router?
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 function App() {
-  const { toast } = useToast();
-
-  try {
-    if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
-      toast({
-        variant: "destructive",
-        description: "Missing Clerk configuration. Please check environment variables.",
-      });
-      return (
-        <div className="flex items-center justify-center min-h-screen">
-          <p className="text-destructive">Authentication configuration error</p>
-        </div>
-      );
-    }
-
-    return (
-      <ClerkProvider 
-        publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
-        appearance={{
-          variables: {
-            colorPrimary: "hsl(var(--primary))",
-            colorBackground: "hsl(var(--background))",
-            colorText: "hsl(var(--foreground))",
-            colorTextSecondary: "hsl(var(--muted-foreground))",
-          },
-          elements: {
-            rootBox: "w-full h-full",
-            card: "bg-background border rounded-lg shadow-sm",
-            headerTitle: "text-foreground",
-            headerSubtitle: "text-muted-foreground",
-            socialButtonsBlockButton: "bg-muted text-muted-foreground hover:bg-muted/80",
-            formFieldLabel: "text-muted-foreground",
-            formFieldInput: "bg-background border",
-            formButtonPrimary: "bg-primary text-primary-foreground hover:bg-primary/90",
-            footerActionText: "text-muted-foreground",
-            footerActionLink: "text-primary hover:text-primary/90",
-          },
-        }}
-        signInUrl="/"
-        signUpUrl="/"
-        afterSignInUrl="/"
-        afterSignUpUrl="/"
-      >
-        <AuthenticatedApp />
-      </ClerkProvider>
-    );
-  } catch (error) {
-    console.error('Error initializing Clerk:', error);
-    toast({
-      variant: "destructive",
-      description: "Failed to initialize authentication. Please try again.",
-    });
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-destructive">Authentication error</p>
-      </div>
-    );
-  }
+  return <AuthenticatedApp />;
 }
 
 export default App;

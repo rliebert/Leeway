@@ -5,6 +5,7 @@ import { db } from "@db";
 import { messages, channels, users } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
+import { setupAuth } from "./auth";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -15,6 +16,9 @@ const upload = multer({
 });
 
 export function registerRoutes(app: Express): Server {
+  // Set up authentication routes and middleware
+  setupAuth(app);
+
   app.get("/api/channels", async (_req, res) => {
     const allChannels = await db.query.channels.findMany();
     res.json(allChannels);
@@ -50,7 +54,7 @@ export function registerRoutes(app: Express): Server {
     res.json(searchResults);
   });
 
-  // New endpoint for avatar upload
+  // Avatar upload endpoint
   app.post("/api/users/:id/avatar", upload.single("avatar"), async (req, res) => {
     try {
       if (!req.file) {
@@ -103,7 +107,7 @@ export function registerRoutes(app: Express): Server {
             .values({
               content: message.content,
               channelId: message.channelId,
-              userId: 1, // TODO: Replace with actual user ID from auth
+              userId: message.userId,
             })
             .returning();
 

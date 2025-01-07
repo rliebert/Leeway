@@ -11,7 +11,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { SignIn, useUser } from "@clerk/clerk-react";
+import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
@@ -29,19 +29,19 @@ interface SearchResult extends Message {
 }
 
 export default function Home() {
-  const { isLoaded, isSignedIn } = useUser();
+  const { user, isLoading } = useUser();
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-    enabled: isSignedIn,
+    enabled: !!user,
   });
 
   const { data: searchResults } = useQuery<SearchResult[]>({
     queryKey: [`/api/messages/search`, { query: searchQuery }],
-    enabled: searchQuery.length > 0 && isSignedIn,
+    enabled: searchQuery.length > 0 && !!user,
   });
 
   const currentChannel = channels?.find(channel => channel.id === selectedChannel);
@@ -56,7 +56,7 @@ export default function Home() {
     setSearchQuery("");
   };
 
-  if (!isLoaded) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -64,12 +64,8 @@ export default function Home() {
     );
   }
 
-  if (!isSignedIn) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <SignIn />
-      </div>
-    );
+  if (!user) {
+    return null; // Auth handled by App.tsx
   }
 
   return (
