@@ -118,7 +118,10 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
 }));
 
 export const directMessageChannelsRelations = relations(directMessageChannels, ({ many }) => ({
-  participants: many(directMessageParticipants),
+  participants: many(directMessageParticipants, {
+    fields: [directMessageChannels.id],
+    references: [directMessageParticipants.channelId],
+  }),
   messages: many(directMessages),
 }));
 
