@@ -54,12 +54,65 @@ export function registerRoutes(app: Express): Server {
   // Register upload routes
   registerUploadRoutes(app);
 
+  // Section routes
+  app.get("/api/sections", requireAuth, async (_req, res) => {
+    try {
+      const allSections = await db.query.sections.findMany({
+        with: {
+          creator: true,
+          channels: {
+            with: {
+              creator: true,
+            },
+          },
+        },
+      });
+      res.json(allSections);
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+      res.status(500).send("Failed to fetch sections");
+    }
+  });
+
+  app.post("/api/sections", requireAuth, async (req, res) => {
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).send("Section name is required");
+    }
+
+    try {
+      const [newSection] = await db
+        .insert(sections)
+        .values({
+          name: name.trim(),
+          creatorId: req.user!.id,
+        })
+        .returning();
+
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, newSection.id),
+        with: {
+          creator: true,
+          channels: true,
+        },
+      });
+
+      res.status(201).json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error creating section:", error);
+      res.status(500).send("Failed to create section");
+    }
+  });
+
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
         with: {
           creator: true,
+          section: true,
         },
+        orderBy: (channels, { asc }) => [asc(channels.position)],
       });
       res.json(allChannels);
     } catch (error) {
@@ -169,6 +222,7 @@ export function registerRoutes(app: Express): Server {
             where: eq(messages.id, savedMessage[0].id),
             with: {
               user: true,
+              replies: true,
             },
           });
 
