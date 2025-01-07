@@ -30,8 +30,15 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Add this endpoint near the beginning of the routes registration
-  app.get("/api/users", requireAuth, async (_req, res) => {
+  app.get("/api/users", requireAuth, async (req, res) => {
     try {
+      // Update current user's last active time
+      await db
+        .update(users)
+        .set({ lastActiveAt: new Date() })
+        .where(eq(users.id, req.user!.id));
+
+      // Fetch all users
       const allUsers = await db.query.users.findMany({
         orderBy: (users, { desc }) => [desc(users.lastActiveAt)],
       });
