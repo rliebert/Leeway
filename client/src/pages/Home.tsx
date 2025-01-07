@@ -25,16 +25,21 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <div className="w-full border-b">
-        <div className="max-w-[calc(100%-256px)] ml-auto p-4">
-          <div 
-            onClick={() => setOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent"
-          >
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Search messages...</span>
-            <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
-              <span className="text-xs">⌘</span>K
-            </kbd>
+        <div className="flex items-center">
+          <div className="w-64 p-4 border-r">
+            <h1 className="font-bold text-xl">Team Flow Chat</h1>
+          </div>
+          <div className="flex-1 p-4">
+            <div 
+              onClick={() => setOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent"
+            >
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Search messages...</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
+                <span className="text-xs">⌘</span>K
+              </kbd>
+            </div>
           </div>
         </div>
       </div>
