@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useWS } from "@/lib/ws";
+import { useWS } from "@/lib/ws.tsx";
 
 interface ChatInputProps {
   channelId: number;

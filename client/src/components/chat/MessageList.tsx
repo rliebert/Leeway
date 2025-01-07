@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useWS } from "@/lib/ws";
-import Message from "./Message";
+import { useWS } from "@/lib/ws.tsx";
+import Message from "@/components/chat/Message";
 import type { Message as MessageType } from "@db/schema";
 
 interface MessageListProps {
