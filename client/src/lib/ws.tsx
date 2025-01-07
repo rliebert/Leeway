@@ -28,6 +28,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const { toast } = useToast();
+  const [hasShownConnectedToast, setHasShownConnectedToast] = useState(false);
 
   useEffect(() => {
     let reconnectTimeout: NodeJS.Timeout;
@@ -39,9 +40,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
       websocket.onopen = () => {
         setConnected(true);
         console.log('WebSocket Connected');
-        toast({
-          description: "Connected to chat server",
-        });
+        if (!hasShownConnectedToast) {
+          toast({
+            description: "Connected to chat server",
+            duration: 3000,
+            className: "absolute top-4 right-4",
+          });
+          setHasShownConnectedToast(true);
+        }
       };
 
       websocket.onclose = () => {
@@ -50,6 +56,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
         toast({
           variant: "destructive",
           description: "Disconnected from chat server. Reconnecting...",
+          duration: 3000,
+          className: "absolute top-4 right-4",
         });
 
         reconnectTimeout = setTimeout(() => {
@@ -59,14 +67,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
       websocket.onerror = (error) => {
         console.error('WebSocket Error:', error);
-        websocket.close();
       };
 
       websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WSMessage;
           if (data.type === 'message' && data.message) {
-            // Only add the message if it's not already in the list
             setMessages((prev) => {
               const exists = prev.some(msg => msg.id === data.message!.id);
               if (exists) {
@@ -91,7 +97,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         socket.close();
       }
     };
-  }, []);
+  }, [hasShownConnectedToast]);
 
   const send = (data: WSMessage) => {
     if (socket?.readyState === WebSocket.OPEN) {
@@ -101,6 +107,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
       toast({
         variant: "destructive",
         description: "Failed to send message. Please try again.",
+        duration: 3000,
+        className: "absolute top-4 right-4",
       });
     }
   };
