@@ -3,13 +3,12 @@ import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
+import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
-  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -34,10 +33,17 @@ function AuthenticatedApp() {
 
   return (
     <WSProvider>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route component={NotFound} />
-      </Switch>
+      <div className="flex h-screen">
+        <div className="w-64 border-r bg-card">
+          <DirectMessageSidebar selectedDM={null} onSelectDM={() => {}} />
+        </div>
+        <div className="flex-1">
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
+      </div>
     </WSProvider>
   );
 }
