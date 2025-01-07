@@ -46,20 +46,17 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// New table for direct message conversations
 export const directMessageChannels = pgTable("direct_message_channels", {
   id: serial("id").primaryKey(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Junction table for DM participants
 export const directMessageParticipants = pgTable("direct_message_participants", {
   channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Table for direct messages
 export const directMessages = pgTable("direct_messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -106,23 +103,15 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.channelId],
     references: [channels.id],
   }),
-  replies: many(messages, {
-    fields: [messages.id],
-    references: [messages.parentMessageId],
-    relationName: "messageThread",
-  }),
+  replies: many(messages),
   parentMessage: one(messages, {
     fields: [messages.parentMessageId],
     references: [messages.id],
-    relationName: "messageThread",
   }),
 }));
 
 export const directMessageChannelsRelations = relations(directMessageChannels, ({ many }) => ({
-  participants: many(directMessageParticipants, {
-    fields: [directMessageChannels.id],
-    references: [directMessageParticipants.channelId],
-  }),
+  participants: many(directMessageParticipants),
   messages: many(directMessages),
 }));
 
@@ -163,7 +152,9 @@ export const selectDirectMessageParticipantSchema = createSelectSchema(directMes
 export const insertDirectMessageSchema = createInsertSchema(directMessages);
 export const selectDirectMessageSchema = createSelectSchema(directMessages);
 
-export type User = typeof users.$inferSelect;
+export type User = typeof users.$inferSelect & {
+  lastActiveAt?: Date | null;
+};
 export type Channel = typeof channels.$inferSelect & {
   creator?: User;
   section?: Section;

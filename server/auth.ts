@@ -63,7 +63,13 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         const [user] = await db
-          .select()
+          .select({
+            id: users.id,
+            username: users.username,
+            password: users.password,
+            avatar: users.avatar,
+            lastActiveAt: users.lastActiveAt,
+          })
           .from(users)
           .where(eq(users.username, username))
           .limit(1);
@@ -75,6 +81,13 @@ export function setupAuth(app: Express) {
         if (!isMatch) {
           return done(null, false, { message: "Incorrect password." });
         }
+
+        // Update lastActiveAt
+        await db
+          .update(users)
+          .set({ lastActiveAt: new Date() })
+          .where(eq(users.id, user.id));
+
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -89,7 +102,12 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: number, done) => {
     try {
       const [user] = await db
-        .select()
+        .select({
+          id: users.id,
+          username: users.username,
+          avatar: users.avatar,
+          lastActiveAt: users.lastActiveAt,
+        })
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
@@ -112,7 +130,10 @@ export function setupAuth(app: Express) {
 
       // Check if user already exists
       const [existingUser] = await db
-        .select()
+        .select({
+          id: users.id,
+          username: users.username,
+        })
         .from(users)
         .where(eq(users.username, username))
         .limit(1);
@@ -130,6 +151,7 @@ export function setupAuth(app: Express) {
         .values({
           username,
           password: hashedPassword,
+          lastActiveAt: new Date(),
         })
         .returning();
 
