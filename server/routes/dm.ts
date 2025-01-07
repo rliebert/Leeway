@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@db";
-import { eq, and, or, ilike } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { directMessageChannels, directMessageParticipants, directMessages, users } from "@db/schema";
 
 const router = Router();
@@ -12,28 +12,20 @@ router.get("/channels", async (req, res) => {
   }
 
   try {
-    const channels = await db.query.directMessageParticipants.findMany({
-      where: (dmp) => eq(dmp.userId, req.user!.id),
+    const channels = await db.query.directMessageChannels.findMany({
+      where: (dmc) => {
+        return eq(directMessageParticipants.userId, req.user!.id);
+      },
       with: {
-        channel: {
+        participants: {
           with: {
-            participants: {
-              with: {
-                user: true,
-              },
-            },
+            user: true,
           },
         },
       },
     });
 
-    // Transform the data to match the expected format
-    const formattedChannels = channels.map((participation) => ({
-      ...participation.channel,
-      participants: participation.channel.participants.map((p) => p.user),
-    }));
-
-    res.json(formattedChannels);
+    res.json(channels);
   } catch (error) {
     console.error("Error fetching DM channels:", error);
     res.status(500).send("Failed to fetch DM channels");
@@ -53,31 +45,20 @@ router.post("/channels", async (req, res) => {
 
   try {
     // Check if DM channel already exists between these users
-    const existingChannel = await db.query.directMessageParticipants.findFirst({
-      where: (dmp, { and, eq }) => {
+    const existingChannel = await db.query.directMessageChannels.findFirst({
+      where: (dmc) => {
         return and(
-          eq(dmp.userId, req.user!.id),
-          eq(dmp.userId, userId)
+          eq(directMessageParticipants.userId, req.user!.id),
+          eq(directMessageParticipants.userId, userId)
         );
       },
       with: {
-        channel: {
-          with: {
-            participants: {
-              with: {
-                user: true,
-              },
-            },
-          },
-        },
+        participants: true,
       },
     });
 
     if (existingChannel) {
-      return res.json({
-        ...existingChannel.channel,
-        participants: existingChannel.channel.participants.map((p) => p.user),
-      });
+      return res.json(existingChannel);
     }
 
     // Create new DM channel
@@ -103,14 +84,7 @@ router.post("/channels", async (req, res) => {
       },
     });
 
-    if (!fullChannel) {
-      throw new Error("Failed to create DM channel");
-    }
-
-    res.json({
-      ...fullChannel,
-      participants: fullChannel.participants.map((p) => p.user),
-    });
+    res.json(fullChannel);
   } catch (error) {
     console.error("Error creating DM channel:", error);
     res.status(500).send("Failed to create DM channel");
@@ -216,12 +190,17 @@ router.get("/users/search", async (req, res) => {
   }
 
   try {
-    // Search for users by username, including current user for self-messaging
+    // Search for users by username, excluding the current user
     const searchResults = await db
       .select()
       .from(users)
       .where(
-        ilike(users.username, `%${query}%`)
+        and(
+          eq(users.username, query),
+          or(
+            eq(users.id, req.user.id), // Include current user for self-messaging
+          )
+        )
       )
       .limit(10);
 
