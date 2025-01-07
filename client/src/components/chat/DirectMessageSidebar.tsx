@@ -209,6 +209,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1"
+                autoFocus
               />
             </div>
             <div className="space-y-2">
