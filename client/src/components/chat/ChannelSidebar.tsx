@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface ChannelSidebarProps {
   selectedChannel: number;
@@ -49,30 +49,35 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
               </svg>
             </Button>
           </CollapsibleTrigger>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="px-2 font-semibold text-lg flex-1 justify-start group"
-              >
-                <span>Channels</span>
-                <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuItem>
-                Create New Channel
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                Create New Section
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex-1 flex">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="px-2 font-semibold text-lg group relative inline-flex items-center"
+                >
+                  <span>Channels</span>
+                  <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem>
+                  Create New Channel
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  Create New Section
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <CollapsibleContent>
           <div className="px-2">
             {channels?.map((channel) => {
               const isSelected = selectedChannel === channel.id;
+              if (!isOpen && !isSelected) {
+                return null;
+              }
               return (
                 <Button
                   key={channel.id}
@@ -82,9 +87,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
                     isSelected && "bg-accent text-accent-foreground"
                   )}
                   onClick={() => onSelectChannel(channel.id)}
-                  style={{
-                    display: !isOpen && !isSelected ? 'none' : undefined
-                  }}
                 >
                   <Hash className="h-4 w-4" />
                   {channel.name}
