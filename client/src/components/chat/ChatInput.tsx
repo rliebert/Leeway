@@ -85,7 +85,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
               type="button"
               variant="ghost"
               size="icon"
-              className="h-9 w-9"
+              className="h-11 w-11"
             >
               <Smile className="h-5 w-5" />
             </Button>
@@ -109,7 +109,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
             textareaRef.current = e;
           }}
           placeholder="Type your message..."
-          className="resize-none min-h-0 h-9 py-2"
+          className="resize-none min-h-[2.75rem] py-2.5"
           rows={1}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -119,7 +119,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
           }}
         />
       </div>
-      <Button type="submit" size="sm" className="h-9">Send</Button>
+      <Button type="submit" size="sm" className="h-11">Send</Button>
     </form>
   );
 }
