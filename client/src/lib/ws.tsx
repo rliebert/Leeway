@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 
