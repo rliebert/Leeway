@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { DirectMessageChannel } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button as DialogButton } from "@/components/ui/button";
 
 interface DirectMessageSidebarProps {
   selectedDM: number | null;
@@ -138,14 +140,22 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
           <DialogHeader>
             <DialogTitle>New Direct Message</DialogTitle>
             <DialogDescription>
-              Start a new conversation
+              Send direct messages to other users
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Direct messaging functionality is coming soon!
+            <p className="text-sm text-muted-foreground">
+              Search for users and start a conversation!
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Coming soon...
             </p>
           </div>
+          <DialogFooter>
+            <DialogButton variant="outline" onClick={() => setShowNewDMDialog(false)}>
+              Close
+            </DialogButton>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
