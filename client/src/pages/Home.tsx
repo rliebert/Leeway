@@ -16,10 +16,9 @@ export default function Home() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-background">
-      <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
-      <div className="flex-1 flex flex-col">
-        <div className="border-b p-4">
+    <div className="flex flex-col h-screen bg-background">
+      <div className="w-full border-b">
+        <div className="max-w-[calc(100%-256px)] ml-auto p-4">
           <div 
             onClick={() => setOpen(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent"
@@ -31,12 +30,17 @@ export default function Home() {
             </kbd>
           </div>
         </div>
-        <ScrollArea className="flex-1">
-          <MessageList channelId={selectedChannel} />
-        </ScrollArea>
-        <Separator />
-        <div className="p-4">
-          <ChatInput channelId={selectedChannel} />
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+        <div className="flex-1 flex flex-col">
+          <ScrollArea className="flex-1">
+            <MessageList channelId={selectedChannel} />
+          </ScrollArea>
+          <Separator />
+          <div className="p-4">
+            <ChatInput channelId={selectedChannel} />
+          </div>
         </div>
       </div>
       <CommandDialog open={open} onOpenChange={setOpen}>

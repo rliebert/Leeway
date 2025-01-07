@@ -17,9 +17,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
 
   return (
     <div className="w-64 border-r bg-sidebar">
-      <div className="p-4 font-semibold text-lg border-b">Channels</div>
-      <ScrollArea className="h-[calc(100vh-65px)]">
-        <div className="p-2">
+      <ScrollArea className="h-full">
+        <div className="p-4 font-semibold text-lg">Channels</div>
+        <div className="px-2">
           {channels?.map((channel) => (
             <Button
               key={channel.id}
