@@ -19,6 +19,7 @@ import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
 interface SearchResult extends Message {
   user?: {
@@ -77,15 +78,18 @@ export default function Home() {
             <h1 className="font-bold text-xl">Leeway</h1>
           </div>
           <div className="flex-1 p-4">
-            <div 
-              onClick={() => setOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent"
-            >
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">Search messages...</span>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
-                <span className="text-xs">⌘</span>K
-              </kbd>
+            <div className="flex items-center justify-between">
+              <div 
+                onClick={() => setOpen(true)}
+                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent mr-4"
+              >
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Search messages...</span>
+                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
+                  <span className="text-xs">⌘</span>K
+                </kbd>
+              </div>
+              <ConnectionStatus />
             </div>
           </div>
         </div>
@@ -93,7 +97,6 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
           <ChannelSidebar selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
-          {/* Removed border-t from UserProfile wrapper */}
           <UserProfile />
         </div>
         <div className="flex-1 flex flex-col">

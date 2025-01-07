@@ -28,7 +28,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const { toast } = useToast();
-  const [hasShownConnectedToast, setHasShownConnectedToast] = useState(false);
 
   useEffect(() => {
     let reconnectTimeout: NodeJS.Timeout;
@@ -40,25 +39,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
       websocket.onopen = () => {
         setConnected(true);
         console.log('WebSocket Connected');
-        if (!hasShownConnectedToast) {
-          toast({
-            description: "Connected to chat server",
-            duration: 3000,
-            className: "absolute top-4 right-4",
-          });
-          setHasShownConnectedToast(true);
-        }
       };
 
       websocket.onclose = () => {
         setConnected(false);
         console.log('WebSocket Disconnected');
-        toast({
-          variant: "destructive",
-          description: "Disconnected from chat server. Reconnecting...",
-          duration: 3000,
-          className: "absolute top-4 right-4",
-        });
 
         reconnectTimeout = setTimeout(() => {
           connect();
@@ -97,7 +82,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         socket.close();
       }
     };
-  }, [hasShownConnectedToast]);
+  }, []);
 
   const send = (data: WSMessage) => {
     if (socket?.readyState === WebSocket.OPEN) {
@@ -108,7 +93,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
         variant: "destructive",
         description: "Failed to send message. Please try again.",
         duration: 3000,
-        className: "absolute top-4 right-4",
       });
     }
   };
