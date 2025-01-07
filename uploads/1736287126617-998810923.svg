@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="189.74728mm"
+   height="188.88933mm"
+   viewBox="0 0 189.74728 188.88933"
+   version="1.1"
+   id="svg1"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <pattern
+       xlink:href="#pattern3"
+       preserveAspectRatio="xMidYMid"
+       id="pattern30"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,77.543961,54.74364)" />
+    <pattern
+       xlink:href="#pattern19"
+       preserveAspectRatio="xMidYMid"
+       id="pattern25"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,102.73497,-225.41185)" />
+    <pattern
+       xlink:href="#pattern19"
+       preserveAspectRatio="xMidYMid"
+       id="pattern22"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,3.3191933,-270.43315)" />
+    <pattern
+       xlink:href="#pattern17"
+       preserveAspectRatio="xMidYMid"
+       id="pattern21"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,145.96933,-24.918839)" />
+    <pattern
+       xlink:href="#pattern18"
+       preserveAspectRatio="xMidYMid"
+       id="pattern20"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,156.01554,-131.82666)" />
+    <pattern
+       xlink:href="#pattern18"
+       preserveAspectRatio="xMidYMid"
+       id="pattern19"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,102.23295,-227.23158)" />
+    <pattern
+       xlink:href="#pattern17"
+       preserveAspectRatio="xMidYMid"
+       id="pattern18"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,159.42148,-114.44233)" />
+    <pattern
+       xlink:href="#pattern3"
+       preserveAspectRatio="xMidYMid"
+       id="pattern17"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,141.92533,-16.668567)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern16"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-23.116269,83.220437)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern14"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-127.15087,45.936157)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern13"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-188.5391,-45.113319)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern12"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,-179.05283,-163.07761)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern11"
+       patternTransform="matrix(0.26464323,0,0,0.26466618,-107.41058,-242.97457)" />
+    <pattern
+       xlink:href="#pattern2"
+       preserveAspectRatio="xMidYMid"
+       id="pattern3"
+       patternTransform="matrix(0.26458333,0,0,0.26458333,77.543961,54.74364)" />
+    <pattern
+       patternUnits="userSpaceOnUse"
+       width="132.06325"
+       height="266.36057"
+       patternTransform="translate(293.07954,206.9051)"
+       preserveAspectRatio="xMidYMid"
+       id="pattern2">
+      <path
+         style="stroke-width:3.77953;-inkscape-stroke:none;paint-order:stroke fill markers"
+         d="M 66.031604,266.36057 C 66.031604,266.36057 -82.53953,0.06613514 66.031642,1.2305935e-5 214.60278,-0.06611053 66.031604,266.36057 66.031604,266.36057 Z"
+         id="path1" />
+    </pattern>
+  </defs>
+  <g
+     id="layer1"
+     transform="translate(-0.22589163,-54.743643)">
+    <g
+       id="g30">
+      <circle
+         style="fill:#000000;stroke-width:1;-inkscape-stroke:none;paint-order:stroke fill markers"
+         id="path2"
+         cx="95.014832"
+         cy="149.53981"
+         r="16.756327" />
+      <g
+         id="g29">
+        <rect
+           style="fill:url(#pattern30);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="77.543961"
+           y="54.743641"
+           id="rect3" />
+        <rect
+           style="fill:url(#pattern11);stroke:none;stroke-width:0.264655"
+           width="34.94965"
+           height="70.496635"
+           x="-107.41058"
+           y="-242.97455"
+           id="rect11"
+           transform="matrix(-0.99997625,-0.00689174,-0.02595194,-0.99966319,0,0)" />
+        <rect
+           style="fill:url(#pattern12);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="-179.05281"
+           y="-163.07762"
+           id="rect12"
+           transform="rotate(-145.02884)" />
+        <rect
+           style="fill:url(#pattern13);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="-188.53911"
+           y="-45.113319"
+           id="rect13"
+           transform="rotate(-106.44897)" />
+        <rect
+           style="fill:url(#pattern14);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="-127.15088"
+           y="45.936161"
+           id="rect14"
+           transform="rotate(-70.281903)" />
+        <rect
+           style="fill:url(#pattern16);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="-23.116276"
+           y="83.220428"
+           id="rect2"
+           transform="rotate(-33.877246)" />
+        <rect
+           style="fill:url(#pattern21);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="145.96933"
+           y="-24.918839"
+           id="rect16"
+           transform="rotate(34.595108)" />
+        <rect
+           style="fill:url(#pattern20);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="156.01556"
+           y="-131.82664"
+           id="rect17"
+           transform="rotate(69.840127)" />
+        <rect
+           style="fill:url(#pattern25);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="102.73499"
+           y="-225.41185"
+           id="rect18"
+           transform="rotate(105.42287)" />
+        <rect
+           style="fill:url(#pattern22);stroke:none;stroke-width:0.264583"
+           width="34.941734"
+           height="70.474564"
+           x="3.319207"
+           y="-270.43317"
+           id="rect21"
+           transform="rotate(141.51547)" />
+      </g>
+    </g>
+  </g>
+</svg>

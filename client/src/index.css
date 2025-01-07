@@ -11,3 +11,19 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+@keyframes highlight-pulse {
+  0% {
+    background-color: hsl(var(--primary) / 0.1);
+  }
+  50% {
+    background-color: hsl(var(--primary) / 0.15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight-message {
+  animation: highlight-pulse 2s ease-in-out forwards;
+}

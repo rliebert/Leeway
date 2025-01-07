@@ -51,6 +51,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     <>
       <div 
         ref={ref} 
+        id={`message-${message.id}`}
         className="group hover:bg-muted rounded-lg -mx-4 px-4 py-1.5 transition-all duration-200 ease-in-out"
       >
         <div className="flex gap-4">
