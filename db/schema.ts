@@ -46,10 +46,12 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
   replies: many(messages, {
     fields: [messages.id],
     references: [messages.parentMessageId],
+    relationName: "messageThread",
   }),
   parentMessage: one(messages, {
     fields: [messages.parentMessageId],
     references: [messages.id],
+    relationName: "messageThread",
   }),
 }));
 
