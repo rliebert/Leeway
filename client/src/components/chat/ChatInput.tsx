@@ -72,8 +72,10 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
 
     // Set cursor position after emoji
     setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
-      textarea.focus();
+      if (textarea) {
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
+      }
     }, 0);
   };
 
@@ -105,7 +107,10 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         </Popover>
         <Textarea
           {...form.register("message")}
-          ref={textareaRef}
+          ref={(e) => {
+            form.register("message").ref(e);
+            textareaRef.current = e;
+          }}
           placeholder="Type your message..."
           className="min-h-[60px]"
           onKeyDown={(e) => {
