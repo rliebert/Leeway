@@ -8,12 +8,20 @@ interface MessageListProps {
 }
 
 export default function MessageList({ channelId }: MessageListProps) {
-  const { messages } = useWS();
+  const { messages: wsMessages } = useWS();
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
   });
 
-  const allMessages = [...(initialMessages || []), ...messages.filter(m => m.channelId === channelId)];
+  // Combine initial messages with websocket messages, ensuring no duplicates
+  const allMessages = [
+    ...(initialMessages || []),
+    ...wsMessages.filter(
+      wsMsg => 
+        wsMsg.channelId === channelId && 
+        !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
+    ),
+  ];
 
   return (
     <div className="flex flex-col gap-4 p-4">
