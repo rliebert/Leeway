@@ -65,6 +65,7 @@ export const directMessages = pgTable("direct_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   channels: many(channels, { relationName: "channelCreator" }),
@@ -72,8 +73,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   directMessageParticipations: many(directMessageParticipants),
 }));
 
-export const sectionsRelations = relations(sections, ({ many, one }) => ({
-  channels: many(channels),
+export const sectionsRelations = relations(sections, ({ one }) => ({
   creator: one(users, {
     fields: [sections.creatorId],
     references: [users.id],
@@ -81,16 +81,11 @@ export const sectionsRelations = relations(sections, ({ many, one }) => ({
   }),
 }));
 
-export const channelsRelations = relations(channels, ({ many, one }) => ({
-  messages: many(messages),
+export const channelsRelations = relations(channels, ({ one }) => ({
   creator: one(users, {
     fields: [channels.creatorId],
     references: [users.id],
     relationName: "channelCreator",
-  }),
-  section: one(sections, {
-    fields: [channels.sectionId],
-    references: [sections.id],
   }),
 }));
 
@@ -102,10 +97,6 @@ export const messagesRelations = relations(messages, ({ one }) => ({
   channel: one(channels, {
     fields: [messages.channelId],
     references: [channels.id],
-  }),
-  parentMessage: one(messages, {
-    fields: [messages.parentMessageId],
-    references: [messages.id],
   }),
 }));
 
@@ -155,16 +146,12 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Channel = typeof channels.$inferSelect & {
   creator?: User;
-  section?: Section;
 };
 export type Message = typeof messages.$inferSelect & {
   user?: User;
-  replies?: Message[];
-  parentMessage?: Message;
 };
 export type Section = typeof sections.$inferSelect & {
   creator?: User;
-  channels?: Channel[];
 };
 export type DirectMessageChannel = typeof directMessageChannels.$inferSelect & {
   participants?: User[];
