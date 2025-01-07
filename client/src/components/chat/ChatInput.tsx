@@ -63,7 +63,12 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       emojiData.emoji + 
       currentValue.substring(end);
 
-    form.setValue("message", newValue, { shouldValidate: true });
+    // Update the form value and trigger re-render
+    form.setValue("message", newValue, { 
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true,
+    });
 
     // Set cursor position after emoji
     setTimeout(() => {

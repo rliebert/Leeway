@@ -19,7 +19,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   const { data: replies = [] } = useQuery<MessageType[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
-    enabled: showReplies || showThread,
+    enabled: true, // Always fetch replies to show correct count
   });
 
   // Update reply count when new messages come in via WebSocket
