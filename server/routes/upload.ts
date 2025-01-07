@@ -39,6 +39,7 @@ const upload = multer({
       'image/jpeg',
       'image/png',
       'image/gif',
+      'image/svg+xml',
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -51,7 +52,7 @@ const upload = multer({
       cb(null, true);
     } else {
       console.log('Upload: Rejected file type:', file.mimetype);
-      cb(new Error('Invalid file type'));
+      cb(new Error(`Invalid file type. Allowed types: ${allowedMimes.join(', ')}`));
     }
   }
 });
@@ -97,7 +98,8 @@ export function registerUploadRoutes(app: Express) {
         res.json(attachments);
       } catch (error) {
         console.error('Upload error:', error);
-        res.status(500).send('Upload failed');
+        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+        res.status(500).json({ message: errorMessage });
       }
     }
   );
