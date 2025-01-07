@@ -20,11 +20,14 @@ export function FileUpload({
   const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    console.log('FileUpload: handleFileChange triggered');
     const selectedFiles = Array.from(e.target.files || []);
+    console.log('FileUpload: Selected files:', selectedFiles.map(f => f.name));
     setError(null);
 
     // Check file count
     if (files.length + selectedFiles.length > maxFiles) {
+      console.log('FileUpload: Max files limit exceeded');
       setError(`You can only upload up to ${maxFiles} files at once`);
       return;
     }
@@ -32,6 +35,7 @@ export function FileUpload({
     // Check file sizes
     const oversizedFiles = selectedFiles.filter(file => file.size > maxSize);
     if (oversizedFiles.length > 0) {
+      console.log('FileUpload: Files exceed size limit:', oversizedFiles.map(f => f.name));
       setError(`Some files exceed the ${maxSize / (1024 * 1024)}MB limit`);
       return;
     }
@@ -72,7 +76,10 @@ export function FileUpload({
                 variant="ghost"
                 size="icon"
                 className="h-4 w-4 rounded-full"
-                onClick={() => onFileRemove(index)}
+                onClick={() => {
+                  console.log('FileUpload: Removing file:', file.name);
+                  onFileRemove(index);
+                }}
               >
                 <X className="h-3 w-3" />
               </Button>
