@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown } from "lucide-react";
+import { Hash, ChevronRight, ChevronDown } from "lucide-react";
 import type { Channel } from "@db/schema";
 import {
   Collapsible,
@@ -28,14 +28,22 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full flex justify-between items-center p-4 font-semibold text-lg"
+            className="w-full flex items-center gap-2 p-4 font-semibold text-lg group"
           >
-            Channels
-            <ChevronDown
-              className={cn("h-4 w-4 transition-transform", {
-                "transform rotate-180": isOpen,
-              })}
-            />
+            <div className="flex items-center gap-2 relative">
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4 transition-transform" />
+              ) : (
+                <ChevronRight className="h-4 w-4 transition-transform" />
+              )}
+              <span>Channels</span>
+              <ChevronDown 
+                className={cn(
+                  "h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity absolute -right-6",
+                  { "rotate-180": !isOpen }
+                )} 
+              />
+            </div>
           </Button>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -49,6 +57,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Cha
                   selectedChannel === channel.id && "bg-accent text-accent-foreground"
                 )}
                 onClick={() => onSelectChannel(channel.id)}
+                style={{
+                  display: !isOpen && selectedChannel !== channel.id ? 'none' : undefined
+                }}
               >
                 <Hash className="h-4 w-4" />
                 {channel.name}

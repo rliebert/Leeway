@@ -81,7 +81,7 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   return (
     <div className="relative flex-1">
-      <div className="flex flex-col gap-2 p-4">
+      <div className="flex flex-col gap-1 p-4">
         {allMessages.map((message, index) => (
           <Message 
             key={message.id} 

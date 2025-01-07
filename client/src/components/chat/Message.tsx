@@ -73,7 +73,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 Reply
               </Button>
             </div>
-            <p className="text-sm mt-1">{message.content}</p>
+            <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
             {replyCount > 0 && (
               <Button
                 variant="ghost"
