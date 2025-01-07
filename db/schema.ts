@@ -22,6 +22,7 @@ export const messages = pgTable("messages", {
   content: text("content").notNull(),
   userId: integer("user_id").references(() => users.id).notNull(),
   channelId: integer("channel_id").references(() => channels.id).notNull(),
+  parentMessageId: integer("parent_message_id").references(() => messages.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -33,7 +34,7 @@ export const channelsRelations = relations(channels, ({ many }) => ({
   messages: many(messages),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   user: one(users, {
     fields: [messages.userId],
     references: [users.id],
@@ -42,6 +43,11 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.channelId],
     references: [channels.id],
   }),
+  parentMessage: one(messages, {
+    fields: [messages.parentMessageId],
+    references: [messages.id],
+  }),
+  replies: many(messages, { relationName: "thread" }),
 }));
 
 export const insertUserSchema = createInsertSchema(users);
@@ -53,4 +59,8 @@ export const selectMessageSchema = createSelectSchema(messages);
 
 export type User = typeof users.$inferSelect;
 export type Channel = typeof channels.$inferSelect;
-export type Message = typeof messages.$inferSelect;
+export type Message = typeof messages.$inferSelect & {
+  user?: User;
+  replies?: Message[];
+  parentMessage?: Message;
+};

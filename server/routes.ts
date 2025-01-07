@@ -29,10 +29,26 @@ export function registerRoutes(app: Express): Server {
       where: eq(messages.channelId, parseInt(req.params.id)),
       with: {
         user: true,
+        replies: {
+          with: {
+            user: true,
+          },
+        },
       },
       orderBy: messages.createdAt,
     });
     res.json(channelMessages);
+  });
+
+  app.get("/api/messages/:id/replies", async (req, res) => {
+    const replies = await db.query.messages.findMany({
+      where: eq(messages.parentMessageId, parseInt(req.params.id)),
+      with: {
+        user: true,
+      },
+      orderBy: messages.createdAt,
+    });
+    res.json(replies);
   });
 
   app.get("/api/messages/search", async (req, res) => {
@@ -108,6 +124,7 @@ export function registerRoutes(app: Express): Server {
               content: message.content,
               channelId: message.channelId,
               userId: message.userId,
+              parentMessageId: message.parentMessageId,
             })
             .returning();
 
@@ -115,6 +132,7 @@ export function registerRoutes(app: Express): Server {
             where: eq(messages.id, savedMessage[0].id),
             with: {
               user: true,
+              replies: true,
             },
           });
 

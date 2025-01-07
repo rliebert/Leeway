@@ -6,13 +6,14 @@ import { useUser } from "@/hooks/use-user";
 
 interface ChatInputProps {
   channelId: number;
+  parentMessageId?: number;
 }
 
 interface FormData {
   message: string;
 }
 
-export default function ChatInput({ channelId }: ChatInputProps) {
+export default function ChatInput({ channelId, parentMessageId }: ChatInputProps) {
   const { send } = useWS();
   const { user } = useUser();
   const form = useForm<FormData>({
@@ -29,6 +30,7 @@ export default function ChatInput({ channelId }: ChatInputProps) {
       channelId,
       content: data.message,
       userId: user.id,
+      parentMessageId,
     });
 
     form.reset();

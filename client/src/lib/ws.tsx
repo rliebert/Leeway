@@ -13,6 +13,8 @@ interface WSMessage {
   message?: Message;
   channelId?: number;
   content?: string;
+  userId?: number;
+  parentMessageId?: number;
 }
 
 const WSContext = createContext<WSContextType>({
