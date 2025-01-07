@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown, Plus, Settings, Trash2, User } from "lucide-react";
+import { Hash, ChevronDown, Plus, Settings, Trash2, User, ChevronRight } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -608,15 +608,12 @@ export default function ChannelSidebar({
                         size="icon"
                         className="h-4 w-4 p-0"
                       >
-                        <svg
+                        <ChevronRight
                           className={cn(
-                            "h-3 w-3 transition-transform fill-current",
-                            !openSections[section.id] && "-rotate-90"
+                            "h-3 w-3 transition-transform",
+                            openSections[section.id] && "rotate-90"
                           )}
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M12 21L2 6h20L12 21z" />
-                        </svg>
+                        />
                       </Button>
                     </CollapsibleTrigger>
                     <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
@@ -654,8 +651,22 @@ export default function ChannelSidebar({
                       </DropdownMenu>
                     )}
                   </div>
-                  <CollapsibleContent className="mt-1">
-                    {renderChannelList(channelsBySection[section.id] || [], section.id.toString())}
+                  <CollapsibleContent className="mt-1 ml-2">
+                    {!openSections[section.id] &&
+                      channelsBySection[section.id]?.some(channel => channel.id === selectedChannel) && (
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start gap-2",
+                            "bg-accent text-accent-foreground"
+                          )}
+                          onClick={() => onSelectChannel(selectedChannel)}
+                        >
+                          <Hash className="h-4 w-4" />
+                          {selectedChannelData?.name}
+                        </Button>
+                      )}
+                    {openSections[section.id] && renderChannelList(channelsBySection[section.id] || [], section.id.toString())}
                   </CollapsibleContent>
                 </Collapsible>
               </div>
