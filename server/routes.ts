@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
-import { messages, channels, users, sections } from "@db/schema";
+import { messages, channels, users, sections, directMessages, directMessageChannels, directMessageParticipants } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { setupAuth } from "./auth";
@@ -432,33 +432,34 @@ export function registerRoutes(app: Express): Server {
 
   // Direct Message routes
   app.get("/api/dm/channels", requireAuth, async (req, res) => {
-    const userDmChannels = await db.query.directMessageChannels.findMany({
-      with: {
-        participants: {
-          with: {
-            user: true,
+    try {
+      const userDmChannels = await db.query.directMessageChannels.findMany({
+        with: {
+          participants: {
+            with: {
+              user: true,
+            },
           },
         },
-        messages: {
-          orderBy: directMessages.createdAt,
-          limit: 1,
-        },
-      },
-      where: (channels, { inArray, eq }) => inArray(
-        channels.id,
-        db.select({ id: directMessageParticipants.channelId })
-          .from(directMessageParticipants)
-          .where(eq(directMessageParticipants.userId, req.user!.id))
-      ),
-    });
+        where: (channels, { inArray, eq }) => inArray(
+          channels.id,
+          db.select({ id: directMessageParticipants.channelId })
+            .from(directMessageParticipants)
+            .where(eq(directMessageParticipants.userId, req.user!.id))
+        ),
+      });
 
-    // Transform the data to match our DirectMessageChannel type
-    const channels = userDmChannels.map(channel => ({
-      ...channel,
-      participants: channel.participants.map(p => p.user),
-    }));
+      // Transform the data to match our DirectMessageChannel type
+      const channels = userDmChannels.map(channel => ({
+        ...channel,
+        participants: channel.participants.map(p => p.user),
+      }));
 
-    res.json(channels);
+      res.json(channels);
+    } catch (error) {
+      console.error("Error fetching DM channels:", error);
+      res.status(500).send("Failed to fetch DM channels");
+    }
   });
 
   app.post("/api/dm/channels", requireAuth, async (req, res) => {
@@ -534,7 +535,7 @@ export function registerRoutes(app: Express): Server {
         with: {
           user: true,
         },
-        orderBy: directMessages.createdAt,
+        orderBy: (messages, { desc }) => [desc(messages.createdAt)],
       });
 
       res.json(messages);
