@@ -396,8 +396,8 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Search messages for a query
-  app.get("/api/messages/search", async (req, res) => {
-    const { query } = req.query;
+  app.get("/api/messages/search", requireAuth, async (req, res) => {
+    const query = req.query.query as string;
     console.log("Search query received:", query);
 
     if (!query || typeof query !== "string") {
