@@ -23,12 +23,13 @@ export default function MessageList({ channelId }: MessageListProps) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
 
-  // Combine initial messages with websocket messages, ensuring no duplicates
+  // Filter out thread replies and combine messages
   const allMessages = [
-    ...(initialMessages || []),
+    ...(initialMessages?.filter(msg => !msg.parentMessageId) || []),
     ...wsMessages.filter(
       wsMsg => 
         wsMsg.channelId === channelId && 
+        !wsMsg.parentMessageId && // Only show top-level messages
         !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
     ),
   ];
