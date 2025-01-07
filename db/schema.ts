@@ -10,11 +10,20 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const sections = pgTable("sections", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  creatorId: integer("creator_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const channels = pgTable("channels", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),
-  creatorId: integer("creator_id").references(() => users.id), 
+  creatorId: integer("creator_id").references(() => users.id),
+  sectionId: integer("section_id").references(() => sections.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -31,6 +40,16 @@ export const messages = pgTable("messages", {
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   channels: many(channels, { relationName: "channelCreator" }),
+  sections: many(sections, { relationName: "sectionCreator" }),
+}));
+
+export const sectionsRelations = relations(sections, ({ many, one }) => ({
+  channels: many(channels),
+  creator: one(users, {
+    fields: [sections.creatorId],
+    references: [users.id],
+    relationName: "sectionCreator",
+  }),
 }));
 
 export const channelsRelations = relations(channels, ({ many, one }) => ({
@@ -39,6 +58,10 @@ export const channelsRelations = relations(channels, ({ many, one }) => ({
     fields: [channels.creatorId],
     references: [users.id],
     relationName: "channelCreator",
+  }),
+  section: one(sections, {
+    fields: [channels.sectionId],
+    references: [sections.id],
   }),
 }));
 
@@ -69,13 +92,20 @@ export const insertChannelSchema = createInsertSchema(channels);
 export const selectChannelSchema = createSelectSchema(channels);
 export const insertMessageSchema = createInsertSchema(messages);
 export const selectMessageSchema = createSelectSchema(messages);
+export const insertSectionSchema = createInsertSchema(sections);
+export const selectSectionSchema = createSelectSchema(sections);
 
 export type User = typeof users.$inferSelect;
 export type Channel = typeof channels.$inferSelect & {
   creator?: User;
+  section?: Section;
 };
 export type Message = typeof messages.$inferSelect & {
   user?: User;
   replies?: Message[];
   parentMessage?: Message;
+};
+export type Section = typeof sections.$inferSelect & {
+  creator?: User;
+  channels?: Channel[];
 };

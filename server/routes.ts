@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
-import { messages, channels, users } from "@db/schema";
+import { messages, channels, users, sections } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { setupAuth } from "./auth";
@@ -26,6 +26,173 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
   setupAuth(app);
+
+  // Section routes
+  app.get("/api/sections", requireAuth, async (_req, res) => {
+    const allSections = await db.query.sections.findMany({
+      with: {
+        creator: true,
+        channels: {
+          with: {
+            creator: true,
+          },
+        },
+      },
+    });
+    res.json(allSections);
+  });
+
+  app.post("/api/sections", requireAuth, async (req, res) => {
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).send("Section name is required");
+    }
+
+    try {
+      const [newSection] = await db
+        .insert(sections)
+        .values({
+          name: name.trim(),
+          creatorId: req.user!.id,
+        })
+        .returning();
+
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, newSection.id),
+        with: {
+          creator: true,
+          channels: true,
+        },
+      });
+
+      res.status(201).json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error creating section:", error);
+      res.status(500).send("Failed to create section");
+    }
+  });
+
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).send("Section name is required");
+    }
+
+    try {
+      const section = await db.query.sections.findFirst({
+        where: eq(sections.id, parseInt(id)),
+      });
+
+      if (!section) {
+        return res.status(404).send("Section not found");
+      }
+
+      if (section.creatorId !== req.user!.id) {
+        return res.status(403).send("Only the section creator can edit the section");
+      }
+
+      const [updatedSection] = await db
+        .update(sections)
+        .set({
+          name: name.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sections.id, parseInt(id)))
+        .returning();
+
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, updatedSection.id),
+        with: {
+          creator: true,
+          channels: true,
+        },
+      });
+
+      res.json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error updating section:", error);
+      res.status(500).send("Failed to update section");
+    }
+  });
+
+  app.delete("/api/sections/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      const section = await db.query.sections.findFirst({
+        where: eq(sections.id, parseInt(id)),
+      });
+
+      if (!section) {
+        return res.status(404).send("Section not found");
+      }
+
+      if (section.creatorId !== req.user!.id) {
+        return res.status(403).send("Only the section creator can delete the section");
+      }
+
+      // Update channels in this section to have no section
+      await db
+        .update(channels)
+        .set({ sectionId: null })
+        .where(eq(channels.sectionId, parseInt(id)));
+
+      // Delete the section
+      await db
+        .delete(sections)
+        .where(eq(sections.id, parseInt(id)));
+
+      res.json({ message: "Section deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      res.status(500).send("Failed to delete section");
+    }
+  });
+
+  // Update channel's section
+  app.put("/api/channels/:id/section", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { sectionId } = req.body;
+
+    try {
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, parseInt(id)),
+      });
+
+      if (!channel) {
+        return res.status(404).send("Channel not found");
+      }
+
+      if (channel.creatorId !== req.user!.id) {
+        return res.status(403).send("Only the channel creator can move the channel");
+      }
+
+      const [updatedChannel] = await db
+        .update(channels)
+        .set({
+          sectionId: sectionId ? parseInt(sectionId) : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(channels.id, parseInt(id)))
+        .returning();
+
+      const channelWithDetails = await db.query.channels.findFirst({
+        where: eq(channels.id, updatedChannel.id),
+        with: {
+          creator: true,
+          section: true,
+        },
+      });
+
+      res.json(channelWithDetails);
+    } catch (error) {
+      console.error("Error updating channel section:", error);
+      res.status(500).send("Failed to update channel section");
+    }
+  });
 
   app.get("/api/channels", requireAuth, async (_req, res) => {
     const allChannels = await db.query.channels.findMany({
@@ -238,18 +405,18 @@ export function registerRoutes(app: Express): Server {
 
   const httpServer = createServer(app);
 
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     noServer: true,
   });
 
-  httpServer.on('upgrade', (request, socket, head) => {
-    const protocol = request.headers['sec-websocket-protocol'];
-    if (protocol === 'vite-hmr') {
+  httpServer.on("upgrade", (request, socket, head) => {
+    const protocol = request.headers["sec-websocket-protocol"];
+    if (protocol === "vite-hmr") {
       return;
     }
 
     wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
+      wss.emit("connection", ws, request);
     });
   });
 
@@ -280,9 +447,9 @@ export function registerRoutes(app: Express): Server {
           });
 
           if (fullMessage) {
-            const broadcastMessage = JSON.stringify({ 
-              type: "message", 
-              message: fullMessage 
+            const broadcastMessage = JSON.stringify({
+              type: "message",
+              message: fullMessage,
             });
 
             wss.clients.forEach((client) => {
