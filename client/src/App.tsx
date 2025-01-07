@@ -34,7 +34,7 @@ function AuthenticatedApp() {
   return (
     <WSProvider>
       <div className="flex h-screen">
-        <div className="w-64 border-r bg-card">
+        <div className="w-48 border-r bg-card">
           <DirectMessageSidebar selectedDM={null} onSelectDM={() => {}} />
         </div>
         <div className="flex-1">
