@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { users, insertUserSchema, type User as SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
+import { initializeDefaultChannels } from "@db/init";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -131,6 +132,9 @@ export function setupAuth(app: Express) {
           password: hashedPassword,
         })
         .returning();
+
+      // Initialize default channels
+      await initializeDefaultChannels(newUser.id);
 
       // Log the user in after registration
       req.login(newUser, (err) => {
