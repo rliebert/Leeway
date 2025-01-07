@@ -2,8 +2,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Reply, ChevronDown, ChevronRight } from "lucide-react";
 import type { Message as MessageType } from "@db/schema";
-import { forwardRef, useState } from "react";
+import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWS } from "@/lib/ws";
 
 interface MessageProps {
   message: MessageType;
@@ -12,8 +14,33 @@ interface MessageProps {
 const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const queryClient = useQueryClient();
+  const { messages: wsMessages } = useWS();
 
-  const replyCount = message.replies?.length || 0;
+  const { data: replies = [] } = useQuery<MessageType[]>({
+    queryKey: [`/api/messages/${message.id}/replies`],
+    enabled: showReplies || showThread, // Only fetch when replies are shown
+  });
+
+  // Combine initial replies with new WebSocket messages
+  const allReplies = [
+    ...replies,
+    ...wsMessages.filter(
+      wsMsg => 
+        wsMsg.parentMessageId === message.id &&
+        !replies.some(reply => reply.id === wsMsg.id)
+    ),
+  ];
+
+  const replyCount = allReplies.length;
+
+  // Invalidate replies query when new messages come in
+  useEffect(() => {
+    const newReplies = wsMessages.filter(msg => msg.parentMessageId === message.id);
+    if (newReplies.length > 0) {
+      queryClient.invalidateQueries({ queryKey: [`/api/messages/${message.id}/replies`] });
+    }
+  }, [wsMessages, message.id, queryClient]);
 
   return (
     <>
@@ -62,9 +89,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             )}
           </div>
         </div>
-        {showReplies && message.replies && message.replies.length > 0 && (
+        {showReplies && allReplies.length > 0 && (
           <div className="ml-12 pl-4 border-l mt-2">
-            {message.replies.map((reply) => (
+            {allReplies.map((reply) => (
               <div key={reply.id} className="flex gap-4 mt-2">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={reply.user?.avatar} />
