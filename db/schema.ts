@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
@@ -35,6 +35,13 @@ export const messages = pgTable("messages", {
   userId: integer("user_id").references(() => users.id).notNull(),
   channelId: integer("channel_id").references(() => channels.id).notNull(),
   parentMessageId: integer("parent_message_id").references(() => messages.id),
+  attachments: jsonb("attachments").$type<{
+    filename: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+    url: string;
+  }[]>(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

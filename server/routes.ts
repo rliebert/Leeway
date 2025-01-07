@@ -7,6 +7,7 @@ import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { setupAuth } from "./auth";
 import dmRoutes from "./routes/dm";
+import { registerUploadRoutes } from "./routes/upload";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -30,6 +31,9 @@ export function registerRoutes(app: Express): Server {
 
   // Register DM routes
   app.use("/api/dm", requireAuth, dmRoutes);
+
+  // Register upload routes
+  registerUploadRoutes(app);
 
   // Section routes
   app.get("/api/sections", requireAuth, async (_req, res) => {
@@ -574,7 +578,7 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          const savedMessage = message.isDM ? 
+          const savedMessage = message.isDM ?
             await db
               .insert(directMessages)
               .values({
