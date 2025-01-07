@@ -27,7 +27,7 @@ export default function Home() {
       <div className="w-full border-b">
         <div className="flex items-center">
           <div className="w-64 p-4 border-r">
-            <h1 className="font-bold text-xl">Team Flow Chat</h1>
+            <h1 className="font-bold text-xl">Leeway</h1>
           </div>
           <div className="flex-1 p-4">
             <div 
