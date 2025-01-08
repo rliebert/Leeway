@@ -269,7 +269,10 @@ export default function ChannelSidebar({
     mutationFn: async ({ id, data }: { id: number; data: SectionFormData }) => {
       const response = await fetch(`/api/sections/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
         body: JSON.stringify(data),
       });
 
