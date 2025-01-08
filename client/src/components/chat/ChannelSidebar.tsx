@@ -91,7 +91,7 @@ export default function ChannelSidebar({
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [channelFormData, setChannelFormData] = useState<ChannelFormData>({ name: "" });
   const [sectionFormData, setSectionFormData] = useState<SectionFormData>({ name: "" });
-  const [isDMsOpen, setIsDMsOpen] = useState(true);
+  // const [isDMsOpen, setIsDMsOpen] = useState(true);
   const [isUsersOpen, setIsUsersOpen] = useState(true);
 
   // Helper function to check if user is online (active in last 5 minutes)
@@ -726,7 +726,9 @@ export default function ChannelSidebar({
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="mt-4">
+
+        {/* Direct Messages section commented out for now */}
+        {/* <div className="mt-4">
           <Collapsible open={isDMsOpen} onOpenChange={setIsDMsOpen}>
             <div className="flex items-center px-4">
               <CollapsibleTrigger asChild>
@@ -821,7 +823,7 @@ export default function ChannelSidebar({
               </div>
             </CollapsibleContent>
           </Collapsible>
-        </div>
+        </div> */}
 
         <div className="mt-4">
           <Collapsible open={isUsersOpen} onOpenChange={setIsUsersOpen}>
@@ -958,7 +960,8 @@ export default function ChannelSidebar({
                   value={channelFormData.description}
                   onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
                 />
-              </div>            </div>
+              </div>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowEditDialog(false)}>
                 Cancel
@@ -966,7 +969,7 @@ export default function ChannelSidebar({
               <Button onClick={handleUpdateChannel}>
                 Save Changes
               </Button>
-                        </DialogFooter>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
