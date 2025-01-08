@@ -7,7 +7,7 @@ import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 
-function AuthenticatedApp() {
+function App() {
   const { user, isLoading } = useUser();
 
   if (isLoading) {
@@ -34,7 +34,7 @@ function AuthenticatedApp() {
   return (
     <WSProvider>
       <div className="flex h-screen">
-        <div className="w-48 border-r bg-card">
+        <div className="w-64 border-r bg-card">
           <DirectMessageSidebar selectedDM={null} onSelectDM={() => {}} />
         </div>
         <div className="flex-1">
@@ -65,10 +65,6 @@ function NotFound() {
       </Card>
     </div>
   );
-}
-
-function App() {
-  return <AuthenticatedApp />;
 }
 
 export default App;
