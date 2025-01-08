@@ -105,6 +105,62 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add PUT route for updating sections
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Section name is required" });
+    }
+
+    try {
+      // Check if section exists and user is the creator
+      const section = await db.query.sections.findFirst({
+        where: eq(sections.id, parseInt(id)),
+        with: {
+          creator: true,
+        },
+      });
+
+      if (!section) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+
+      if (section.creatorId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized to edit this section" });
+      }
+
+      // Update the section
+      const [updatedSection] = await db
+        .update(sections)
+        .set({
+          name: name.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sections.id, parseInt(id)))
+        .returning();
+
+      // Fetch the updated section with all related data
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, updatedSection.id),
+        with: {
+          creator: true,
+          channels: {
+            with: {
+              creator: true,
+            },
+          },
+        },
+      });
+
+      res.json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error updating section:", error);
+      res.status(500).json({ error: "Failed to update section" });
+    }
+  });
+
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
