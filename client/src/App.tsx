@@ -5,9 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
-import ChannelSidebar from "@/components/chat/ChannelSidebar";
+import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 
-function App() {
+function AuthenticatedApp() {
   const { user, isLoading } = useUser();
 
   if (isLoading) {
@@ -34,7 +34,9 @@ function App() {
   return (
     <WSProvider>
       <div className="flex h-screen">
-        <ChannelSidebar />
+        <div className="w-48 border-r bg-card">
+          <DirectMessageSidebar selectedDM={null} onSelectDM={() => {}} />
+        </div>
         <div className="flex-1">
           <Switch>
             <Route path="/" component={Home} />
@@ -63,6 +65,10 @@ function NotFound() {
       </Card>
     </div>
   );
+}
+
+function App() {
+  return <AuthenticatedApp />;
 }
 
 export default App;
