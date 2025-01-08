@@ -832,10 +832,15 @@ export default function ChannelSidebar({
                   size="icon"
                   className="h-4 w-4 p-0"
                 >
-                  <ChevronDown className={cn(
-                    "h-3 w-3 transition-transform",
-                    !isUsersOpen && "-rotate-90"
-                  )} />
+                  <svg
+                    className={cn(
+                      "h-3 w-3 transition-transform fill-current",
+                      !isUsersOpen && "-rotate-90"
+                    )}
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 21L2 6h20L12 21z" />
+                  </svg>
                 </Button>
               </CollapsibleTrigger>
               <div className="flex-1">
@@ -961,7 +966,7 @@ export default function ChannelSidebar({
               <Button onClick={handleUpdateChannel}>
                 Save Changes
               </Button>
-            </DialogFooter>
+                        </DialogFooter>
           </DialogContent>
         </Dialog>
 
