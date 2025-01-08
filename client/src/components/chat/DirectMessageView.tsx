@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
+import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { Message as MessageType, DirectMessage, DirectMessageChannel, User as UserType } from "@db/schema";
+import { DirectMessage, DirectMessageChannel, User as UserType } from "@db/schema";
 import Message from "./Message";
 import ChatInput from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
 import { User } from "lucide-react";
 
 interface DirectMessageViewProps {
@@ -14,11 +16,20 @@ interface DirectMessageViewProps {
 
 export default function DirectMessageView({ channelId }: DirectMessageViewProps) {
   const { user } = useUser();
+  const { toast } = useToast();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
+  const [, setLocation] = useLocation();
 
   const { data: channel } = useQuery<DirectMessageChannel & { participants: UserType[] }>({
     queryKey: [`/api/dm/channels/${channelId}`],
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        description: error.message || "Failed to load DM channel",
+      });
+      setLocation("/");
+    },
   });
 
   const otherUser = channel?.participants?.find(p => p.id !== user?.id);
@@ -32,9 +43,13 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     const newWs = new WebSocket(wsUrl);
 
     newWs.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'dm' && data.message.channelId === channelId) {
-        setMessages(prev => [...prev, data.message]);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'dm' && data.message.channelId === channelId) {
+          setMessages(prev => [...prev, data.message]);
+        }
+      } catch (error) {
+        console.error("Error processing WebSocket message:", error);
       }
     };
 
@@ -47,43 +62,66 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
 
   // Fetch messages
   useEffect(() => {
-    if (!channelId) return;
+    if (!channelId || !user) return;
 
     fetch(`/api/dm/channels/${channelId}/messages`, {
       credentials: 'include'
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(res.statusText);
+        }
+        return res.json();
+      })
       .then(data => setMessages(data))
-      .catch(console.error);
-  }, [channelId]);
+      .catch(error => {
+        console.error("Error fetching messages:", error);
+        toast({
+          variant: "destructive",
+          description: "Failed to load messages",
+        });
+      });
+  }, [channelId, user, toast]);
 
   const handleSendMessage = async (content: string) => {
-    if (!ws || !user) return;
+    if (!ws || !user || !content.trim()) return;
 
-    ws.send(JSON.stringify({
-      type: 'message',
-      channelId: `dm_${channelId}`,
-      content,
-      userId: user.id,
-    }));
+    try {
+      ws.send(JSON.stringify({
+        type: 'message',
+        channelId: `dm_${channelId}`,
+        content: content.trim(),
+        userId: user.id,
+      }));
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        variant: "destructive",
+        description: "Failed to send message",
+      });
+    }
   };
+
+  if (!channel || !otherUser) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
       <div className="border-b p-4 flex items-center gap-3">
-        {otherUser && (
-          <>
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={otherUser.avatar || undefined} />
-              <AvatarFallback>
-                {otherUser.username[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h2 className="font-semibold">{otherUser.username}</h2>
-            </div>
-          </>
-        )}
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={otherUser.avatar || undefined} />
+          <AvatarFallback>
+            {otherUser.username[0].toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <h2 className="font-semibold">{otherUser.username}</h2>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">

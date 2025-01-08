@@ -39,6 +39,8 @@ import type { Channel, Section, DirectMessageChannel, User as UserType } from "@
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useLocation, useLocation as useLocationWouter } from "wouter";
+
 
 interface ChannelSidebarProps {
   selectedChannel: number;
@@ -65,6 +67,7 @@ export default function ChannelSidebar({
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [location, setLocation] = useLocationWouter();
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -91,17 +94,14 @@ export default function ChannelSidebar({
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [channelFormData, setChannelFormData] = useState<ChannelFormData>({ name: "" });
   const [sectionFormData, setSectionFormData] = useState<SectionFormData>({ name: "" });
-  // const [isDMsOpen, setIsDMsOpen] = useState(true);
   const [isUsersOpen, setIsUsersOpen] = useState(true);
 
-  // Helper function to check if user is online (active in last 5 minutes)
   function isUserOnline(lastActiveAt: Date | null): boolean {
     if (!lastActiveAt) return false;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     return new Date(lastActiveAt) > fiveMinutesAgo;
   }
 
-  // Sort users: online users first, then alphabetically by username
   const sortedUsers = [...(users || [])].sort((a, b) => {
     const aIsOnline = isUserOnline(a.lastActiveAt);
     const bIsOnline = isUserOnline(b.lastActiveAt);
@@ -112,7 +112,6 @@ export default function ChannelSidebar({
     return a.username.localeCompare(b.username);
   });
 
-  // Create DM channel mutation
   const createDMMutation = useMutation({
     mutationFn: async (userId: number) => {
       const response = await fetch("/api/dm/channels", {
@@ -127,11 +126,11 @@ export default function ChannelSidebar({
       }
 
       const data = await response.json();
-      onSelectDM(data.id);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
+      setLocation(`/dm/${data.id}`);
     },
     onError: (error: Error) => {
       toast({
@@ -729,104 +728,6 @@ export default function ChannelSidebar({
           </CollapsibleContent>
         </Collapsible>
 
-
-        {/* Direct Messages section commented out for now */}
-        {/* <div className="mt-4">
-          <Collapsible open={isDMsOpen} onOpenChange={setIsDMsOpen}>
-            <div className="flex items-center px-4">
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 p-0"
-                >
-                  <svg
-                    className={cn(
-                      "h-3 w-3 transition-transform fill-current",
-                      !isDMsOpen && "-rotate-90"
-                    )}
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 21L2 6h20L12 21z" />
-                  </svg>
-                </Button>
-              </CollapsibleTrigger>
-              <div className="flex-1 flex">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="px-2 font-semibold text-lg group relative inline-flex items-center"
-                    >
-                      <span>Direct Messages</span>
-                      <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48">
-                    <DropdownMenuItem>
-                      <Plus className="mr-2 h-4 w-4" />
-                      New Direct Message
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-
-            {!isDMsOpen && selectedDM && dmChannels && (
-              <div className="px-2 mt-2">
-                {dmChannels.map(channel => {
-                  const otherUser = channel.participants?.find(p => p.id !== user?.id);
-                  if (!otherUser || channel.id !== selectedDM) return null;
-                  return (
-                    <Button
-                      key={channel.id}
-                      variant="ghost"
-                      className="w-full justify-start gap-2 bg-accent text-accent-foreground"
-                      onClick={() => onSelectDM(channel.id)}
-                    >
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={otherUser.avatar || undefined} />
-                        <AvatarFallback>
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      {otherUser.username}
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-
-            <CollapsibleContent className="space-y-4 mt-2">
-              <div className="px-2">
-                {dmChannels?.map((channel) => {
-                  const otherUser = channel.participants?.find(p => p.id !== user?.id);
-                  if (!otherUser) return null;
-
-                  return (
-                    <Button
-                      key={channel.id}
-                      variant="ghost"
-                      className={cn(
-                        "w-full justify-start gap-2",
-                        channel.id === selectedDM && "bg-accent text-accent-foreground"
-                      )}
-                      onClick={() => onSelectDM(channel.id)}
-                    >
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={otherUser.avatar || undefined} />
-                        <AvatarFallback>
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      </Avatar>
-                      {otherUser.username}
-                    </Button>
-                  );
-                })}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div> */}
 
         <div className="mt-4">
           <Collapsible open={isUsersOpen} onOpenChange={setIsUsersOpen}>
