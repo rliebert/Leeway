@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import leewayLogo from "../../../attached_assets/leeway-logo2a.png";
+import leewayLogo from "../../../attached_assets/leeway-logo3.png";
 import {
   CommandDialog,
   CommandEmpty,
@@ -47,7 +47,9 @@ export default function Home() {
     enabled: searchQuery.length > 0 && !!user,
   });
 
-  const currentChannel = channels?.find(channel => channel.id === selectedChannel);
+  const currentChannel = channels?.find(
+    (channel) => channel.id === selectedChannel,
+  );
 
   const handleSearch = useDebouncedCallback((value: string) => {
     setSearchQuery(value);
@@ -87,12 +89,14 @@ export default function Home() {
           </div>
           <div className="flex-1 p-4">
             <div className="flex items-center justify-between">
-              <div 
+              <div
                 onClick={() => setOpen(true)}
                 className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent mr-4"
               >
                 <Search className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Search messages...</span>
+                <span className="text-sm text-muted-foreground">
+                  Search messages...
+                </span>
                 <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
                   <span className="text-xs">⌘</span>K
                 </kbd>
@@ -104,10 +108,10 @@ export default function Home() {
       </div>
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
-          <ChannelSidebar 
-            selectedChannel={selectedChannel} 
+          <ChannelSidebar
+            selectedChannel={selectedChannel}
             selectedDM={selectedDM}
-            onSelectChannel={handleSelectChannel} 
+            onSelectChannel={handleSelectChannel}
             onSelectDM={handleSelectDM}
           />
           <UserProfile />
@@ -120,10 +124,14 @@ export default function Home() {
               <div className="border-b px-6 py-3">
                 <div className="flex items-center gap-2">
                   <Hash className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
+                  <h2 className="font-semibold text-lg">
+                    {currentChannel?.name}
+                  </h2>
                 </div>
                 {currentChannel?.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {currentChannel.description}
+                  </p>
                 )}
               </div>
               <ScrollArea className="flex-1">
@@ -136,16 +144,13 @@ export default function Home() {
           )}
         </div>
       </div>
-      <CommandDialog 
-        open={open} 
-        onOpenChange={setOpen}
-      >
+      <CommandDialog open={open} onOpenChange={setOpen}>
         <DialogTitle className="sr-only">Search Messages</DialogTitle>
         <DialogDescription className="sr-only">
           Search for messages across all channels
         </DialogDescription>
-        <CommandInput 
-          placeholder="Search messages..." 
+        <CommandInput
+          placeholder="Search messages..."
           onValueChange={handleSearch}
         />
         <CommandList>
@@ -159,7 +164,9 @@ export default function Home() {
                   className="flex flex-col items-start gap-1"
                 >
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">{message.user?.username}</span>
+                    <span className="font-medium">
+                      {message.user?.username}
+                    </span>
                     <span className="text-muted-foreground">
                       in #{message.channel?.name}
                     </span>
