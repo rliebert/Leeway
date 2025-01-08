@@ -33,7 +33,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
 
     newWs.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.type === 'message' && data.message.channelId === channelId) {
+      if (data.type === 'dm' && data.message.channelId === channelId) {
         setMessages(prev => [...prev, data.message]);
       }
     };
@@ -57,15 +57,14 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
       .catch(console.error);
   }, [channelId]);
 
-  const handleSendMessage = async (content: string, attachments?: { filename: string; originalName: string; mimetype: string; size: number; url: string; }[]) => {
+  const handleSendMessage = async (content: string) => {
     if (!ws || !user) return;
 
     ws.send(JSON.stringify({
       type: 'message',
+      channelId: `dm_${channelId}`,
       content,
-      channelId,
       userId: user.id,
-      attachments
     }));
   };
 

@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
-import { messages, channels, users, sections, directMessages, directMessageChannels, directMessageParticipants } from "@db/schema";
+import { messages, channels, users, sections, directMessages } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { setupAuth } from "./auth";
@@ -130,43 +130,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Get a specific DM channel
-  app.get("/api/dm/channels/:id", requireAuth, async (req, res) => {
-    try {
-      const channel = await db.query.directMessageChannels.findFirst({
-        where: eq(directMessageChannels.id, parseInt(req.params.id)),
-        with: {
-          participants: {
-            with: {
-              user: true,
-            },
-          },
-        },
-      });
-
-      if (!channel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      // Check if the current user is a participant
-      const isParticipant = channel.participants.some(
-        (p) => p.user.id === req.user!.id
-      );
-
-      if (!isParticipant) {
-        return res.status(403).json({ error: "Not authorized to view this channel" });
-      }
-
-      res.json({
-        ...channel,
-        participants: channel.participants.map((p) => p.user),
-      });
-    } catch (error) {
-      console.error("Error fetching DM channel:", error);
-      res.status(500).json({ error: "Failed to fetch DM channel" });
-    }
-  });
-
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
@@ -269,36 +232,73 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          const savedMessage = await db
-            .insert(messages)
-            .values({
-              content: message.content,
-              channelId: message.channelId,
-              userId: message.userId,
-              parentMessageId: message.parentMessageId,
-              attachments: message.attachments || null,
-            })
-            .returning();
+          // Handle both regular channel messages and DMs
+          if (message.channelId) {
+            if (message.channelId.toString().startsWith("dm_")) {
+              // Handle DM
+              const dmChannelId = parseInt(message.channelId.split("dm_")[1]);
+              const savedMessage = await db
+                .insert(directMessages)
+                .values({
+                  content: message.content,
+                  channelId: dmChannelId,
+                  userId: message.userId,
+                })
+                .returning();
 
-          const fullMessage = await db.query.messages.findFirst({
-            where: eq(messages.id, savedMessage[0].id),
-            with: {
-              user: true,
-              replies: true,
-            },
-          });
+              const fullMessage = await db.query.directMessages.findFirst({
+                where: eq(directMessages.id, savedMessage[0].id),
+                with: {
+                  user: true,
+                },
+              });
 
-          if (fullMessage) {
-            const broadcastMessage = JSON.stringify({
-              type: "message",
-              message: fullMessage,
-            });
+              if (fullMessage) {
+                const broadcastMessage = JSON.stringify({
+                  type: "dm",
+                  message: fullMessage,
+                });
 
-            wss.clients.forEach((client) => {
-              if (client.readyState === ws.OPEN) {
-                client.send(broadcastMessage);
+                wss.clients.forEach((client) => {
+                  if (client.readyState === ws.OPEN) {
+                    client.send(broadcastMessage);
+                  }
+                });
               }
-            });
+            } else {
+              // Handle regular channel message
+              const savedMessage = await db
+                .insert(messages)
+                .values({
+                  content: message.content,
+                  channelId: message.channelId,
+                  userId: message.userId,
+                  parentMessageId: message.parentMessageId,
+                  attachments: message.attachments || null,
+                })
+                .returning();
+
+              const fullMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, savedMessage[0].id),
+                with: {
+                  user: true,
+                  replies: true,
+                },
+              });
+
+              if (fullMessage) {
+                const broadcastMessage = JSON.stringify({
+                  type: "message",
+                  message: fullMessage,
+                });
+
+                wss.clients.forEach((client) => {
+                  if (client.readyState === ws.OPEN) {
+                    client.send(broadcastMessage);
+                  }
+                });
+              }
+            }
           }
         }
       } catch (error) {
