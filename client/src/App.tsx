@@ -9,28 +9,7 @@ import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
 import leewayLogo from "../../attached_assets/leeway-logo2a.png";
 
-// Auto-login component for testing
-function AutoLogin() {
-  const { login } = useUser();
-
-  // Auto-login on mount
-  React.useEffect(() => {
-    const autoLogin = async () => {
-      try {
-        await login({
-          username: "rliebert",
-          password: "leeway"
-        });
-      } catch (error) {
-        console.error("Auto-login failed:", error);
-      }
-    };
-    autoLogin();
-  }, [login]);
-
-  return null;
-}
-
+// Remove AutoLogin component as it interferes with normal login flow
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
 
@@ -52,7 +31,6 @@ function AuthenticatedApp() {
               <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
             </div>
             <AuthForm />
-            <AutoLogin />
           </CardContent>
         </Card>
       </div>
