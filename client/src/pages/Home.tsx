@@ -14,13 +14,15 @@ import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
-import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
-interface SearchResult extends Message {
+interface SearchResult {
+  id: number;
+  content: string;
+  channelId: number;
   user?: {
     username: string;
   };
@@ -32,7 +34,6 @@ interface SearchResult extends Message {
 export default function Home() {
   const { user, isLoading } = useUser();
   const [selectedChannel, setSelectedChannel] = useState<number>(1);
-  const [selectedDM, setSelectedDM] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -54,12 +55,6 @@ export default function Home() {
 
   const handleSelectChannel = (channelId: number) => {
     setSelectedChannel(channelId);
-    setSelectedDM(null);
-  };
-
-  const handleSelectDM = (dmId: number) => {
-    setSelectedDM(dmId);
-    setSelectedChannel(-1);
   };
 
   if (isLoading) {
@@ -99,37 +94,26 @@ export default function Home() {
         </div>
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="w-64 flex flex-col border-r bg-sidebar">
-          <ChannelSidebar 
-            selectedChannel={selectedChannel} 
-            selectedDM={selectedDM}
-            onSelectChannel={handleSelectChannel} 
-            onSelectDM={handleSelectDM}
-          />
-          <UserProfile />
-        </div>
+        <ChannelSidebar 
+          selectedChannel={selectedChannel}
+          onSelectChannel={handleSelectChannel}
+        />
         <div className="flex-1 flex flex-col">
-          {selectedDM ? (
-            <div>DM View - Not implemented yet</div>
-          ) : (
-            <>
-              <div className="border-b px-6 py-3">
-                <div className="flex items-center gap-2">
-                  <Hash className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
-                </div>
-                {currentChannel?.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
-                )}
-              </div>
-              <ScrollArea className="flex-1">
-                <MessageList channelId={selectedChannel} />
-              </ScrollArea>
-              <div className="px-4 py-3 border-t">
-                <ChatInput channelId={selectedChannel} />
-              </div>
-            </>
-          )}
+          <div className="border-b px-6 py-3">
+            <div className="flex items-center gap-2">
+              <Hash className="h-5 w-5 text-muted-foreground" />
+              <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
+            </div>
+            {currentChannel?.description && (
+              <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
+            )}
+          </div>
+          <ScrollArea className="flex-1">
+            <MessageList channelId={selectedChannel} />
+          </ScrollArea>
+          <div className="px-4 py-3 border-t">
+            <ChatInput channelId={selectedChannel} />
+          </div>
         </div>
       </div>
       <CommandDialog 
