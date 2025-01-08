@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
+import DirectMessageView from "@/components/chat/DirectMessageView";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
@@ -35,6 +36,9 @@ function AuthenticatedApp() {
       <div className="h-screen">
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/dm/:channelId">
+            {(params) => <DirectMessageView channelId={parseInt(params.channelId)} />}
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </div>
