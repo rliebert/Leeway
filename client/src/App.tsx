@@ -7,6 +7,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
+import leewayLogo from "../../attached_assets/leeway-logo2a.png";
 
 // Auto-login component for testing
 function AutoLogin() {
@@ -46,7 +47,10 @@ function AuthenticatedApp() {
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6">
-            <h2 className="text-2xl font-bold mb-4">Welcome to Leeway</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
+              <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
+            </div>
             <AuthForm />
             <AutoLogin />
           </CardContent>
