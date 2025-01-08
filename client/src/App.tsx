@@ -8,8 +8,10 @@ import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
 import leewayLogo from "../../attached_assets/leeway-logo3.png";
+import { ClerkProvider, SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
 
-// Remove AutoLogin component as it interferes with normal login flow
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
 
@@ -30,7 +32,7 @@ function AuthenticatedApp() {
               <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
               <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
             </div>
-            <AuthForm />
+            <SignIn />
           </CardContent>
         </Card>
       </div>
@@ -76,7 +78,11 @@ function NotFound() {
 }
 
 function App() {
-  return <AuthenticatedApp />;
+  return (
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+      <AuthenticatedApp />
+    </ClerkProvider>
+  );
 }
 
 export default App;

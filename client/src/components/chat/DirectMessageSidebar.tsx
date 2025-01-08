@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import type { User } from "@db/schema";
+import type { User, DMChannel } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,12 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   // Fetch all users
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    enabled: !!currentUser,
+  });
+
+  // Fetch all DM channels
+  const { data: dmChannels = [] } = useQuery<DMChannel[]>({
+    queryKey: ["/api/dm/channels"],
     enabled: !!currentUser,
   });
 
@@ -74,6 +80,15 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
 
     return a.username.localeCompare(b.username);
   });
+
+  // Helper function to get DM channel with a user
+  const getDMChannelWithUser = (userId: number) => {
+    return dmChannels.find(
+      channel => 
+        (channel.user1Id === userId && channel.user2Id === currentUser?.id) ||
+        (channel.user1Id === currentUser?.id && channel.user2Id === userId)
+    );
+  };
 
   return (
     <ScrollArea className="flex-1">
@@ -130,9 +145,19 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                       variant="ghost"
                       size="icon"
                       className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => createDMMutation.mutate(user.id)}
+                      onClick={() => {
+                        const existingChannel = getDMChannelWithUser(user.id);
+                        if (existingChannel) {
+                          onSelectDM(existingChannel.id);
+                        } else {
+                          createDMMutation.mutate(user.id);
+                        }
+                      }}
                     >
-                      <MessageSquare className="h-4 w-4" />
+                      <MessageSquare className={cn(
+                        "h-4 w-4",
+                        getDMChannelWithUser(user.id)?.id === selectedDM ? "text-primary" : "text-muted-foreground"
+                      )} />
                     </Button>
                   )}
                 </div>

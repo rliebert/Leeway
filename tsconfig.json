@@ -4,6 +4,7 @@
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    "target": "ESNext",
     "noEmit": true,
     "module": "ESNext",
     "strict": true,
@@ -18,7 +19,15 @@
     "paths": {
       "@db": ["./db/index.ts"],
       "@db/*": ["./db/*"],
-      "@/*": ["./client/src/*"]
-    }
+      "@/*": ["./client/src/*"],
+      "@lib/*": ["./lib/*"],
+      "auth/*": ["./auth/*"]
+    },
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
   }
 }
