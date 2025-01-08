@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Hash, ChevronDown, Plus, Settings, Trash2, ChevronRight, MessageSquare } from "lucide-react";
+import { Hash, ChevronDown, Plus, Settings, Trash2, ChevronRight, MessageSquare, User } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
