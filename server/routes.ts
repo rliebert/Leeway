@@ -74,37 +74,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/sections", requireAuth, async (req, res) => {
-    const { name } = req.body;
-
-    if (!name?.trim()) {
-      return res.status(400).send("Section name is required");
-    }
-
-    try {
-      const [newSection] = await db
-        .insert(sections)
-        .values({
-          name: name.trim(),
-          creatorId: req.user!.id,
-        })
-        .returning();
-
-      const sectionWithDetails = await db.query.sections.findFirst({
-        where: eq(sections.id, newSection.id),
-        with: {
-          creator: true,
-          channels: true,
-        },
-      });
-
-      res.status(201).json(sectionWithDetails);
-    } catch (error) {
-      console.error("Error creating section:", error);
-      res.status(500).send("Failed to create section");
-    }
-  });
-
   // Add PUT route for updating sections
   app.put("/api/sections/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
@@ -158,6 +127,43 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating section:", error);
       res.status(500).json({ error: "Failed to update section" });
+    }
+  });
+
+  // Get a specific DM channel
+  app.get("/api/dm/channels/:id", requireAuth, async (req, res) => {
+    try {
+      const channel = await db.query.directMessageChannels.findFirst({
+        where: eq(directMessageChannels.id, parseInt(req.params.id)),
+        with: {
+          participants: {
+            with: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      // Check if the current user is a participant
+      const isParticipant = channel.participants.some(
+        (p) => p.user.id === req.user!.id
+      );
+
+      if (!isParticipant) {
+        return res.status(403).json({ error: "Not authorized to view this channel" });
+      }
+
+      res.json({
+        ...channel,
+        participants: channel.participants.map((p) => p.user),
+      });
+    } catch (error) {
+      console.error("Error fetching DM channel:", error);
+      res.status(500).json({ error: "Failed to fetch DM channel" });
     }
   });
 

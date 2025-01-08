@@ -1,3 +1,4 @@
+import React from 'react';
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
@@ -6,6 +7,28 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
+
+// Auto-login component for testing
+function AutoLogin() {
+  const { login } = useUser();
+
+  // Auto-login on mount
+  React.useEffect(() => {
+    const autoLogin = async () => {
+      try {
+        await login({
+          username: "rliebert",
+          password: "leeway"
+        });
+      } catch (error) {
+        console.error("Auto-login failed:", error);
+      }
+    };
+    autoLogin();
+  }, [login]);
+
+  return null;
+}
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
@@ -25,6 +48,7 @@ function AuthenticatedApp() {
           <CardContent className="pt-6">
             <h2 className="text-2xl font-bold mb-4">Welcome to Leeway</h2>
             <AuthForm />
+            <AutoLogin />
           </CardContent>
         </Card>
       </div>
