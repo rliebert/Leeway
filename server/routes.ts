@@ -5,7 +5,6 @@ import { db } from "@db";
 import { messages, channels, users, sections, directMessages } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
-import { setupAuth, requireAuth } from "./auth";
 import { registerUploadRoutes } from "./routes/upload";
 import dmRoutes from "./routes/dm";
 
@@ -18,36 +17,14 @@ const upload = multer({
 });
 
 export function registerRoutes(app: Express): Server {
-  // Set up authentication routes and middleware
-  setupAuth(app);
-
-  app.get("/api/users", requireAuth, async (req, res) => {
-    try {
-      // Update current user's last active time
-      await db
-        .update(users)
-        .set({ lastActiveAt: new Date() })
-        .where(eq(users.id, parseInt(req.auth.userId)));
-
-      // Fetch all users
-      const allUsers = await db.query.users.findMany({
-        orderBy: (users, { desc }) => [desc(users.lastActiveAt)],
-      });
-      res.json(allUsers);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ error: "Failed to fetch users" });
-    }
-  });
-
   // Register DM routes
-  app.use("/api/dm", requireAuth, dmRoutes);
+  app.use("/api/dm", dmRoutes);
 
   // Register upload routes
   registerUploadRoutes(app);
 
   // Section routes
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  app.post("/api/sections", async (req, res) => {
     try {
       const { name } = req.body;
 
@@ -59,7 +36,7 @@ export function registerRoutes(app: Express): Server {
         .insert(sections)
         .values({
           name: name.trim(),
-          creatorId: parseInt(req.auth.userId),
+          creatorId: req.body.userId,
         })
         .returning();
 
@@ -83,7 +60,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/sections", requireAuth, async (_req, res) => {
+  app.get("/api/sections", async (_req, res) => {
     try {
       const allSections = await db.query.sections.findMany({
         with: {
@@ -103,7 +80,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Channel routes
-  app.post("/api/channels", requireAuth, async (req, res) => {
+  app.post("/api/channels", async (req, res) => {
     try {
       const { name, description, sectionId } = req.body;
 
@@ -122,7 +99,7 @@ export function registerRoutes(app: Express): Server {
         .values({
           name: name.trim(),
           description: description?.trim(),
-          creatorId: parseInt(req.auth.userId),
+          creatorId: req.body.userId,
           sectionId,
           position: maxPosition + 1,
         })
@@ -144,7 +121,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/channels", requireAuth, async (_req, res) => {
+  app.get("/api/channels", async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
         with: {
@@ -160,7 +137,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/channels/:id/messages", requireAuth, async (req, res) => {
+  app.get("/api/channels/:id/messages", async (req, res) => {
     try {
       const channelMessages = await db.query.messages.findMany({
         where: eq(messages.channelId, parseInt(req.params.id)),
@@ -177,7 +154,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Search messages
-  app.get("/api/messages/search", requireAuth, async (req, res) => {
+  app.get("/api/messages/search", async (req, res) => {
     try {
       const query = req.query.q;
       console.log("Search query received:", query);
@@ -204,7 +181,7 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Avatar upload endpoint
-  app.post("/api/users/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
+  app.post("/api/users/:id/avatar", upload.single("avatar"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).send("No file uploaded");
@@ -224,7 +201,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+  app.put("/api/sections/:id", async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
@@ -245,7 +222,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Section not found" });
       }
 
-      if (section.creatorId !== parseInt(req.auth.userId)) {
+      if (section.creatorId !== req.body.userId) { // Changed to req.body.userId
         return res.status(403).json({ error: "Not authorized to edit this section" });
       }
 

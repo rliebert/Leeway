@@ -1,5 +1,4 @@
 import { pgTable, text, timestamp, uuid, serial, integer, jsonb } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 // Users table - matches Supabase auth.users structure
@@ -65,82 +64,16 @@ export const directMessages = pgTable("direct_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Relations
-export const usersRelations = relations(users, ({ many }) => ({
-  messages: many(messages),
-  channels: many(channels, { relationName: "channelCreator" }),
-  sections: many(sections, { relationName: "sectionCreator" }),
-  directMessageParticipations: many(directMessageParticipants),
-}));
+// Schema types
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+export type Channel = typeof channels.$inferSelect;
+export type Message = typeof messages.$inferSelect;
+export type Section = typeof sections.$inferSelect;
+export type DirectMessageChannel = typeof directMessageChannels.$inferSelect;
+export type DirectMessage = typeof directMessages.$inferSelect;
 
-export const sectionsRelations = relations(sections, ({ many, one }) => ({
-  channels: many(channels),
-  creator: one(users, {
-    fields: [sections.creatorId],
-    references: [users.id],
-    relationName: "sectionCreator",
-  }),
-}));
-
-export const channelsRelations = relations(channels, ({ many, one }) => ({
-  messages: many(messages),
-  creator: one(users, {
-    fields: [channels.creatorId],
-    references: [users.id],
-    relationName: "channelCreator",
-  }),
-  section: one(sections, {
-    fields: [channels.sectionId],
-    references: [sections.id],
-  }),
-}));
-
-export const messagesRelations = relations(messages, ({ one, many }) => ({
-  user: one(users, {
-    fields: [messages.userId],
-    references: [users.id],
-  }),
-  channel: one(channels, {
-    fields: [messages.channelId],
-    references: [channels.id],
-  }),
-  parentMessage: one(messages, {
-    fields: [messages.parentMessageId],
-    references: [messages.id],
-    relationName: "messageParent",
-  }),
-  replies: many(messages, {
-    relationName: "messageParent",
-  }),
-}));
-
-export const directMessageChannelsRelations = relations(directMessageChannels, ({ many }) => ({
-  participants: many(directMessageParticipants),
-  messages: many(directMessages),
-}));
-
-export const directMessageParticipantsRelations = relations(directMessageParticipants, ({ one }) => ({
-  channel: one(directMessageChannels, {
-    fields: [directMessageParticipants.channelId],
-    references: [directMessageChannels.id],
-  }),
-  user: one(users, {
-    fields: [directMessageParticipants.userId],
-    references: [users.id],
-  }),
-}));
-
-export const directMessagesRelations = relations(directMessages, ({ one }) => ({
-  channel: one(directMessageChannels, {
-    fields: [directMessages.channelId],
-    references: [directMessageChannels.id],
-  }),
-  user: one(users, {
-    fields: [directMessages.userId],
-    references: [users.id],
-  }),
-}));
-
+// Zod schemas
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export const insertChannelSchema = createInsertSchema(channels);
@@ -155,26 +88,3 @@ export const insertDirectMessageParticipantSchema = createInsertSchema(directMes
 export const selectDirectMessageParticipantSchema = createSelectSchema(directMessageParticipants);
 export const insertDirectMessageSchema = createInsertSchema(directMessages);
 export const selectDirectMessageSchema = createSelectSchema(directMessages);
-
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-export type Channel = typeof channels.$inferSelect & {
-  creator?: User;
-  section?: Section;
-};
-export type Message = typeof messages.$inferSelect & {
-  user?: User;
-  replies?: Message[];
-  parentMessage?: Message;
-};
-export type Section = typeof sections.$inferSelect & {
-  creator?: User;
-  channels?: Channel[];
-};
-export type DirectMessageChannel = typeof directMessageChannels.$inferSelect & {
-  participants?: User[];
-  messages?: DirectMessage[];
-};
-export type DirectMessage = typeof directMessages.$inferSelect & {
-  user?: User;
-};

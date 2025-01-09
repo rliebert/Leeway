@@ -25,10 +25,10 @@ export function useUser() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        await fetchProfile(session.user.id);
       } else {
         setProfile(null);
         setIsLoading(false);
@@ -40,14 +40,33 @@ export function useUser() {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) throw error;
-      setProfile(data);
+      if (dbError) {
+        // If user doesn't exist in our database yet, create profile
+        if (dbError.code === 'PGRST116') {
+          const { data: newProfile, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: userId,
+              username: user?.email?.split('@')[0] || `user_${userId.slice(0, 8)}`,
+              created_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (createError) throw createError;
+          setProfile(newProfile);
+        } else {
+          throw dbError;
+        }
+      } else {
+        setProfile(data);
+      }
     } catch (error) {
       setError(error as Error);
     } finally {
@@ -57,7 +76,7 @@ export function useUser() {
 
   const signIn = async ({ email, password }: { email: string; password: string }) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -71,16 +90,16 @@ export function useUser() {
 
   const signUp = async ({ email, password, username }: { email: string; password: string; username: string }) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (signUpError) throw signUpError;
 
-      if (authData.user) {
+      if (data.user) {
         const { error: profileError } = await supabase.from('users').insert({
-          id: authData.user.id,
+          id: data.user.id,
           username,
           created_at: new Date().toISOString(),
         });
