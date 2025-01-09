@@ -5,9 +5,9 @@ import { db } from "@db";
 import { messages, channels, users, sections, directMessages } from "@db/schema";
 import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
-import { setupAuth } from "./auth";
-import dmRoutes from "./routes/dm";
+import { setupAuth, requireAuth } from "./auth";
 import { registerUploadRoutes } from "./routes/upload";
+import dmRoutes from "./routes/dm";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -16,14 +16,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
 });
-
-// Authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  if (!req.isAuthenticated()) {
-    return res.status(401).send("Not authenticated");
-  }
-  next();
-};
 
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
@@ -35,7 +27,7 @@ export function registerRoutes(app: Express): Server {
       await db
         .update(users)
         .set({ lastActiveAt: new Date() })
-        .where(eq(users.id, req.user!.id));
+        .where(eq(users.id, parseInt(req.auth.userId)));
 
       // Fetch all users
       const allUsers = await db.query.users.findMany({
@@ -55,6 +47,42 @@ export function registerRoutes(app: Express): Server {
   registerUploadRoutes(app);
 
   // Section routes
+  app.post("/api/sections", requireAuth, async (req, res) => {
+    try {
+      const { name } = req.body;
+
+      if (!name?.trim()) {
+        return res.status(400).json({ error: "Section name is required" });
+      }
+
+      const [newSection] = await db
+        .insert(sections)
+        .values({
+          name: name.trim(),
+          creatorId: parseInt(req.auth.userId),
+        })
+        .returning();
+
+      // Fetch the created section with related data
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, newSection.id),
+        with: {
+          creator: true,
+          channels: {
+            with: {
+              creator: true,
+            },
+          },
+        },
+      });
+
+      res.status(201).json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error creating section:", error);
+      res.status(500).json({ error: "Failed to create section" });
+    }
+  });
+
   app.get("/api/sections", requireAuth, async (_req, res) => {
     try {
       const allSections = await db.query.sections.findMany({
@@ -74,59 +102,45 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Add PUT route for updating sections
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-
-    if (!name?.trim()) {
-      return res.status(400).json({ error: "Section name is required" });
-    }
-
+  // Channel routes
+  app.post("/api/channels", requireAuth, async (req, res) => {
     try {
-      // Check if section exists and user is the creator
-      const section = await db.query.sections.findFirst({
-        where: eq(sections.id, parseInt(id)),
-        with: {
-          creator: true,
-        },
+      const { name, description, sectionId } = req.body;
+
+      if (!name?.trim()) {
+        return res.status(400).json({ error: "Channel name is required" });
+      }
+
+      // Get max position for the section
+      const existingChannels = await db.query.channels.findMany({
+        where: eq(channels.sectionId, sectionId),
       });
+      const maxPosition = Math.max(...existingChannels.map(c => c.position), -1);
 
-      if (!section) {
-        return res.status(404).json({ error: "Section not found" });
-      }
-
-      if (section.creatorId !== req.user!.id) {
-        return res.status(403).json({ error: "Not authorized to edit this section" });
-      }
-
-      // Update the section
-      const [updatedSection] = await db
-        .update(sections)
-        .set({
+      const [newChannel] = await db
+        .insert(channels)
+        .values({
           name: name.trim(),
-          updatedAt: new Date(),
+          description: description?.trim(),
+          creatorId: parseInt(req.auth.userId),
+          sectionId,
+          position: maxPosition + 1,
         })
-        .where(eq(sections.id, parseInt(id)))
         .returning();
 
-      // Fetch the updated section with all related data
-      const sectionWithDetails = await db.query.sections.findFirst({
-        where: eq(sections.id, updatedSection.id),
+      // Fetch the created channel with related data
+      const channelWithDetails = await db.query.channels.findFirst({
+        where: eq(channels.id, newChannel.id),
         with: {
           creator: true,
-          channels: {
-            with: {
-              creator: true,
-            },
-          },
+          section: true,
         },
       });
 
-      res.json(sectionWithDetails);
+      res.status(201).json(channelWithDetails);
     } catch (error) {
-      console.error("Error updating section:", error);
-      res.status(500).json({ error: "Failed to update section" });
+      console.error("Error creating channel:", error);
+      res.status(500).json({ error: "Failed to create channel" });
     }
   });
 
@@ -207,6 +221,61 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating avatar:", error);
       res.status(500).send("Error updating avatar");
+    }
+  });
+
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Section name is required" });
+    }
+
+    try {
+      // Check if section exists and user is the creator
+      const section = await db.query.sections.findFirst({
+        where: eq(sections.id, parseInt(id)),
+        with: {
+          creator: true,
+        },
+      });
+
+      if (!section) {
+        return res.status(404).json({ error: "Section not found" });
+      }
+
+      if (section.creatorId !== parseInt(req.auth.userId)) {
+        return res.status(403).json({ error: "Not authorized to edit this section" });
+      }
+
+      // Update the section
+      const [updatedSection] = await db
+        .update(sections)
+        .set({
+          name: name.trim(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sections.id, parseInt(id)))
+        .returning();
+
+      // Fetch the updated section with all related data
+      const sectionWithDetails = await db.query.sections.findFirst({
+        where: eq(sections.id, updatedSection.id),
+        with: {
+          creator: true,
+          channels: {
+            with: {
+              creator: true,
+            },
+          },
+        },
+      });
+
+      res.json(sectionWithDetails);
+    } catch (error) {
+      console.error("Error updating section:", error);
+      res.status(500).json({ error: "Failed to update section" });
     }
   });
 

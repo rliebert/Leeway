@@ -4,39 +4,15 @@ import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { useUser } from "@/hooks/use-user";
-import AuthForm from "@/components/auth/AuthForm";
+import { ClerkProvider, SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
 import DirectMessageView from "@/components/chat/DirectMessageView";
 import leewayLogo from "../../attached_assets/leeway-logo3.png";
 
-// Remove AutoLogin component as it interferes with normal login flow
+if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+}
+
 function AuthenticatedApp() {
-  const { user, isLoading } = useUser();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
-              <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
-            </div>
-            <AuthForm />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <WSProvider>
       <div className="h-screen">
@@ -72,7 +48,26 @@ function NotFound() {
 }
 
 function App() {
-  return <AuthenticatedApp />;
+  return (
+    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
+      <SignedIn>
+        <AuthenticatedApp />
+      </SignedIn>
+      <SignedOut>
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-full max-w-sm">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
+                <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
+              </div>
+              <SignIn />
+            </CardContent>
+          </Card>
+        </div>
+      </SignedOut>
+    </ClerkProvider>
+  );
 }
 
 export default App;
