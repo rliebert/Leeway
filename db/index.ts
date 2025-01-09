@@ -8,5 +8,9 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const queryClient = postgres(process.env.DATABASE_URL);
+const queryClient = postgres(process.env.DATABASE_URL, {
+  ssl: 'require',
+  max: 1
+});
+
 export const db = drizzle(queryClient, { schema });

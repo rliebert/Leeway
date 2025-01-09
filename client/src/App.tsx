@@ -9,6 +9,7 @@ import DirectMessageView from "@/components/chat/DirectMessageView";
 import leewayLogo from "../../attached_assets/leeway-logo3.png";
 import AuthForm from "@/components/auth/AuthForm";
 
+// Keep the existing AuthenticatedApp component
 function AuthenticatedApp() {
   return (
     <WSProvider>
@@ -25,7 +26,7 @@ function AuthenticatedApp() {
   );
 }
 
-// fallback 404 not found page
+// Keep the existing NotFound component
 function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
@@ -46,6 +47,8 @@ function NotFound() {
 
 function App() {
   const { user, isLoading } = useUser();
+
+  console.log('Auth state:', { isLoading, hasUser: !!user });
 
   if (isLoading) {
     return (
