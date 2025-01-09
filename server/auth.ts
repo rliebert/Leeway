@@ -32,7 +32,12 @@ if (!process.env.CLERK_SECRET_KEY) {
 }
 
 // Authentication middleware using Clerk
-export const requireAuth = ClerkExpressWithAuth();
+export const requireAuth = ClerkExpressWithAuth({
+  onError: (err, _req, res) => {
+    console.error('Clerk auth error:', err);
+    res.status(401).json({ error: 'Authentication required' });
+  }
+});
 
 export function setupAuth(app: Express) {
   app.get("/api/user", requireAuth, async (req: Request, res) => {

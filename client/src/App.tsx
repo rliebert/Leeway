@@ -4,13 +4,10 @@ import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { ClerkProvider, SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { useUser } from "@/hooks/use-user";
 import DirectMessageView from "@/components/chat/DirectMessageView";
 import leewayLogo from "../../attached_assets/leeway-logo3.png";
-
-if (!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
-}
+import AuthForm from "@/components/auth/AuthForm";
 
 function AuthenticatedApp() {
   return (
@@ -48,26 +45,33 @@ function NotFound() {
 }
 
 function App() {
-  return (
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-      <SignedIn>
-        <AuthenticatedApp />
-      </SignedIn>
-      <SignedOut>
-        <div className="flex items-center justify-center min-h-screen">
-          <Card className="w-full max-w-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
-                <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
-              </div>
-              <SignIn />
-            </CardContent>
-          </Card>
-        </div>
-      </SignedOut>
-    </ClerkProvider>
-  );
+  const { user, isLoading } = useUser();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="w-full max-w-sm">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
+              <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
+            </div>
+            <AuthForm />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <AuthenticatedApp />;
 }
 
 export default App;

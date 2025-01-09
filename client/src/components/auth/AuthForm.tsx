@@ -17,32 +17,39 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const authSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
 });
 
 type AuthFormData = z.infer<typeof authSchema>;
 
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const { login, register } = useUser();
+  const { signIn, signUp } = useUser();
   const { toast } = useToast();
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
+      username: "",
     },
   });
 
   const onSubmit = async (data: AuthFormData, mode: "login" | "register") => {
     setIsLoading(true);
     try {
-      const result = await (mode === "login" ? login(data) : register(data));
+      const result = await (mode === "login" 
+        ? signIn({ email: data.email, password: data.password })
+        : signUp({ email: data.email, password: data.password, username: data.username || data.email.split('@')[0] })
+      );
+
       if (!result.ok) {
         throw new Error(result.message);
       }
+
       toast({
         description: mode === "login" ? "Logged in successfully" : "Registration successful",
       });
@@ -67,12 +74,12 @@ export default function AuthForm() {
           <form onSubmit={form.handleSubmit((data) => onSubmit(data, "login"))} className="space-y-4">
             <FormField
               control={form.control}
-              name="username"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your username" {...field} />
+                    <Input type="email" placeholder="Enter your email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -100,6 +107,19 @@ export default function AuthForm() {
       <TabsContent value="register">
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => onSubmit(data, "register"))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input type="email" placeholder="Enter your email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="username"
