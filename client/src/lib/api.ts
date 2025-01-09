@@ -14,6 +14,7 @@ export const createApiClient = (token?: string) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
+        credentials: 'include',
       });
     }
   };
