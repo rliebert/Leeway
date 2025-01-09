@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
@@ -7,11 +7,9 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
-import leewayLogo from "../../attached_assets/leeway-logo3.png";
-import { ClerkProvider, SignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
+import leewayLogo from "../../attached_assets/leeway-logo2a.png";
 
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-
+// Remove AutoLogin component as it interferes with normal login flow
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
 
@@ -32,7 +30,7 @@ function AuthenticatedApp() {
               <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
               <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
             </div>
-            <SignIn />
+            <AuthForm />
           </CardContent>
         </Card>
       </div>
@@ -45,9 +43,7 @@ function AuthenticatedApp() {
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/dm/:channelId">
-            {(params) => (
-              <DirectMessageView channelId={parseInt(params.channelId)} />
-            )}
+            {(params) => <DirectMessageView channelId={parseInt(params.channelId)} />}
           </Route>
           <Route component={NotFound} />
         </Switch>
@@ -64,9 +60,7 @@ function NotFound() {
         <CardContent className="pt-6">
           <div className="flex mb-4 gap-2">
             <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              404 Page Not Found
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
           </div>
           <p className="mt-4 text-sm text-gray-600">
             Did you forget to add the page to the router?
@@ -78,11 +72,7 @@ function NotFound() {
 }
 
 function App() {
-  return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <AuthenticatedApp />
-    </ClerkProvider>
-  );
+  return <AuthenticatedApp />;
 }
 
 export default App;

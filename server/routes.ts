@@ -130,7 +130,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Channel routes
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
@@ -144,87 +143,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching channels:", error);
       res.status(500).send("Failed to fetch channels");
-    }
-  });
-
-  // Update channel's section
-  app.put("/api/channels/:channelId/section", requireAuth, async (req, res) => {
-    const { channelId } = req.params;
-    const { sectionId } = req.body;
-
-    try {
-      // Check if channel exists and user is the creator
-      const channel = await db.query.channels.findFirst({
-        where: eq(channels.id, parseInt(channelId)),
-        with: {
-          creator: true,
-        },
-      });
-
-      if (!channel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      if (channel.creatorId !== req.user!.id) {
-        return res.status(403).json({ error: "Not authorized to move this channel" });
-      }
-
-      // If sectionId is provided, verify it exists
-      if (sectionId !== null) {
-        const section = await db.query.sections.findFirst({
-          where: eq(sections.id, sectionId),
-        });
-
-        if (!section) {
-          return res.status(404).json({ error: "Section not found" });
-        }
-      }
-
-      // Update the channel's section
-      const [updatedChannel] = await db
-        .update(channels)
-        .set({
-          sectionId: sectionId,
-          updatedAt: new Date(),
-        })
-        .where(eq(channels.id, parseInt(channelId)))
-        .returning();
-
-      res.json(updatedChannel);
-    } catch (error) {
-      console.error("Error updating channel section:", error);
-      res.status(500).json({ error: "Failed to update channel section" });
-    }
-  });
-
-  // Reorder channels
-  app.post("/api/channels/reorder", requireAuth, async (req, res) => {
-    const { channelIds } = req.body;
-
-    if (!Array.isArray(channelIds)) {
-      return res.status(400).json({ error: "Channel IDs must be an array" });
-    }
-
-    try {
-      // Update positions for all channels in the array
-      const updates = channelIds.map((channelId, index) =>
-        db
-          .update(channels)
-          .set({ position: index })
-          .where(eq(channels.id, channelId))
-      );
-
-      await Promise.all(updates);
-
-      // Fetch and return updated channels
-      const updatedChannels = await db.query.channels.findMany({
-        orderBy: (channels, { asc }) => [asc(channels.position)],
-      });
-
-      res.json(updatedChannels);
-    } catch (error) {
-      console.error("Error reordering channels:", error);
-      res.status(500).json({ error: "Failed to reorder channels" });
     }
   });
 

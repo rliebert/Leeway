@@ -325,10 +325,7 @@ export default function ChannelSidebar({
     mutationFn: async ({ channelId, sectionId }: { channelId: number; sectionId: number | null }) => {
       const response = await fetch(`/api/channels/${channelId}/section`, {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sectionId }),
       });
 
@@ -345,7 +342,7 @@ export default function ChannelSidebar({
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        description: error.message || "Failed to move channel",
+        description: error.message,
       });
     },
   });
@@ -410,12 +407,7 @@ export default function ChannelSidebar({
 
   const handleMoveChannel = async (channelId: number, sectionId: number | null) => {
     try {
-      // Ensure sectionId is properly typed before making the API call
-      const normalizedSectionId = sectionId === null ? null : Number(sectionId);
-      await updateChannelSectionMutation.mutateAsync({ 
-        channelId, 
-        sectionId: normalizedSectionId 
-      });
+      await updateChannelSectionMutation.mutateAsync({ channelId, sectionId });
     } catch (error) {
       console.error("Failed to move channel:", error);
       toast({
@@ -464,10 +456,7 @@ export default function ChannelSidebar({
     try {
       const response = await fetch("/api/channels/reorder", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json" 
-        },
-        credentials: "include",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channelIds }),
       });
 
@@ -738,7 +727,6 @@ export default function ChannelSidebar({
             })}
           </CollapsibleContent>
         </Collapsible>
-
 
 
         <div className="mt-4">

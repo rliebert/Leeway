@@ -33,13 +33,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
     let reconnectTimeout: NodeJS.Timeout;
 
     const connect = () => {
-      // In development, connect to the backend port (8080)
-      // In production, use the same host/port as the frontend
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = import.meta.env.DEV 
-        ? `${protocol}//localhost:8080`
-        : `${protocol}//${window.location.host}`;
-      const websocket = new WebSocket(wsUrl);
+      const websocket = new WebSocket(`${protocol}//${window.location.host}`);
 
       websocket.onopen = () => {
         setConnected(true);

@@ -65,13 +65,6 @@ export const directMessages = pgTable("direct_messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const dmChannels = pgTable('dm_channels', {
-  id: serial('id').primaryKey(),
-  user1Id: integer('user1_id').notNull().references(() => users.id),
-  user2Id: integer('user2_id').notNull().references(() => users.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
@@ -187,5 +180,3 @@ export type DirectMessageChannel = typeof directMessageChannels.$inferSelect & {
 export type DirectMessage = typeof directMessages.$inferSelect & {
   user?: User;
 };
-
-export type DMChannel = typeof dmChannels.$inferSelect;
