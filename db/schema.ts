@@ -3,7 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 // Users table - matches Supabase auth.users structure
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey(),  // Match Supabase auth.users.id
+  id: text("id").primaryKey(),  // Match Supabase auth.users.id
   username: text("username").unique().notNull(),
   avatar_url: text("avatar_url"),
   last_active_at: timestamp("last_active_at", { withTimezone: true }).defaultNow(),
@@ -13,7 +13,7 @@ export const users = pgTable("users", {
 export const sections = pgTable("sections", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  creatorId: uuid("creator_id").references(() => users.id),
+  creatorId: text("creator_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -22,7 +22,7 @@ export const channels = pgTable("channels", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),
-  creatorId: uuid("creator_id").references(() => users.id),
+  creatorId: text("creator_id").references(() => users.id),
   sectionId: integer("section_id").references(() => sections.id),
   position: integer("position").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -32,7 +32,7 @@ export const channels = pgTable("channels", {
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
   channelId: integer("channel_id").references(() => channels.id).notNull(),
   parentMessageId: integer("parent_message_id").references(() => messages.id),
   attachments: jsonb("attachments").$type<{
@@ -52,7 +52,7 @@ export const directMessageChannels = pgTable("direct_message_channels", {
 
 export const directMessageParticipants = pgTable("direct_message_participants", {
   channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -60,7 +60,7 @@ export const directMessages = pgTable("direct_messages", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
   channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

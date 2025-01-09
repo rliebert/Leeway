@@ -7,6 +7,7 @@ import { eq, ilike } from "drizzle-orm";
 import multer from "multer";
 import { registerUploadRoutes } from "./routes/upload";
 import dmRoutes from "./routes/dm";
+import { requireAuth } from "./index";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -17,14 +18,25 @@ const upload = multer({
 });
 
 export function registerRoutes(app: Express): Server {
-  // Register DM routes
-  app.use("/api/dm", dmRoutes);
+  // Add CORS middleware for Supabase
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
-  // Register upload routes
-  registerUploadRoutes(app);
+  // Register DM routes with auth
+  app.use("/api/dm", requireAuth, dmRoutes);
 
-  // Section routes
-  app.post("/api/sections", async (req, res) => {
+  // Register upload routes with auth
+  app.use("/api/upload", requireAuth, registerUploadRoutes);
+
+  // Section routes with auth
+  app.post("/api/sections", requireAuth, async (req, res) => {
     try {
       const { name } = req.body;
 
@@ -36,11 +48,10 @@ export function registerRoutes(app: Express): Server {
         .insert(sections)
         .values({
           name: name.trim(),
-          creatorId: req.body.userId,
+          creatorId: req.user?.id,
         })
         .returning();
 
-      // Fetch the created section with related data
       const sectionWithDetails = await db.query.sections.findFirst({
         where: eq(sections.id, newSection.id),
         with: {
@@ -60,7 +71,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/sections", async (_req, res) => {
+  app.get("/api/sections", requireAuth, async (_req, res) => {
     try {
       const allSections = await db.query.sections.findMany({
         with: {
@@ -79,8 +90,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Channel routes
-  app.post("/api/channels", async (req, res) => {
+  // Channel routes with auth
+  app.post("/api/channels", requireAuth, async (req, res) => {
     try {
       const { name, description, sectionId } = req.body;
 
@@ -121,7 +132,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/channels", async (_req, res) => {
+  app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
         with: {
@@ -137,7 +148,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.get("/api/channels/:id/messages", async (req, res) => {
+  app.get("/api/channels/:id/messages", requireAuth, async (req, res) => {
     try {
       const channelMessages = await db.query.messages.findMany({
         where: eq(messages.channelId, parseInt(req.params.id)),
@@ -153,8 +164,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Search messages
-  app.get("/api/messages/search", async (req, res) => {
+  // Search messages with auth
+  app.get("/api/messages/search", requireAuth, async (req, res) => {
     try {
       const query = req.query.q;
       console.log("Search query received:", query);
@@ -180,8 +191,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Avatar upload endpoint
-  app.post("/api/users/:id/avatar", upload.single("avatar"), async (req, res) => {
+  // Avatar upload endpoint with auth
+  app.post("/api/users/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).send("No file uploaded");
@@ -201,7 +212,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.put("/api/sections/:id", async (req, res) => {
+  app.put("/api/sections/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
     const { name } = req.body;
 
@@ -222,7 +233,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Section not found" });
       }
 
-      if (section.creatorId !== req.body.userId) { // Changed to req.body.userId
+      if (section.creatorId !== req.user?.id) { 
         return res.status(403).json({ error: "Not authorized to edit this section" });
       }
 

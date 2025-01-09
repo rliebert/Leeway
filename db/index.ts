@@ -8,10 +8,5 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// For migrations
-export const migrationClient = postgres(process.env.DATABASE_URL, { max: 1 });
-
-// For queries
-export const queryClient = postgres(process.env.DATABASE_URL);
-
+const queryClient = postgres(process.env.DATABASE_URL);
 export const db = drizzle(queryClient, { schema });
