@@ -130,7 +130,7 @@ const server = registerRoutes(app);
     serveStatic(app);
   }
 
-  const PORT = 5000;
+  const PORT = process.env.PORT || 5173;
   server.listen(PORT, '0.0.0.0', () => {
     log(`serving on port ${PORT}`);
   });
