@@ -16,6 +16,7 @@ import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -29,6 +30,7 @@ export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useUser();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -45,7 +47,11 @@ export default function AuthForm() {
       console.log(`Attempting ${mode} with:`, { email: data.email }); // Debug log
       const result = await (mode === "login" 
         ? signIn({ email: data.email, password: data.password })
-        : signUp({ email: data.email, password: data.password, username: data.username || data.email.split('@')[0] })
+        : signUp({ 
+            email: data.email, 
+            password: data.password, 
+            username: data.username || data.email.split('@')[0] 
+          })
       );
 
       console.log(`${mode} result:`, result); // Debug log
@@ -55,10 +61,8 @@ export default function AuthForm() {
           variant: "destructive",
           description: result.message || `Failed to ${mode}. Please try again.`,
         });
-      } else {
-        toast({
-          description: mode === "login" ? "Successfully logged in!" : "Account created successfully!",
-        });
+        // Reset form only on error
+        form.reset();
       }
     } catch (error) {
       console.error(`${mode} error:`, error);
@@ -66,13 +70,19 @@ export default function AuthForm() {
         variant: "destructive",
         description: (error as Error).message || `Failed to ${mode}. Please try again.`,
       });
+      form.reset();
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Tabs defaultValue="login" className="w-full">
+    <Tabs 
+      defaultValue="login" 
+      value={activeTab}
+      onValueChange={(value) => setActiveTab(value as "login" | "register")}
+      className="w-full"
+    >
       <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="login">Login</TabsTrigger>
         <TabsTrigger value="register">Register</TabsTrigger>
@@ -92,6 +102,7 @@ export default function AuthForm() {
                       placeholder="Enter your email" 
                       {...field} 
                       disabled={isLoading}
+                      autoComplete="email"
                     />
                   </FormControl>
                   <FormMessage />
@@ -110,6 +121,7 @@ export default function AuthForm() {
                       placeholder="Enter your password" 
                       {...field} 
                       disabled={isLoading}
+                      autoComplete="current-password"
                     />
                   </FormControl>
                   <FormMessage />
@@ -144,6 +156,7 @@ export default function AuthForm() {
                       placeholder="Enter your email" 
                       {...field} 
                       disabled={isLoading}
+                      autoComplete="email"
                     />
                   </FormControl>
                   <FormMessage />
@@ -161,6 +174,7 @@ export default function AuthForm() {
                       placeholder="Choose a username" 
                       {...field} 
                       disabled={isLoading}
+                      autoComplete="username"
                     />
                   </FormControl>
                   <FormMessage />
@@ -179,6 +193,7 @@ export default function AuthForm() {
                       placeholder="Choose a password" 
                       {...field} 
                       disabled={isLoading}
+                      autoComplete="new-password"
                     />
                   </FormControl>
                   <FormMessage />

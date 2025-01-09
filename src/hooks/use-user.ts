@@ -13,36 +13,8 @@ export function useUser() {
   const [error, setError] = useState<Error | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', !!session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('Auth state changed:', _event, !!session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
+  // Fetch profile function now returns a boolean indicating success
+  const fetchProfile = async (userId: string): Promise<boolean> => {
     try {
       console.log('Fetching profile for user:', userId);
       const { data, error: dbError } = await supabase
@@ -65,23 +37,85 @@ export function useUser() {
             .select()
             .single();
 
-          if (createError) throw createError;
+          if (createError) {
+            console.error('Error creating profile:', createError);
+            return false;
+          }
+
           setProfile(newProfile);
+          return true;
         } else {
-          throw dbError;
+          console.error('Error fetching profile:', dbError);
+          return false;
         }
-      } else {
-        setProfile(data);
       }
+
+      setProfile(data);
+      return true;
     } catch (error) {
-      console.error('Error fetching/creating profile:', error);
+      console.error('Error in fetchProfile:', error);
       setError(error as Error);
-    } finally {
-      setIsLoading(false);
+      return false;
     }
   };
 
+  useEffect(() => {
+    let ignore = false;
+
+    // Get initial session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initial session check:', !!session);
+
+        if (!ignore) {
+          if (session?.user) {
+            setUser(session.user);
+            await fetchProfile(session.user.id);
+          } else {
+            setUser(null);
+            setProfile(null);
+          }
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error in initializeAuth:', error);
+        if (!ignore) {
+          setError(error as Error);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, !!session);
+
+      if (!ignore) {
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        } else {
+          setUser(null);
+          setProfile(null);
+        }
+        setIsLoading(false);
+      }
+    });
+
+    // Cleanup
+    return () => {
+      ignore = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const signIn = async ({ email, password }: { email: string; password: string }) => {
+    setIsLoading(true);
     try {
       console.log('Attempting sign in for:', email);
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -90,11 +124,18 @@ export function useUser() {
       });
 
       if (error) throw error;
+
       if (data.user) {
+        // Make sure profile is fetched and created if needed
+        const profileSuccess = await fetchProfile(data.user.id);
+        if (!profileSuccess) {
+          throw new Error('Failed to load user profile');
+        }
         toast({
           description: "Successfully logged in!",
         });
       }
+
       return { ok: true };
     } catch (error) {
       console.error('Sign in error:', error);
@@ -102,11 +143,17 @@ export function useUser() {
         variant: "destructive",
         description: (error as Error).message,
       });
-      return { ok: false, message: (error as Error).message };
+      return { 
+        ok: false, 
+        message: (error as Error).message 
+      };
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signUp = async ({ email, password, username }: { email: string; password: string; username: string }) => {
+    setIsLoading(true);
     try {
       console.log('Attempting sign up for:', email);
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -136,7 +183,12 @@ export function useUser() {
         variant: "destructive",
         description: (error as Error).message,
       });
-      return { ok: false, message: (error as Error).message };
+      return { 
+        ok: false, 
+        message: (error as Error).message 
+      };
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -155,12 +207,15 @@ export function useUser() {
         variant: "destructive",
         description: (error as Error).message,
       });
-      return { ok: false, message: (error as Error).message };
+      return { 
+        ok: false, 
+        message: (error as Error).message 
+      };
     }
   };
 
   return {
-    user: profile,
+    user: profile || user,  // Return profile if available, otherwise return auth user
     isLoading,
     error,
     signIn,

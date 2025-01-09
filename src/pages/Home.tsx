@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import leewayLogo from "../../../attached_assets/leeway-logo3.png";
+import logoPath from '@/assets/leeway-logo3.png'
 import {
   CommandDialog,
   CommandEmpty,
@@ -81,7 +81,7 @@ export default function Home() {
         <div className="flex items-center">
           <div className="w-64 p-4">
             <div className="flex items-center gap-2">
-              <img src={leewayLogo} alt="Leeway Logo" className="w-6 h-6" />
+              <img src={logoPath} alt="Leeway Logo" className="w-6 h-6" />
               <h1 className="font-bold text-xl">Leeway</h1>
             </div>
           </div>

@@ -1,7 +1,14 @@
+import dotenv from 'dotenv'
+import { config } from 'dotenv'
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { createClient, type User } from '@supabase/supabase-js';
+import cors from "cors";
+import session from "express-session";
+
+// Load .env.local first, fall back to .env
+config({ path: '.env.local' })
 
 if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
   throw new Error('Missing Supabase environment variables');
@@ -31,6 +38,22 @@ declare global {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cors());
+
+if (!process.env.SESSION_SECRET) {
+  console.warn('No SESSION_SECRET set, using insecure default!');
+}
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-key-change-me',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
 
 // Add CORS middleware for Supabase authentication
 app.use((req, res, next) => {
@@ -97,17 +120,10 @@ app.use((req, res, next) => {
   next();
 });
 
+// Make sure API routes are registered BEFORE Vite middleware
+const server = registerRoutes(app);
+
 (async () => {
-  const server = registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
@@ -115,7 +131,7 @@ app.use((req, res, next) => {
   }
 
   const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, '0.0.0.0', () => {
     log(`serving on port ${PORT}`);
   });
 })();
