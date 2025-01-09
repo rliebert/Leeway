@@ -28,6 +28,7 @@ type AuthFormData = z.infer<typeof authSchema>;
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useUser();
+  const { toast } = useToast();
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -41,14 +42,30 @@ export default function AuthForm() {
   const onSubmit = async (data: AuthFormData, mode: "login" | "register") => {
     setIsLoading(true);
     try {
+      console.log(`Attempting ${mode} with:`, { email: data.email }); // Debug log
       const result = await (mode === "login" 
         ? signIn({ email: data.email, password: data.password })
         : signUp({ email: data.email, password: data.password, username: data.username || data.email.split('@')[0] })
       );
 
+      console.log(`${mode} result:`, result); // Debug log
+
       if (!result.ok) {
-        throw new Error(result.message);
+        toast({
+          variant: "destructive",
+          description: result.message || `Failed to ${mode}. Please try again.`,
+        });
+      } else {
+        toast({
+          description: mode === "login" ? "Successfully logged in!" : "Account created successfully!",
+        });
       }
+    } catch (error) {
+      console.error(`${mode} error:`, error);
+      toast({
+        variant: "destructive",
+        description: (error as Error).message || `Failed to ${mode}. Please try again.`,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -138,7 +155,7 @@ export default function AuthForm() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Username (optional)</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Choose a username" 

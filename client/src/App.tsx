@@ -1,5 +1,3 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../utils/supabase";
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
@@ -7,10 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import DirectMessageView from "@/components/chat/DirectMessageView";
-import leewayLogo from "../../attached_assets/leeway-logo3.png";
 import AuthForm from "@/components/auth/AuthForm";
 
-// Keep the existing AuthenticatedApp component
 function AuthenticatedApp() {
   return (
     <WSProvider>
@@ -29,7 +25,6 @@ function AuthenticatedApp() {
   );
 }
 
-// Keep the existing NotFound component
 function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
@@ -53,7 +48,7 @@ function NotFound() {
 function App() {
   const { user, isLoading } = useUser();
 
-  console.log("Auth state:", { isLoading, hasUser: !!user });
+  console.log("Auth state in App:", { isLoading, user });
 
   if (isLoading) {
     return (
@@ -69,7 +64,6 @@ function App() {
         <Card className="w-full max-w-sm">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-4">
-              <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
               <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
             </div>
             <AuthForm />
@@ -83,29 +77,3 @@ function App() {
 }
 
 export default App;
-
-// function Page() {
-//   const [todos, setTodos] = useState([]);
-
-//   useEffect(() => {
-//     async function getTodos() {
-//       const { data: todos } = await supabase.from("todos").select();
-
-//       if (todos.length > 1) {
-//         setTodos(todos);
-//       }
-//     }
-
-//     getTodos();
-//   }, []);
-
-//   return (
-//     <div>
-//       {todos.map((todo) => (
-//         <li key={todo}>{todo}</li>
-//       ))}
-//     </div>
-//   );
-// }
-
-// export default Page;

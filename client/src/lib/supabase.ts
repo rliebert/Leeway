@@ -4,7 +4,6 @@ import type { Database } from '@/types/supabase';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Add debug logging
 console.log('Initializing Supabase client with URL:', supabaseUrl);
 console.log('Supabase anon key available:', !!supabaseKey);
 
@@ -22,12 +21,29 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    debug: true // Enable debug mode
+    debug: true,
   }
 });
 
-// Set up auth state change listener
+// Set up auth state change listener with detailed logging
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('Supabase auth event:', event);
-  console.log('Session exists:', !!session);
+  console.log('Session details:', {
+    hasSession: !!session,
+    user: session?.user ? {
+      id: session.user.id,
+      email: session.user.email,
+    } : null,
+  });
+});
+
+// Initialize auth state
+supabase.auth.getSession().then(({ data: { session } }) => {
+  console.log('Initial auth state:', {
+    hasSession: !!session,
+    user: session?.user ? {
+      id: session.user.id,
+      email: session.user.email,
+    } : null,
+  });
 });
