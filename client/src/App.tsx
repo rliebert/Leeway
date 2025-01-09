@@ -7,7 +7,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthForm from "@/components/auth/AuthForm";
 import DirectMessageView from "@/components/chat/DirectMessageView";
-import leewayLogo from "../../attached_assets/leeway-logo2a.png";
+import leewayLogo from "../../attached_assets/leeway-logo3.png";
 
 // Remove AutoLogin component as it interferes with normal login flow
 function AuthenticatedApp() {

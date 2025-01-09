@@ -2,7 +2,7 @@ import { useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import leewayLogo from "../../../attached_assets/leeway-logo2a.png";
+import leewayLogo from "../../../attached_assets/leeway-logo3.png";
 import {
   CommandDialog,
   CommandEmpty,
