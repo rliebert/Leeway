@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { supabase } from "../utils/supabase";
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
@@ -17,7 +18,9 @@ function AuthenticatedApp() {
         <Switch>
           <Route path="/" component={Home} />
           <Route path="/dm/:channelId">
-            {(params) => <DirectMessageView channelId={parseInt(params.channelId)} />}
+            {(params) => (
+              <DirectMessageView channelId={parseInt(params.channelId)} />
+            )}
           </Route>
           <Route component={NotFound} />
         </Switch>
@@ -34,7 +37,9 @@ function NotFound() {
         <CardContent className="pt-6">
           <div className="flex mb-4 gap-2">
             <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">404 Page Not Found</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              404 Page Not Found
+            </h1>
           </div>
           <p className="mt-4 text-sm text-gray-600">
             Did you forget to add the page to the router?
@@ -48,7 +53,7 @@ function NotFound() {
 function App() {
   const { user, isLoading } = useUser();
 
-  console.log('Auth state:', { isLoading, hasUser: !!user });
+  console.log("Auth state:", { isLoading, hasUser: !!user });
 
   if (isLoading) {
     return (
@@ -78,3 +83,29 @@ function App() {
 }
 
 export default App;
+
+// function Page() {
+//   const [todos, setTodos] = useState([]);
+
+//   useEffect(() => {
+//     async function getTodos() {
+//       const { data: todos } = await supabase.from("todos").select();
+
+//       if (todos.length > 1) {
+//         setTodos(todos);
+//       }
+//     }
+
+//     getTodos();
+//   }, []);
+
+//   return (
+//     <div>
+//       {todos.map((todo) => (
+//         <li key={todo}>{todo}</li>
+//       ))}
+//     </div>
+//   );
+// }
+
+// export default Page;

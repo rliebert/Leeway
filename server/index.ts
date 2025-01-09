@@ -10,7 +10,13 @@ if (!process.env.VITE_SUPABASE_URL || !process.env.VITE_SUPABASE_ANON_KEY) {
 // Initialize Supabase client for server-side auth verification
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_ANON_KEY, 
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true
+    }
+  }
 );
 
 // Extend Express Request type to include Supabase user
@@ -26,7 +32,7 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Add CORS middleware to allow Supabase authentication
+// Add CORS middleware for Supabase authentication
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

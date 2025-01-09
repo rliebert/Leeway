@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2 } from "lucide-react";
 
 const authSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -27,7 +28,6 @@ type AuthFormData = z.infer<typeof authSchema>;
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signUp } = useUser();
-  const { toast } = useToast();
 
   const form = useForm<AuthFormData>({
     resolver: zodResolver(authSchema),
@@ -49,15 +49,6 @@ export default function AuthForm() {
       if (!result.ok) {
         throw new Error(result.message);
       }
-
-      toast({
-        description: mode === "login" ? "Logged in successfully" : "Registration successful",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        description: (error as Error).message,
-      });
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +70,12 @@ export default function AuthForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="Enter your email" {...field} />
+                    <Input 
+                      type="email" 
+                      placeholder="Enter your email" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -92,14 +88,26 @@ export default function AuthForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Enter your password" {...field} />
+                    <Input 
+                      type="password" 
+                      placeholder="Enter your password" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Loading..." : "Login"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging in...
+                </>
+              ) : (
+                "Login"
+              )}
             </Button>
           </form>
         </Form>
@@ -114,7 +122,12 @@ export default function AuthForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="Enter your email" {...field} />
+                    <Input 
+                      type="email" 
+                      placeholder="Enter your email" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -127,7 +140,11 @@ export default function AuthForm() {
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="Choose a username" {...field} />
+                    <Input 
+                      placeholder="Choose a username" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -140,14 +157,26 @@ export default function AuthForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Choose a password" {...field} />
+                    <Input 
+                      type="password" 
+                      placeholder="Choose a password" 
+                      {...field} 
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Loading..." : "Register"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Register"
+              )}
             </Button>
           </form>
         </Form>
