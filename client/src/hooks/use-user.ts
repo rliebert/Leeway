@@ -8,9 +8,9 @@ export function useUser() {
   const mappedUser: User | null = user && isSignedIn ? {
     id: parseInt(user.id),
     username: user.username || user.firstName || 'User',
-    password: undefined, // Password is optional now
+    password: null, // Password is optional now
     avatar: user.imageUrl,
-    lastActiveAt: new Date(user.lastSignInAt || Date.now()),
+    lastActiveAt: user.lastSignInAt ? new Date(user.lastSignInAt) : null,
     createdAt: new Date(user.createdAt),
   } : null;
 

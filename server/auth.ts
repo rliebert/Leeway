@@ -1,5 +1,5 @@
 import { type Express, type Request } from "express";
-import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
+import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 
 // Extend Express Request type to include Clerk's auth property
 declare global {
@@ -27,25 +27,33 @@ declare global {
   }
 }
 
+if (!process.env.CLERK_SECRET_KEY) {
+  throw new Error('Missing CLERK_SECRET_KEY environment variable');
+}
+
 // Authentication middleware using Clerk
-export const requireAuth = ClerkExpressRequireAuth({
-  // By default, ClerkExpressRequireAuth includes CSRF protection
-  // Set "strict" to false if you want to allow access to your API from non-browser clients
-  strict: false,
-});
+export const requireAuth = ClerkExpressWithAuth();
 
 export function setupAuth(app: Express) {
-  // Remove all auth-related routes since Clerk handles them
-  app.get("/api/user", requireAuth, (req: Request, res) => {
-    // Clerk user data is available in req.auth
-    const user = {
-      id: parseInt(req.auth.userId),
-      username: req.auth.sessionClaims?.username || 'User',
-      avatar: req.auth.sessionClaims?.image_url,
-      lastActiveAt: new Date(),
-      createdAt: new Date(req.auth.sessionClaims?.created_at || Date.now()),
-    };
+  app.get("/api/user", requireAuth, async (req: Request, res) => {
+    try {
+      if (!req.auth?.userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
 
-    res.json(user);
+      // Map Clerk user data to our User type
+      const mappedUser = {
+        id: parseInt(req.auth.userId),
+        username: req.auth.sessionClaims?.username || 'User',
+        avatar: req.auth.sessionClaims?.image_url,
+        lastActiveAt: new Date(),
+        createdAt: new Date(req.auth.sessionClaims?.created_at || Date.now()),
+      };
+
+      res.json(mappedUser);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      res.status(500).json({ error: 'Failed to fetch user details' });
+    }
   });
 }
