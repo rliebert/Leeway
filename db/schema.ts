@@ -89,6 +89,10 @@ export const sectionsRelations = relations(sections, ({ one, many }) => ({
   channels: many(channels),
 }));
 
+// Export schemas for validation
+export const insertUserSchema = createInsertSchema(users);
+export const selectUserSchema = createSelectSchema(users);
+
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

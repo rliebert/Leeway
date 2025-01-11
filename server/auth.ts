@@ -5,9 +5,9 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users } from "@db/schema";
+import { users, type User } from "@db/schema";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -39,6 +39,13 @@ const registrationSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Invalid email address"),
 });
+
+// Extend Express.User with our User type
+declare global {
+  namespace Express {
+    interface User extends User {}
+  }
+}
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
@@ -94,11 +101,11 @@ export function setupAuth(app: Express) {
     })
   );
 
-  passport.serializeUser((user, done) => {
+  passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
   });
 
-  passport.deserializeUser(async (id: string, done) => {
+  passport.deserializeUser(async (id: number, done) => {
     try {
       const [user] = await db
         .select()
@@ -146,15 +153,18 @@ export function setupAuth(app: Express) {
       const hashedPassword = await crypto.hash(password);
 
       // Create the new user - make first user an admin
-      const [count] = await db.select({ count: db.fn.count() }).from(users);
-      const isFirstUser = Number(count.count) === 0;
+      const [{ count }] = await db.select({ 
+        count: sql<number>`cast(count(*) as integer)` 
+      }).from(users);
+
+      const isFirstUser = count === 0;
 
       const [newUser] = await db
         .insert(users)
         .values({
           username,
           password: hashedPassword,
-          email: `${username}@example.com`,
+          email: result.data.email,
           is_admin: isFirstUser,
           role: isFirstUser ? 'admin' : 'user'
         })
