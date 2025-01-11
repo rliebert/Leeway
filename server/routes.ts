@@ -133,7 +133,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/channels", requireAuth, async (req, res) => {
+  app.post("/api/channels", requireAuth, async (req: any, res) => {
     const { name, description, section_id } = req.body;
 
     if (!name?.trim()) {
@@ -141,19 +141,31 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const [channel] = await db
+      // Convert section_id to null if it's "unsectioned" or an empty string
+      const finalSectionId = section_id && section_id !== "unsectioned" ? section_id : null;
+
+      // Create the channel
+      const [newChannel] = await db
         .insert(channels)
         .values({
           name: name.trim(),
-          description: description?.trim(),
-          section_id: section_id || null,
+          description: description?.trim() || null,
+          section_id: finalSectionId,
+          creator_id: req.user.id,
+          order_index: 0,
         })
         .returning();
 
+      if (!newChannel) {
+        throw new Error("Failed to create channel");
+      }
+
+      // Fetch the complete channel data with relations
       const fullChannel = await db.query.channels.findFirst({
-        where: eq(channels.id, channel.id),
+        where: eq(channels.id, newChannel.id),
         with: {
           section: true,
+          creator: true,
         },
       });
 
@@ -164,26 +176,19 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.put("/api/channels/:id", requireAuth, async (req, res) => {
+  app.put("/api/channels/:id", requireAuth, async (req: any, res) => {
+    const { name, description, section_id } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Channel name is required" });
+    }
+
     try {
-      const { name, description, section_id } = req.body;
+      // Convert section_id to null if it's "unsectioned" or an empty string
+      const finalSectionId = section_id && section_id !== "unsectioned" ? section_id : null;
 
-      if (!name?.trim()) {
-        return res.status(400).json({ error: "Channel name is required" });
-      }
-
-      // Convert section_id to null if it's "unsectioned" or an invalid UUID
-      let finalSectionId: string | null = null;
-      if (section_id && section_id !== "unsectioned") {
-        try {
-          finalSectionId = section_id;
-        } catch (e) {
-          console.error("Invalid section_id format:", e);
-          return res.status(400).json({ error: "Invalid section ID format" });
-        }
-      }
-
-      const [channel] = await db
+      // Update the channel
+      const [updatedChannel] = await db
         .update(channels)
         .set({
           name: name.trim(),
@@ -193,14 +198,16 @@ export function registerRoutes(app: Express): Server {
         .where(eq(channels.id, req.params.id))
         .returning();
 
-      if (!channel) {
+      if (!updatedChannel) {
         return res.status(404).json({ error: "Channel not found" });
       }
 
+      // Fetch the complete channel data with relations
       const fullChannel = await db.query.channels.findFirst({
-        where: eq(channels.id, channel.id),
+        where: eq(channels.id, updatedChannel.id),
         with: {
           section: true,
+          creator: true,
         },
       });
 
@@ -320,6 +327,7 @@ export function registerRoutes(app: Express): Server {
     });
   });
 
+  // WebSocket connection handling
   wss.on("connection", (ws) => {
     console.log("New WebSocket connection established");
 
@@ -328,7 +336,6 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          // Handle channel message
           const savedMessage = await db
             .insert(messages)
             .values({
