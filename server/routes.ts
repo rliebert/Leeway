@@ -8,6 +8,7 @@ import multer from "multer";
 import { setupAuth } from "./auth";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
+import type { User } from "@db/schema";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -30,7 +31,7 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Admin routes
-  app.post("/api/admin/set", requireAuth, async (req, res) => {
+  app.post("/api/admin/set", requireAuth, async (req: any, res) => {
     try {
       const [user] = await db
         .update(users)
@@ -38,7 +39,7 @@ export function registerRoutes(app: Express): Server {
           is_admin: true,
           role: "admin",
         })
-        .where(eq(users.id, req.user!.id))
+        .where(eq(users.id, (req.user as User).id))
         .returning();
 
       res.json({ message: "Admin privileges granted", user });
@@ -49,13 +50,13 @@ export function registerRoutes(app: Express): Server {
   });
 
   // User routes
-  app.get("/api/users", requireAuth, async (req, res) => {
+  app.get("/api/users", requireAuth, async (req: any, res) => {
     try {
       // Update current user's last active time
       await db
         .update(users)
         .set({ last_active: new Date() })
-        .where(eq(users.id, req.user!.id));
+        .where(eq(users.id, (req.user as User).id));
 
       // Fetch all users
       const allUsers = await db.query.users.findMany({
@@ -75,7 +76,7 @@ export function registerRoutes(app: Express): Server {
         with: {
           channels: true,
         },
-        orderBy: (sections, { asc }) => [asc(sections.order_index)],
+        orderBy: [asc(sections.order_index)],
       });
       res.json(allSections);
     } catch (error) {
@@ -94,7 +95,7 @@ export function registerRoutes(app: Express): Server {
     try {
       // Get the highest order_index
       const sections = await db.query.sections.findMany({
-        orderBy: (sections, { desc }) => [desc(sections.order_index)],
+        orderBy: [desc(sections.order_index)],
         limit: 1,
       });
 
@@ -124,7 +125,7 @@ export function registerRoutes(app: Express): Server {
           section: true,
           creator: true,
         },
-        orderBy: (channels, { asc }) => [asc(channels.order_index)],
+        orderBy: [asc(channels.order_index)],
       });
       res.json(allChannels);
     } catch (error) {
@@ -151,7 +152,7 @@ export function registerRoutes(app: Express): Server {
           name: name.trim(),
           description: description?.trim() || null,
           section_id: finalSectionId,
-          creator_id: req.user.id,
+          creator_id: (req.user as User).id,
           order_index: 0,
         })
         .returning();
@@ -173,89 +174,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error creating channel:", error);
       res.status(500).json({ error: "Failed to create channel" });
-    }
-  });
-
-  app.put("/api/channels/:id", requireAuth, async (req: any, res) => {
-    const { name, description, section_id } = req.body;
-
-    if (!name?.trim()) {
-      return res.status(400).json({ error: "Channel name is required" });
-    }
-
-    try {
-      // Convert section_id to null if it's "unsectioned" or an empty string
-      const finalSectionId = section_id && section_id !== "unsectioned" ? section_id : null;
-
-      // Update the channel
-      const [updatedChannel] = await db
-        .update(channels)
-        .set({
-          name: name.trim(),
-          description: description?.trim() || null,
-          section_id: finalSectionId,
-        })
-        .where(eq(channels.id, req.params.id))
-        .returning();
-
-      if (!updatedChannel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      // Fetch the complete channel data with relations
-      const fullChannel = await db.query.channels.findFirst({
-        where: eq(channels.id, updatedChannel.id),
-        with: {
-          section: true,
-          creator: true,
-        },
-      });
-
-      res.json(fullChannel);
-    } catch (error) {
-      console.error("Error updating channel:", error);
-      res.status(500).json({ error: "Failed to update channel" });
-    }
-  });
-
-  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
-    try {
-      // First delete all messages in the channel
-      await db
-        .delete(messages)
-        .where(eq(messages.channel_id, req.params.id));
-
-      // Then delete the channel
-      const [deletedChannel] = await db
-        .delete(channels)
-        .where(eq(channels.id, req.params.id))
-        .returning();
-
-      if (!deletedChannel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      res.json({ message: "Channel deleted successfully", channel: deletedChannel });
-    } catch (error) {
-      console.error("Error deleting channel:", error);
-      res.status(500).json({ error: "Failed to delete channel" });
-    }
-  });
-
-  // Message routes
-  app.get("/api/channels/:id/messages", requireAuth, async (req, res) => {
-    try {
-      const channelMessages = await db.query.messages.findMany({
-        where: eq(messages.channel_id, req.params.id),
-        with: {
-          author: true,
-        },
-        orderBy: (messages, { desc }) => [desc(messages.created_at)],
-      });
-      res.json(channelMessages);
-    } catch (error) {
-      console.error("Error fetching channel messages:", error);
-      res.status(500).send("Failed to fetch messages");
     }
   });
 
@@ -302,7 +220,7 @@ export function registerRoutes(app: Express): Server {
           author: true,
           channel: true,
         },
-        orderBy: (messages, { desc }) => [desc(messages.created_at)],
+        orderBy: [desc(messages.created_at)],
         limit: 10,
       });
 
@@ -336,7 +254,7 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          const savedMessage = await db
+          const [savedMessage] = await db
             .insert(messages)
             .values({
               content: message.content,
@@ -345,24 +263,26 @@ export function registerRoutes(app: Express): Server {
             })
             .returning();
 
-          const fullMessage = await db.query.messages.findFirst({
-            where: eq(messages.id, savedMessage[0].id),
-            with: {
-              author: true,
-            },
-          });
-
-          if (fullMessage) {
-            const broadcastMessage = JSON.stringify({
-              type: "message",
-              message: fullMessage,
+          if (savedMessage) {
+            const fullMessage = await db.query.messages.findFirst({
+              where: eq(messages.id, savedMessage.id),
+              with: {
+                author: true,
+              },
             });
 
-            wss.clients.forEach((client) => {
-              if (client.readyState === ws.OPEN) {
-                client.send(broadcastMessage);
-              }
-            });
+            if (fullMessage) {
+              const broadcastMessage = JSON.stringify({
+                type: "message",
+                message: fullMessage,
+              });
+
+              wss.clients.forEach((client) => {
+                if (client.readyState === ws.OPEN) {
+                  client.send(broadcastMessage);
+                }
+              });
+            }
           }
         }
       } catch (error) {
