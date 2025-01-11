@@ -34,9 +34,9 @@ export function registerRoutes(app: Express): Server {
     try {
       const [user] = await db
         .update(users)
-        .set({ 
+        .set({
           is_admin: true,
-          role: 'admin'
+          role: "admin",
         })
         .where(eq(users.id, req.user!.id))
         .returning();
@@ -208,6 +208,30 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error updating channel:", error);
       res.status(500).json({ error: "Failed to update channel" });
+    }
+  });
+
+  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
+    try {
+      // First delete all messages in the channel
+      await db
+        .delete(messages)
+        .where(eq(messages.channel_id, req.params.id));
+
+      // Then delete the channel
+      const [deletedChannel] = await db
+        .delete(channels)
+        .where(eq(channels.id, req.params.id))
+        .returning();
+
+      if (!deletedChannel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      res.json({ message: "Channel deleted successfully", channel: deletedChannel });
+    } catch (error) {
+      console.error("Error deleting channel:", error);
+      res.status(500).json({ error: "Failed to delete channel" });
     }
   });
 

@@ -12,7 +12,7 @@ export const users = pgTable("users", {
   status: text("status"),
   last_active: timestamp("last_active"),
   created_at: timestamp("created_at").defaultNow(),
-  role: text("role").default('user').notNull(), // 'admin' or 'user'
+  role: text("role").default('user').notNull(),
   is_admin: boolean("is_admin").default(false).notNull(),
 });
 
@@ -31,12 +31,12 @@ export const channels = pgTable("channels", {
   section_id: uuid("section_id").references(() => sections.id),
   creator_id: uuid("creator_id").references(() => users.id),
   created_at: timestamp("created_at").defaultNow(),
-  order_index: integer("order_index").notNull(),
+  order_index: integer("order_index").notNull().default(0),
 });
 
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  channel_id: uuid("channel_id").references(() => channels.id),
+  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: 'cascade' }),
   user_id: uuid("user_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
   created_at: timestamp("created_at").defaultNow(),
@@ -57,7 +57,7 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.channel_id],
     references: [channels.id],
   }),
-  user: one(users, {
+  author: one(users, {
     fields: [messages.user_id],
     references: [users.id],
   }),
@@ -93,10 +93,11 @@ export const sectionsRelations = relations(sections, ({ one, many }) => ({
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Message = typeof messages.$inferSelect & {
-  user?: User;
+  author?: User;
   channel?: Channel;
 };
 export type Channel = typeof channels.$inferSelect & {
+  section?: Section;
   creator?: User;
 };
 export type Section = typeof sections.$inferSelect & {
