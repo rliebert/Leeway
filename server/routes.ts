@@ -4,19 +4,10 @@ import { WebSocketServer } from "ws";
 import { db } from "@db";
 import { messages, channels, users, sections } from "@db/schema";
 import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
-import multer from "multer";
 import { setupAuth } from "./auth";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
-import type { User } from "@db/schema";
-
-// Configure multer for memory storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
-  },
-});
+import type { User, Message, Channel, Section } from "@db/schema";
 
 // Authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -29,6 +20,12 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware
   setupAuth(app);
+
+  // Register DM routes with authentication
+  app.use("/api/dm", requireAuth, dmRoutes);
+
+  // Register upload routes
+  registerUploadRoutes(app);
 
   // Admin routes
   app.post("/api/admin/set", requireAuth, async (req: any, res) => {
@@ -72,13 +69,13 @@ export function registerRoutes(app: Express): Server {
   // Section routes
   app.get("/api/sections", requireAuth, async (_req, res) => {
     try {
-      const allSections = await db.query.sections.findMany({
+      const sectionsList = await db.query.sections.findMany({
         with: {
           channels: true,
         },
         orderBy: [asc(sections.order_index)],
       });
-      res.json(allSections);
+      res.json(sectionsList);
     } catch (error) {
       console.error("Error fetching sections:", error);
       res.status(500).send("Failed to fetch sections");
@@ -94,12 +91,12 @@ export function registerRoutes(app: Express): Server {
 
     try {
       // Get the highest order_index
-      const sections = await db.query.sections.findMany({
+      const existingSections = await db.query.sections.findMany({
         orderBy: [desc(sections.order_index)],
         limit: 1,
       });
 
-      const newOrderIndex = sections.length > 0 ? sections[0].order_index + 1 : 0;
+      const newOrderIndex = existingSections.length > 0 ? existingSections[0].order_index + 1 : 0;
 
       // Create the section
       const [section] = await db
@@ -177,39 +174,10 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Register DM routes
-  app.use("/api/dm", requireAuth, dmRoutes);
-
-  // Register upload routes
-  registerUploadRoutes(app);
-
-  // Avatar upload endpoint
-  app.post("/api/users/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).send("No file uploaded");
-      }
-
-      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-
-      await db
-        .update(users)
-        .set({ avatar_url: base64Image })
-        .where(eq(users.id, req.params.id));
-
-      res.json({ message: "Avatar updated successfully" });
-    } catch (error) {
-      console.error("Error updating avatar:", error);
-      res.status(500).send("Error updating avatar");
-    }
-  });
-
   // Search messages
   app.get("/api/messages/search", requireAuth, async (req, res) => {
     try {
       const query = req.query.q;
-      console.log("Search query received:", query);
-
       if (!query || typeof query !== "string" || query.trim().length < 2) {
         return res.status(400).json({ error: "Search query must be at least 2 characters" });
       }
