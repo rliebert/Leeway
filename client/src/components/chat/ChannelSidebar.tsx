@@ -587,7 +587,7 @@ export default function ChannelSidebar({
                         <SelectValue placeholder="Select a section" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Unsectioned</SelectItem>
+                        <SelectItem value="">No section</SelectItem>
                         {sections.map((section) => (
                           <SelectItem key={section.id} value={section.id.toString()}>
                             {section.name}
@@ -648,7 +648,7 @@ export default function ChannelSidebar({
                         <SelectValue placeholder="Select a section" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Unsectioned</SelectItem>
+                        <SelectItem value="">No section</SelectItem>
                         {sections.map((section) => (
                           <SelectItem key={section.id} value={section.id.toString()}>
                             {section.name}
