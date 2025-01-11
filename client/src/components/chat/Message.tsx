@@ -55,9 +55,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         className="group hover:bg-muted rounded-lg -mx-4 px-4 py-1.5 transition-all duration-200 ease-in-out"
       >
         <div className="flex gap-4">
-          <Avatar className="group-hover:ring-2 group-hover:ring-primary transition-all">
-            <AvatarImage src={message.user?.avatar || ''} />
-            <AvatarFallback className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+          <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
+            <AvatarImage src={message.user?.avatar_url || undefined} />
+            <AvatarFallback className="bg-primary/10">
               {message.user?.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
@@ -147,9 +147,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           <div className="ml-12 pl-4 border-l mt-2">
             {allReplies.map((reply) => (
               <div key={reply.id} className="flex gap-4 mt-2">
-                <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
-                  <AvatarImage src={reply.user?.avatar || ''} />
-                  <AvatarFallback className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={reply.user?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary/10">
                     {reply.user?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

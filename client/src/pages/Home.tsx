@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Hash, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import logoPath from '@/assets/leeway-logo3.png'
+import leewayLogo from "../../../attached_assets/leeway-logo3.svg";
 import {
   CommandDialog,
   CommandEmpty,
@@ -19,7 +19,6 @@ import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
 import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
 interface SearchResult extends Message {
   user?: {
@@ -30,12 +29,17 @@ interface SearchResult extends Message {
   };
 }
 
-export default function Home() {
+interface HomeProps {
+  selectedChannel: string | null;
+  onSelectChannel: (channelId: string) => void;
+}
+
+export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
-  const [selectedChannel, setSelectedChannel] = useState<number>(1);
-  const [selectedDM, setSelectedDM] = useState<number | null>(null);
+  const [selectedDM, setSelectedDM] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -47,21 +51,38 @@ export default function Home() {
     enabled: searchQuery.length > 0 && !!user,
   });
 
-  const currentChannel = channels?.find(channel => channel.id === selectedChannel);
+  // Update local state when prop changes
+  useEffect(() => {
+    setLocalSelectedChannel(initialSelectedChannel);
+  }, [initialSelectedChannel]);
+
+  const currentChannel = channels?.find(
+    channel => channel.id.toString() === localSelectedChannel
+  );
 
   const handleSearch = useDebouncedCallback((value: string) => {
     setSearchQuery(value);
   }, 300);
 
-  const handleSelectChannel = (channelId: number) => {
-    setSelectedChannel(channelId);
+  const handleSelectChannel = (channelId: string) => {
+    setLocalSelectedChannel(channelId);
+    onSelectChannel(channelId);
     setSelectedDM(null);
   };
 
-  const handleSelectDM = (dmId: number) => {
+  const handleSelectDM = (dmId: string) => {
     setSelectedDM(dmId);
-    setSelectedChannel(-1);
+    setLocalSelectedChannel(null);
+    onSelectChannel('');
   };
+
+  // Initialize selected channel if none is selected
+  useEffect(() => {
+    if (channels?.length && !localSelectedChannel) {
+      const firstChannel = channels[0].id.toString();
+      handleSelectChannel(firstChannel);
+    }
+  }, [channels, localSelectedChannel]);
 
   if (isLoading) {
     return (
@@ -72,7 +93,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return null; // Auth handled by App.tsx
+    return null;
   }
 
   return (
@@ -81,23 +102,20 @@ export default function Home() {
         <div className="flex items-center">
           <div className="w-64 p-4">
             <div className="flex items-center gap-2">
-              <img src={logoPath} alt="Leeway Logo" className="w-6 h-6" />
+              <img src={leewayLogo} alt="Leeway Logo" className="w-6 h-6" />
               <h1 className="font-bold text-xl">Leeway</h1>
             </div>
           </div>
           <div className="flex-1 p-4">
-            <div className="flex items-center justify-between">
-              <div 
-                onClick={() => setOpen(true)}
-                className="flex-1 flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent mr-4"
-              >
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Search messages...</span>
-                <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
-                  <span className="text-xs">⌘</span>K
-                </kbd>
-              </div>
-              <ConnectionStatus />
+            <div 
+              onClick={() => setOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted cursor-pointer hover:bg-accent mr-4"
+            >
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Search messages...</span>
+              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
+                <span className="text-xs">⌘</span>K
+              </kbd>
             </div>
           </div>
         </div>
@@ -105,7 +123,7 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <div className="w-64 flex flex-col border-r bg-sidebar">
           <ChannelSidebar 
-            selectedChannel={selectedChannel} 
+            selectedChannel={localSelectedChannel || ''} 
             selectedDM={selectedDM}
             onSelectChannel={handleSelectChannel} 
             onSelectDM={handleSelectDM}
@@ -127,10 +145,14 @@ export default function Home() {
                 )}
               </div>
               <ScrollArea className="flex-1">
-                <MessageList channelId={selectedChannel} />
+                <MessageList 
+                  channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
+                />
               </ScrollArea>
               <div className="px-4 py-3 border-t">
-                <ChatInput channelId={selectedChannel} />
+                <ChatInput 
+                  channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
+                />
               </div>
             </>
           )}
@@ -155,7 +177,7 @@ export default function Home() {
               {searchResults.map((message) => (
                 <CommandItem
                   key={message.id}
-                  onSelect={() => handleSelectChannel(message.channelId)}
+                  onSelect={() => handleSelectChannel(message.channelId.toString())}
                   className="flex flex-col items-start gap-1"
                 >
                   <div className="flex items-center gap-2 text-sm">

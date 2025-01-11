@@ -60,7 +60,8 @@ export async function setupVite(app: Express, server: Server) {
       const clientTemplate = path.resolve(
         __dirname,
         "..",
-        "index.html"
+        "client",
+        "index.html",
       );
 
       // always reload the index.html file from disk incase it changes
@@ -90,8 +91,3 @@ export function serveStatic(app: Express) {
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
-
-const indexPaths = {
-  local: path.resolve(__dirname, '../index.html'),
-  prod: path.resolve(__dirname, '../dist/index.html')
-};

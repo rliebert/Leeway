@@ -114,13 +114,13 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     <div className="flex flex-col h-full">
       <div className="border-b p-4 flex items-center gap-3">
         <Avatar className="h-8 w-8">
-          <AvatarImage src={otherUser.avatar || undefined} />
-          <AvatarFallback>
-            {otherUser.username[0].toUpperCase()}
+          <AvatarImage src={otherUser?.avatar_url || undefined} />
+          <AvatarFallback className="bg-primary/10">
+            {otherUser?.username[0].toUpperCase()}
           </AvatarFallback>
         </Avatar>
         <div>
-          <h2 className="font-semibold">{otherUser.username}</h2>
+          <h2 className="font-semibold">{otherUser?.username}</h2>
         </div>
       </div>
 

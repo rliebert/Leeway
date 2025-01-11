@@ -1,90 +1,104 @@
-import { pgTable, text, timestamp, uuid, serial, integer, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer, boolean } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
-// Users table - matches Supabase auth.users structure
 export const users = pgTable("users", {
-  id: text("id").primaryKey(),  // Match Supabase auth.users.id
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").unique().notNull(),
   username: text("username").unique().notNull(),
+  password: text("password").notNull(),
+  full_name: text("full_name"),
   avatar_url: text("avatar_url"),
-  last_active_at: timestamp("last_active_at", { withTimezone: true }).defaultNow(),
-  created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  status: text("status"),
+  last_active: timestamp("last_active"),
+  created_at: timestamp("created_at").defaultNow(),
+  role: text("role").default('user').notNull(), // 'admin' or 'user'
+  is_admin: boolean("is_admin").default(false).notNull(),
 });
 
 export const sections = pgTable("sections", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  creatorId: text("creator_id").references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  order_index: integer("order_index").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  creator_id: uuid("creator_id").references(() => users.id),
 });
 
 export const channels = pgTable("channels", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),
-  creatorId: text("creator_id").references(() => users.id),
-  sectionId: integer("section_id").references(() => sections.id),
-  position: integer("position").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  section_id: uuid("section_id").references(() => sections.id),
+  creator_id: uuid("creator_id").references(() => users.id),
+  created_at: timestamp("created_at").defaultNow(),
+  order_index: integer("order_index").notNull(),
 });
 
 export const messages = pgTable("messages", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").defaultRandom().primaryKey(),
+  channel_id: uuid("channel_id").references(() => channels.id),
+  user_id: uuid("user_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
-  userId: text("user_id").references(() => users.id).notNull(),
-  channelId: integer("channel_id").references(() => channels.id).notNull(),
-  parentMessageId: integer("parent_message_id").references(() => messages.id),
-  attachments: jsonb("attachments").$type<{
-    filename: string;
-    originalName: string;
-    mimetype: string;
-    size: number;
-    url: string;
-  }[]>(),
-  createdAt: timestamp("created_at").defaultNow(),
+  created_at: timestamp("created_at").defaultNow(),
+  parent_id: uuid("parent_id").references(() => messages.id),
+  pinned_by: uuid("pinned_by").references(() => users.id),
+  pinned_at: timestamp("pinned_at"),
 });
 
-export const directMessageChannels = pgTable("direct_message_channels", {
-  id: serial("id").primaryKey(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  messages: many(messages),
+  created_channels: many(channels, { relationName: "creator" }),
+  created_sections: many(sections, { relationName: "creator" }),
+}));
 
-export const directMessageParticipants = pgTable("direct_message_participants", {
-  channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
-  userId: text("user_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const messagesRelations = relations(messages, ({ one }) => ({
+  channel: one(channels, {
+    fields: [messages.channel_id],
+    references: [channels.id],
+  }),
+  user: one(users, {
+    fields: [messages.user_id],
+    references: [users.id],
+  }),
+  parent: one(messages, {
+    fields: [messages.parent_id],
+    references: [messages.id],
+  }),
+}));
 
-export const directMessages = pgTable("direct_messages", {
-  id: serial("id").primaryKey(),
-  content: text("content").notNull(),
-  channelId: integer("channel_id").references(() => directMessageChannels.id).notNull(),
-  userId: text("user_id").references(() => users.id).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+export const channelsRelations = relations(channels, ({ one, many }) => ({
+  section: one(sections, {
+    fields: [channels.section_id],
+    references: [sections.id],
+  }),
+  creator: one(users, {
+    fields: [channels.creator_id],
+    references: [users.id],
+    relationName: "creator",
+  }),
+  messages: many(messages),
+}));
 
-// Schema types
+export const sectionsRelations = relations(sections, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [sections.creator_id],
+    references: [users.id],
+    relationName: "creator",
+  }),
+  channels: many(channels),
+}));
+
+// Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-export type Channel = typeof channels.$inferSelect;
-export type Message = typeof messages.$inferSelect;
-export type Section = typeof sections.$inferSelect;
-export type DirectMessageChannel = typeof directMessageChannels.$inferSelect;
-export type DirectMessage = typeof directMessages.$inferSelect;
-
-// Zod schemas
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
-export const insertChannelSchema = createInsertSchema(channels);
-export const selectChannelSchema = createSelectSchema(channels);
-export const insertMessageSchema = createInsertSchema(messages);
-export const selectMessageSchema = createSelectSchema(messages);
-export const insertSectionSchema = createInsertSchema(sections);
-export const selectSectionSchema = createSelectSchema(sections);
-export const insertDirectMessageChannelSchema = createInsertSchema(directMessageChannels);
-export const selectDirectMessageChannelSchema = createSelectSchema(directMessageChannels);
-export const insertDirectMessageParticipantSchema = createInsertSchema(directMessageParticipants);
-export const selectDirectMessageParticipantSchema = createSelectSchema(directMessageParticipants);
-export const insertDirectMessageSchema = createInsertSchema(directMessages);
-export const selectDirectMessageSchema = createSelectSchema(directMessages);
+export type Message = typeof messages.$inferSelect & {
+  user?: User;
+  channel?: Channel;
+};
+export type Channel = typeof channels.$inferSelect & {
+  creator?: User;
+};
+export type Section = typeof sections.$inferSelect & {
+  creator?: User;
+};

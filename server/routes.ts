@@ -2,12 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
-import { messages, channels, users, sections, directMessages } from "@db/schema";
-import { eq, ilike } from "drizzle-orm";
+import { messages, channels, users, sections } from "@db/schema";
+import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
 import multer from "multer";
-import { registerUploadRoutes } from "./routes/upload";
+import { setupAuth } from "./auth";
 import dmRoutes from "./routes/dm";
-import { requireAuth } from "./index";
+import { registerUploadRoutes } from "./routes/upload";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -17,71 +17,65 @@ const upload = multer({
   },
 });
 
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).send("Not authenticated");
+  }
+  next();
+};
+
 export function registerRoutes(app: Express): Server {
-  // Add CORS middleware for Supabase
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
+  // Set up authentication routes and middleware
+  setupAuth(app);
 
-  // Register DM routes with auth
-  app.use("/api/dm", requireAuth, dmRoutes);
-
-  // Register upload routes with auth
-  app.use("/api/upload", requireAuth, registerUploadRoutes);
-
-  // Section routes with auth
-  app.post("/api/sections", requireAuth, async (req, res) => {
+  // Admin routes
+  app.post("/api/admin/set", requireAuth, async (req, res) => {
     try {
-      const { name } = req.body;
-
-      if (!name?.trim()) {
-        return res.status(400).json({ error: "Section name is required" });
-      }
-
-      const [newSection] = await db
-        .insert(sections)
-        .values({
-          name: name.trim(),
-          creatorId: req.user?.id,
+      const [user] = await db
+        .update(users)
+        .set({ 
+          is_admin: true,
+          role: 'admin'
         })
+        .where(eq(users.id, req.user!.id))
         .returning();
 
-      const sectionWithDetails = await db.query.sections.findFirst({
-        where: eq(sections.id, newSection.id),
-        with: {
-          creator: true,
-          channels: {
-            with: {
-              creator: true,
-            },
-          },
-        },
-      });
-
-      res.status(201).json(sectionWithDetails);
+      res.json({ message: "Admin privileges granted", user });
     } catch (error) {
-      console.error("Error creating section:", error);
-      res.status(500).json({ error: "Failed to create section" });
+      console.error("Error setting admin:", error);
+      res.status(500).json({ error: "Failed to set admin privileges" });
     }
   });
 
+  // User routes
+  app.get("/api/users", requireAuth, async (req, res) => {
+    try {
+      // Update current user's last active time
+      await db
+        .update(users)
+        .set({ last_active: new Date() })
+        .where(eq(users.id, req.user!.id));
+
+      // Fetch all users
+      const allUsers = await db.query.users.findMany({
+        orderBy: [desc(users.last_active)],
+      });
+      res.json(allUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Section routes
   app.get("/api/sections", requireAuth, async (_req, res) => {
     try {
       const allSections = await db.query.sections.findMany({
         with: {
-          creator: true,
-          channels: {
-            with: {
-              creator: true,
-            },
-          },
+          channels: true,
         },
+        orderBy: (sections, { asc }) => [asc(sections.order_index)],
       });
       res.json(allSections);
     } catch (error) {
@@ -90,56 +84,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Channel routes with auth
-  app.post("/api/channels", requireAuth, async (req, res) => {
+  app.post("/api/sections", requireAuth, async (req, res) => {
+    const { name } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Section name is required" });
+    }
+
     try {
-      const { name, description, sectionId } = req.body;
-
-      if (!name?.trim()) {
-        return res.status(400).json({ error: "Channel name is required" });
-      }
-
-      // Get max position for the section
-      const existingChannels = await db.query.channels.findMany({
-        where: eq(channels.sectionId, sectionId),
+      // Get the highest order_index
+      const sections = await db.query.sections.findMany({
+        orderBy: (sections, { desc }) => [desc(sections.order_index)],
+        limit: 1,
       });
-      const maxPosition = Math.max(...existingChannels.map(c => c.position), -1);
 
-      const [newChannel] = await db
-        .insert(channels)
+      const newOrderIndex = sections.length > 0 ? sections[0].order_index + 1 : 0;
+
+      // Create the section
+      const [section] = await db
+        .insert(sections)
         .values({
           name: name.trim(),
-          description: description?.trim(),
-          creatorId: req.body.userId,
-          sectionId,
-          position: maxPosition + 1,
+          order_index: newOrderIndex,
         })
         .returning();
 
-      // Fetch the created channel with related data
-      const channelWithDetails = await db.query.channels.findFirst({
-        where: eq(channels.id, newChannel.id),
-        with: {
-          creator: true,
-          section: true,
-        },
-      });
-
-      res.status(201).json(channelWithDetails);
+      res.status(201).json(section);
     } catch (error) {
-      console.error("Error creating channel:", error);
-      res.status(500).json({ error: "Failed to create channel" });
+      console.error("Error creating section:", error);
+      res.status(500).json({ error: "Failed to create section" });
     }
   });
 
+  // Channel routes
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const allChannels = await db.query.channels.findMany({
         with: {
-          creator: true,
           section: true,
+          creator: true,
         },
-        orderBy: (channels, { asc }) => [asc(channels.position)],
+        orderBy: (channels, { asc }) => [asc(channels.order_index)],
       });
       res.json(allChannels);
     } catch (error) {
@@ -148,14 +133,93 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/channels", requireAuth, async (req, res) => {
+    const { name, description, section_id } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "Channel name is required" });
+    }
+
+    try {
+      const [channel] = await db
+        .insert(channels)
+        .values({
+          name: name.trim(),
+          description: description?.trim(),
+          section_id: section_id || null,
+        })
+        .returning();
+
+      const fullChannel = await db.query.channels.findFirst({
+        where: eq(channels.id, channel.id),
+        with: {
+          section: true,
+        },
+      });
+
+      res.status(201).json(fullChannel);
+    } catch (error) {
+      console.error("Error creating channel:", error);
+      res.status(500).json({ error: "Failed to create channel" });
+    }
+  });
+
+  app.put("/api/channels/:id", requireAuth, async (req, res) => {
+    try {
+      const { name, description, section_id } = req.body;
+
+      if (!name?.trim()) {
+        return res.status(400).json({ error: "Channel name is required" });
+      }
+
+      // Convert section_id to null if it's "unsectioned" or an invalid UUID
+      let finalSectionId: string | null = null;
+      if (section_id && section_id !== "unsectioned") {
+        try {
+          finalSectionId = section_id;
+        } catch (e) {
+          console.error("Invalid section_id format:", e);
+          return res.status(400).json({ error: "Invalid section ID format" });
+        }
+      }
+
+      const [channel] = await db
+        .update(channels)
+        .set({
+          name: name.trim(),
+          description: description?.trim() || null,
+          section_id: finalSectionId,
+        })
+        .where(eq(channels.id, req.params.id))
+        .returning();
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      const fullChannel = await db.query.channels.findFirst({
+        where: eq(channels.id, channel.id),
+        with: {
+          section: true,
+        },
+      });
+
+      res.json(fullChannel);
+    } catch (error) {
+      console.error("Error updating channel:", error);
+      res.status(500).json({ error: "Failed to update channel" });
+    }
+  });
+
+  // Message routes
   app.get("/api/channels/:id/messages", requireAuth, async (req, res) => {
     try {
       const channelMessages = await db.query.messages.findMany({
-        where: eq(messages.channelId, parseInt(req.params.id)),
+        where: eq(messages.channel_id, req.params.id),
         with: {
-          user: true,
+          author: true,
         },
-        orderBy: messages.createdAt,
+        orderBy: (messages, { desc }) => [desc(messages.created_at)],
       });
       res.json(channelMessages);
     } catch (error) {
@@ -164,7 +228,34 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Search messages with auth
+  // Register DM routes
+  app.use("/api/dm", requireAuth, dmRoutes);
+
+  // Register upload routes
+  registerUploadRoutes(app);
+
+  // Avatar upload endpoint
+  app.post("/api/users/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).send("No file uploaded");
+      }
+
+      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+
+      await db
+        .update(users)
+        .set({ avatar_url: base64Image })
+        .where(eq(users.id, req.params.id));
+
+      res.json({ message: "Avatar updated successfully" });
+    } catch (error) {
+      console.error("Error updating avatar:", error);
+      res.status(500).send("Error updating avatar");
+    }
+  });
+
+  // Search messages
   app.get("/api/messages/search", requireAuth, async (req, res) => {
     try {
       const query = req.query.q;
@@ -177,10 +268,10 @@ export function registerRoutes(app: Express): Server {
       const searchResults = await db.query.messages.findMany({
         where: ilike(messages.content, `%${query}%`),
         with: {
-          user: true,
+          author: true,
           channel: true,
         },
-        orderBy: (messages, { desc }) => [desc(messages.createdAt)],
+        orderBy: (messages, { desc }) => [desc(messages.created_at)],
         limit: 10,
       });
 
@@ -188,82 +279,6 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error searching messages:", error);
       res.status(500).json({ error: "Failed to search messages" });
-    }
-  });
-
-  // Avatar upload endpoint with auth
-  app.post("/api/users/:id/avatar", requireAuth, upload.single("avatar"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).send("No file uploaded");
-      }
-
-      const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
-
-      await db
-        .update(users)
-        .set({ avatar: base64Image })
-        .where(eq(users.id, parseInt(req.params.id)));
-
-      res.json({ message: "Avatar updated successfully" });
-    } catch (error) {
-      console.error("Error updating avatar:", error);
-      res.status(500).send("Error updating avatar");
-    }
-  });
-
-  app.put("/api/sections/:id", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { name } = req.body;
-
-    if (!name?.trim()) {
-      return res.status(400).json({ error: "Section name is required" });
-    }
-
-    try {
-      // Check if section exists and user is the creator
-      const section = await db.query.sections.findFirst({
-        where: eq(sections.id, parseInt(id)),
-        with: {
-          creator: true,
-        },
-      });
-
-      if (!section) {
-        return res.status(404).json({ error: "Section not found" });
-      }
-
-      if (section.creatorId !== req.user?.id) { 
-        return res.status(403).json({ error: "Not authorized to edit this section" });
-      }
-
-      // Update the section
-      const [updatedSection] = await db
-        .update(sections)
-        .set({
-          name: name.trim(),
-          updatedAt: new Date(),
-        })
-        .where(eq(sections.id, parseInt(id)))
-        .returning();
-
-      // Fetch the updated section with all related data
-      const sectionWithDetails = await db.query.sections.findFirst({
-        where: eq(sections.id, updatedSection.id),
-        with: {
-          creator: true,
-          channels: {
-            with: {
-              creator: true,
-            },
-          },
-        },
-      });
-
-      res.json(sectionWithDetails);
-    } catch (error) {
-      console.error("Error updating section:", error);
-      res.status(500).json({ error: "Failed to update section" });
     }
   });
 
@@ -289,73 +304,34 @@ export function registerRoutes(app: Express): Server {
         const message = JSON.parse(data.toString());
 
         if (message.type === "message") {
-          // Handle both regular channel messages and DMs
-          if (message.channelId) {
-            if (message.channelId.toString().startsWith("dm_")) {
-              // Handle DM
-              const dmChannelId = parseInt(message.channelId.split("dm_")[1]);
-              const savedMessage = await db
-                .insert(directMessages)
-                .values({
-                  content: message.content,
-                  channelId: dmChannelId,
-                  userId: message.userId,
-                })
-                .returning();
+          // Handle channel message
+          const savedMessage = await db
+            .insert(messages)
+            .values({
+              content: message.content,
+              channel_id: message.channelId,
+              user_id: message.userId,
+            })
+            .returning();
 
-              const fullMessage = await db.query.directMessages.findFirst({
-                where: eq(directMessages.id, savedMessage[0].id),
-                with: {
-                  user: true,
-                },
-              });
+          const fullMessage = await db.query.messages.findFirst({
+            where: eq(messages.id, savedMessage[0].id),
+            with: {
+              author: true,
+            },
+          });
 
-              if (fullMessage) {
-                const broadcastMessage = JSON.stringify({
-                  type: "dm",
-                  message: fullMessage,
-                });
+          if (fullMessage) {
+            const broadcastMessage = JSON.stringify({
+              type: "message",
+              message: fullMessage,
+            });
 
-                wss.clients.forEach((client) => {
-                  if (client.readyState === ws.OPEN) {
-                    client.send(broadcastMessage);
-                  }
-                });
+            wss.clients.forEach((client) => {
+              if (client.readyState === ws.OPEN) {
+                client.send(broadcastMessage);
               }
-            } else {
-              // Handle regular channel message
-              const savedMessage = await db
-                .insert(messages)
-                .values({
-                  content: message.content,
-                  channelId: message.channelId,
-                  userId: message.userId,
-                  parentMessageId: message.parentMessageId,
-                  attachments: message.attachments || null,
-                })
-                .returning();
-
-              const fullMessage = await db.query.messages.findFirst({
-                where: eq(messages.id, savedMessage[0].id),
-                with: {
-                  user: true,
-                  replies: true,
-                },
-              });
-
-              if (fullMessage) {
-                const broadcastMessage = JSON.stringify({
-                  type: "message",
-                  message: fullMessage,
-                });
-
-                wss.clients.forEach((client) => {
-                  if (client.readyState === ws.OPEN) {
-                    client.send(broadcastMessage);
-                  }
-                });
-              }
-            }
+            });
           }
         }
       } catch (error) {
