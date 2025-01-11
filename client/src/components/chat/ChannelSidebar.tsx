@@ -314,7 +314,7 @@ export default function ChannelSidebar({
         <div
           {...provided.droppableProps}
           ref={provided.innerRef}
-          className="space-y-[2px]"
+          className="space-y-[1px]"
         >
           {channelList.map((channel, index) => (
             <Draggable
@@ -334,7 +334,7 @@ export default function ChannelSidebar({
                     <Button
                       variant="ghost"
                       className={cn(
-                        "flex-1 justify-start gap-2 [padding-top:1px] [padding-bottom:1px]",
+                        "flex-1 justify-start gap-2 py-1",
                         channel.id.toString() === selectedChannel && "bg-accent text-accent-foreground"
                       )}
                       onClick={() => onSelectChannel(channel.id.toString())}
@@ -393,7 +393,7 @@ export default function ChannelSidebar({
       <ScrollArea className="flex-1">
         <div className="px-2">
           <Collapsible open={isChannelsOpen} onOpenChange={setIsChannelsOpen}>
-            <div className="flex items-center">
+            <div className="flex items-center p-2">
               <CollapsibleTrigger asChild>
                 <Button
                   variant="ghost"
@@ -413,7 +413,7 @@ export default function ChannelSidebar({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="px-2 font-semibold text-lg group relative inline-flex items-center [padding-top:2px] [padding-bottom:2px]"
+                      className="px-2 font-semibold text-lg group relative inline-flex items-center p-2"
                     >
                       <span>Channels</span>
                       <ChevronDown className="ml-2 h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -440,10 +440,10 @@ export default function ChannelSidebar({
             </div>
 
             {!isChannelsOpen && selectedChannel && channels?.some(c => c.id.toString() === selectedChannel) && (
-              <div className="mt-[2px] pl-4">
+              <div className="mt-[1px] pl-4">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-2 [padding-top:1px] [padding-bottom:1px] bg-accent text-accent-foreground"
+                  className="w-full justify-start gap-2 py-1 bg-accent text-accent-foreground"
                   onClick={() => onSelectChannel(selectedChannel)}
                 >
                   <Hash className="h-4 w-4" />
@@ -452,9 +452,9 @@ export default function ChannelSidebar({
               </div>
             )}
 
-            <CollapsibleContent className="mt-[2px] space-y-[2px]">
+            <CollapsibleContent className="mt-[1px] space-y-[1px]">
               {channelsBySection.unsectioned?.length > 0 && (
-                <div className="pl-4 space-y-[2px]">
+                <div className="pl-4 space-y-[1px]">
                   {renderChannelList(channelsBySection.unsectioned, "unsectioned")}
                 </div>
               )}
@@ -465,12 +465,12 @@ export default function ChannelSidebar({
                 const selectedChannelData = isSelected ? sectionChannels.find(c => c.id.toString() === selectedChannel) : null;
 
                 return (
-                  <div key={section.id} className="mt-[2px]">
+                  <div key={section.id} className="mt-[1px]">
                     <Collapsible
                       open={openSections[section.id.toString()]}
                       onOpenChange={() => toggleSection(section.id.toString())}
                     >
-                      <div className="flex items-center pl-4 group">
+                      <div className="flex items-center pl-4 p-2 group">
                         <CollapsibleTrigger asChild>
                           <Button
                             variant="ghost"
@@ -485,7 +485,7 @@ export default function ChannelSidebar({
                             />
                           </Button>
                         </CollapsibleTrigger>
-                        <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1 [padding-top:2px] [padding-bottom:2px]">
+                        <span className="text-xs font-semibold text-muted-foreground ml-2 flex-1">
                           {section.name.toUpperCase()}
                         </span>
                         {section.creator?.id === user?.id && (
@@ -496,7 +496,7 @@ export default function ChannelSidebar({
                                 size="icon"
                                 className="h-6 w-6 opacity-0 group-hover:opacity-100"
                               >
-                                <Settings className="h-3 w-3" />
+                                <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
@@ -522,10 +522,10 @@ export default function ChannelSidebar({
                       </div>
 
                       {!openSections[section.id.toString()] && selectedChannelData && (
-                        <div className="mt-[2px] pl-4">
+                        <div className="mt-[1px] pl-4">
                           <Button
                             variant="ghost"
-                            className="w-full justify-start gap-2 [padding-top:1px] [padding-bottom:1px] bg-accent text-accent-foreground"
+                            className="w-full justify-start gap-2 py-1 bg-accent text-accent-foreground"
                             onClick={() => onSelectChannel(selectedChannel)}
                           >
                             <Hash className="h-4 w-4" />
@@ -535,7 +535,7 @@ export default function ChannelSidebar({
                       )}
 
                       <CollapsibleContent>
-                        <div className="pl-4 mt-[2px] space-y-[2px]">
+                        <div className="pl-4 mt-[1px] space-y-[1px]">
                           {renderChannelList(sectionChannels, section.id.toString())}
                         </div>
                       </CollapsibleContent>
