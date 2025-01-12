@@ -42,11 +42,11 @@ export default function MessageList({ channelId }: MessageListProps) {
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(
       wsMsg => 
-        wsMsg.channel_id === channelId && 
+        wsMsg.channel_id?.toString() === channelId?.toString() && 
         !wsMsg.parent_id && // Only show top-level messages
         !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
     ),
-  ];
+  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
