@@ -30,7 +30,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
   const { user } = useUser();
-  const { toast } = useToast(); // Use useToast hook here
+  const { toast } = useToast();
+  const ws = useWS();
 
   const { data: replies = [] } = useQuery<(MessageType & {
     author?: { username: string; avatar_url?: string };
@@ -117,8 +118,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         if (response.ok) {
                           toast({ description: "Message deleted" });
                           // Send WebSocket event for deletion
-                          const { send } = useWS();
-                          send({
+                          ws.send({
                             type: 'message_deleted',
                             channelId: message.channel_id,
                             messageId: message.id
