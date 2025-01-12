@@ -58,7 +58,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
 
   // Sort users alphabetically, but put current user first
   const sortedUsers = users
-    .sort((a, b) => a.username.localeCompare(b.username));
+    .sort((a, b) => a.username.localeCompare(b.username))
+    .sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : 0));
 
   return (
     <ScrollArea className="flex-1">
@@ -108,7 +109,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                     <div className="flex flex-col">
                       <span className="font-medium">
                         {user.username}
-                        {isSelf && " (You)"}
+                        {isSelf && " (you)"}
                       </span>
                       {isSelf && (
                         <span className="text-xs text-muted-foreground">
