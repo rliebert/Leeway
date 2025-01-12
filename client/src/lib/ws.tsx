@@ -1,26 +1,29 @@
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
 
 interface WSContextType {
   messages: Message[];
   send: (data: WSMessage) => void;
   connected: boolean;
+  subscribe: (channelId: string) => void;
+  unsubscribe: (channelId: string) => void;
 }
 
 interface WSMessage {
-  type: string;
-  message?: Message;
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing';
   channelId?: string;
   content?: string;
-  userId?: string;
-  parentMessageId?: string;
+  parentId?: string;
 }
 
 const WSContext = createContext<WSContextType>({
   messages: [],
   send: () => {},
   connected: false,
+  subscribe: () => {},
+  unsubscribe: () => {},
 });
 
 export function WSProvider({ children }: { children: ReactNode }) {
@@ -28,11 +31,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const { toast } = useToast();
+  const { user } = useUser();
 
   useEffect(() => {
     let reconnectTimeout: NodeJS.Timeout;
 
     const connect = () => {
+      if (!user) return;
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
@@ -44,11 +50,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
         });
       };
 
-      websocket.onclose = () => {
+      websocket.onclose = (event) => {
         setConnected(false);
+        const message = event.code === 1000 
+          ? "Disconnected from chat server"
+          : "Connection lost. Reconnecting...";
+
         toast({
           variant: "destructive",
-          description: "Disconnected from chat server. Reconnecting...",
+          description: message,
           duration: 3000,
         });
 
@@ -69,22 +79,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
       websocket.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data) as WSMessage;
+          const data = JSON.parse(event.data);
           switch (data.type) {
             case 'message':
               if (data.message) {
                 setMessages((prev) => {
-                  const exists = prev.some(msg => msg.id === data.message!.id);
+                  // Avoid duplicate messages
+                  const exists = prev.some(msg => msg.id === data.message.id);
                   if (exists) return prev;
-                  return [...prev, data.message!];
+                  return [...prev, data.message];
                 });
               }
               break;
             case 'typing':
               // Handle typing indicators
-              break;
-            case 'presence':
-              // Handle user presence updates
               break;
           }
         } catch (error) {
@@ -100,10 +108,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
     return () => {
       clearTimeout(reconnectTimeout);
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.close();
+        socket.close(1000, "Component unmounting");
       }
     };
-  }, [toast]);
+  }, [toast, user]);
 
   const send = (data: WSMessage) => {
     if (socket?.readyState === WebSocket.OPEN) {
@@ -118,8 +126,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const subscribe = (channelId: string) => {
+    send({ type: 'subscribe', channelId });
+  };
+
+  const unsubscribe = (channelId: string) => {
+    send({ type: 'unsubscribe', channelId });
+  };
+
   return (
-    <WSContext.Provider value={{ messages, send, connected }}>
+    <WSContext.Provider value={{ messages, send, connected, subscribe, unsubscribe }}>
       {children}
     </WSContext.Provider>
   );

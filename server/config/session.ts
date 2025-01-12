@@ -15,11 +15,11 @@ export async function initializeSessionStore() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-    max: 20, // Maximum number of clients in the pool
-    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 5000, // Increased timeout to 5 seconds
-    maxUses: 7500, // Maximum number of times to use a client before destroying it
-    allowExitOnIdle: true // Allow the pool to exit if all clients are idle
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+    maxUses: 7500,
+    allowExitOnIdle: true
   });
 
   // Test the connection
@@ -36,19 +36,19 @@ export async function initializeSessionStore() {
   const store = new PostgresStore({
     pool,
     createTableIfMissing: true,
-    tableName: 'session', // Explicitly name the session table
-    pruneSessionInterval: 60, // Cleanup expired sessions every minute
+    tableName: 'session',
+    pruneSessionInterval: 60,
     errorLog: console.error.bind(console),
   });
 
   // Return the session middleware
   return session({
     store,
-    secret: process.env.SESSION_SECRET || "development_secret",
-    name: "sid", // Change cookie name from connect.sid to sid
+    secret: process.env.SESSION_SECRET || "leeway_development_secret",
+    name: "leeway.sid",
     resave: false,
     saveUninitialized: false,
-    rolling: true, // Refresh session with each request
+    rolling: true,
     cookie: {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,

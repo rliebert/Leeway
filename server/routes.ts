@@ -33,6 +33,7 @@ export function registerRoutes(app: Express): Server {
       await db.query.users.findMany({ limit: 1 });
       res.json({ status: "healthy" });
     } catch (error) {
+      console.error('Health check failed:', error);
       res.status(500).json({ 
         status: "error",
         error: error instanceof Error ? error.message : "Unknown error" 
@@ -41,17 +42,18 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Channel management endpoints
-  app.get("/api/channels", requireAuth, async (req, res) => {
+  app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
-      const channels = await db.query.channels.findMany({
+      const result = await db.query.channels.findMany({
         with: {
           section: true,
           creator: true,
         },
         orderBy: [asc(channels.order_index)]
       });
-      res.json(channels);
+      res.json(result);
     } catch (error) {
+      console.error('Failed to fetch channels:', error);
       res.status(500).json({ error: "Failed to fetch channels" });
     }
   });
@@ -59,14 +61,16 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/channels", requireAuth, async (req, res) => {
     const { name, description, section_id } = req.body;
     try {
-      const newChannel = await db.insert(channels).values({
+      const [newChannel] = await db.insert(channels).values({
         name,
         description,
         section_id,
         creator_id: (req.user as User).id,
+        order_index: 0, // Default order index
       }).returning();
-      res.status(201).json(newChannel[0]);
+      res.status(201).json(newChannel);
     } catch (error) {
+      console.error('Failed to create channel:', error);
       res.status(500).json({ error: "Failed to create channel" });
     }
   });
@@ -76,22 +80,20 @@ export function registerRoutes(app: Express): Server {
     const { channelId } = req.params;
     const { before } = req.query;
     try {
-      const query = {
-        where: and(
+      const channelMessages = await db.query.messages.findMany({
+        where: before ? and(
           eq(messages.channel_id, channelId),
-          before ? desc(messages.created_at) : undefined
-        ),
+          desc(messages.created_at)
+        ) : eq(messages.channel_id, channelId),
         with: {
           author: true,
-          attachments: true,
         },
         limit: 50,
         orderBy: [desc(messages.created_at)],
-      };
-
-      const channelMessages = await db.query.messages.findMany(query);
+      });
       res.json(channelMessages);
     } catch (error) {
+      console.error('Failed to fetch messages:', error);
       res.status(500).json({ error: "Failed to fetch messages" });
     }
   });
@@ -99,11 +101,12 @@ export function registerRoutes(app: Express): Server {
   // Section management endpoints
   app.get("/api/sections", requireAuth, async (_req, res) => {
     try {
-      const sections = await db.query.sections.findMany({
+      const result = await db.query.sections.findMany({
         orderBy: [asc(sections.order_index)],
       });
-      res.json(sections);
+      res.json(result);
     } catch (error) {
+      console.error('Failed to fetch sections:', error);
       res.status(500).json({ error: "Failed to fetch sections" });
     }
   });
