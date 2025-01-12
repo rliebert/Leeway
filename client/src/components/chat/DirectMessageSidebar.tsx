@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -126,11 +125,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      createDMMutation.mutate(user.id);
-                    }}
+                    onClick={() => createDMMutation.mutate(user.id)}
+                    className="opacity-100 ml-2"
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
