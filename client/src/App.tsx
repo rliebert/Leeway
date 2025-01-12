@@ -7,7 +7,6 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthPage from "@/pages/auth-page";
 import DirectMessageView from "@/components/chat/DirectMessageView";
-import leewayLogo from "../../attached_assets/leeway-logo3.svg";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
@@ -24,19 +23,7 @@ function AuthenticatedApp() {
   }
 
   if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <Card className="w-full max-w-sm">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
-              <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
-            </div>
-            <AuthPage />
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <AuthPage />;
   }
 
   return (

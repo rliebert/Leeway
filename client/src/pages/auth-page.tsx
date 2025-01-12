@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import leewayLogo from "../../../attached_assets/leeway-logo3.png";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -53,6 +54,10 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-[400px]">
         <CardHeader>
+          <div className="flex items-center gap-3 mb-4">
+            <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
+            <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
+          </div>
           <CardTitle>{isLogin ? "Login" : "Register"}</CardTitle>
           <CardDescription>
             {isLogin
