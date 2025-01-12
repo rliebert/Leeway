@@ -116,20 +116,17 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          // Invalidate both the channel messages and any thread replies
-                          await Promise.all([
-                            queryClient.invalidateQueries({ 
-                              queryKey: [`/api/channels/${message.channel_id}/messages`],
-                            }),
-                            queryClient.invalidateQueries({
-                              queryKey: [`/api/messages/${message.id}/replies`],
-                            })
-                          ]);
-                          // Remove the message from the local cache immediately
+                          // Update the cache immediately
                           queryClient.setQueryData(
                             [`/api/channels/${message.channel_id}/messages`],
-                            (oldData: any) => oldData?.filter((msg: any) => msg.id !== message.id) ?? []
+                            (oldData: any) => {
+                              if (!oldData) return [];
+                              return oldData.filter((msg: MessageType) => msg.id !== message.id);
+                            }
                           );
+                          queryClient.removeQueries({ 
+                            queryKey: [`/api/messages/${message.id}/replies`]
+                          });
                         } else {
                           toast({ 
                             variant: "destructive",

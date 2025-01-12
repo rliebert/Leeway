@@ -55,7 +55,8 @@ export default function MessageList({ channelId }: MessageListProps) {
       wsMsg => 
         wsMsg.channel_id?.toString() === channelId?.toString() && 
         !wsMsg.parent_id && // Only show top-level messages
-        !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
+        !initialMessages?.some(initMsg => initMsg.id === wsMsg.id) &&
+        wsMsg.content !== null // Filter out deleted messages
     ),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
