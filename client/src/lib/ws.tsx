@@ -12,7 +12,7 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping';
   channelId?: string;
   content?: string;
   parentId?: string;
@@ -38,6 +38,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
+    const initialDelay = 1000; // Start with 1 second delay
 
     const connect = () => {
       if (!user) {
@@ -46,35 +47,69 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Construct WebSocket URL
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        console.log('Connecting to WebSocket:', wsUrl);
+        // Get the current window location
+        const currentLocation = window.location;
 
-        // Create WebSocket connection
+        // Determine WebSocket protocol based on page protocol
+        const wsProtocol = currentLocation.protocol === 'https:' ? 'wss:' : 'ws:';
+
+        // Use the same host as the page
+        const wsHost = currentLocation.host;
+
+        // Construct the WebSocket URL
+        const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+
+        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+
+        // Close existing socket if any
+        if (socket?.readyState === WebSocket.OPEN) {
+          console.log('Closing existing WebSocket connection');
+          socket.close();
+        }
+
         const ws = new WebSocket(wsUrl);
-        console.log('WebSocket connection initialized');
+        let connectionTimeout: NodeJS.Timeout;
+
+        // Set connection timeout
+        connectionTimeout = setTimeout(() => {
+          if (ws.readyState !== WebSocket.OPEN) {
+            console.log('WebSocket connection timeout, closing socket');
+            ws.close();
+          }
+        }, 5000);
 
         ws.onopen = () => {
-          console.log('WebSocket connection opened');
+          console.log('WebSocket connection established successfully');
+          clearTimeout(connectionTimeout);
           setConnected(true);
           reconnectAttempts = 0;
+          setSocket(ws);
+
+          // Send initial ping to verify connection
+          ws.send(JSON.stringify({ type: 'ping' }));
         };
 
         ws.onclose = (event) => {
-          console.log('WebSocket connection closed:', event.code, event.reason);
+          console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`);
+          clearTimeout(connectionTimeout);
           setConnected(false);
           setSocket(null);
 
-          // Don't attempt to reconnect if the closure was clean
+          // Don't reconnect on normal closure
           if (event.code === 1000 || event.code === 1001) {
-            console.log('Clean WebSocket closure, not attempting to reconnect');
+            console.log('Clean WebSocket closure, not attempting reconnect');
             return;
           }
 
-          // Handle reconnection
+          // Don't reconnect if user is not logged in
+          if (!user) {
+            console.log('User not logged in, skipping reconnection');
+            return;
+          }
+
+          // Implement exponential backoff for reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+            const delay = Math.min(initialDelay * Math.pow(2, reconnectAttempts), 10000);
             console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
 
             reconnectTimeout = setTimeout(() => {
@@ -82,6 +117,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
               connect();
             }, delay);
           } else {
+            console.log('Max reconnection attempts reached');
             toast({
               variant: "destructive",
               description: "Unable to connect to chat server. Please refresh the page.",
@@ -99,6 +135,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
             const data = JSON.parse(event.data);
             console.log('WebSocket message received:', data);
 
+            if (data.type === 'pong') {
+              console.log('Received pong response, connection confirmed');
+              return;
+            }
+
             if (data.type === 'connected') {
               console.log('Connection confirmed with userId:', data.userId);
               return;
@@ -106,7 +147,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
             if (data.type === 'message' && data.message) {
               setMessages((prev) => {
-                // Prevent duplicate messages
                 if (prev.some(msg => msg.id === data.message.id)) {
                   return prev;
                 }
@@ -118,7 +158,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
           }
         };
 
-        setSocket(ws);
       } catch (error) {
         console.error('Error creating WebSocket connection:', error);
       }
@@ -132,7 +171,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         socket.close(1000, "Component unmounting");
       }
     };
-  }, [toast, user]);
+  }, [toast, user, socket]);
 
   const send = (data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {

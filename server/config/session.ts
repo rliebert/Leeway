@@ -54,7 +54,7 @@ export async function initializeSessionStore() {
     rolling: true,
     proxy: isProduction,
     cookie: {
-      secure: isProduction,
+      secure: false, // Set to false to work in development
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: 'lax',

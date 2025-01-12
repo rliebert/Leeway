@@ -1,8 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { initializeDatabase, checkDatabaseConnection } from "@db";
-import { initializeSessionStore, checkSessionStore } from "./config/session";
+import { initializeSessionStore } from "./config/session";
 import path from "path";
 
 const app = express();
@@ -45,12 +44,10 @@ app.use((req, res, next) => {
 
 // Health check endpoint
 app.get("/health", async (_req, res) => {
-  const dbStatus = await checkDatabaseConnection();
   const sessionStatus = await checkSessionStore();
 
   res.json({
     status: "ok",
-    database: dbStatus ? "connected" : "error",
     session: sessionStatus ? "connected" : "error",
     timestamp: new Date().toISOString()
   });
@@ -58,10 +55,6 @@ app.get("/health", async (_req, res) => {
 
 (async () => {
   try {
-    // Initialize database
-    await initializeDatabase();
-    log("Database connection established successfully");
-
     // Initialize session store and apply middleware
     const sessionMiddleware = await initializeSessionStore();
     app.use(sessionMiddleware);
