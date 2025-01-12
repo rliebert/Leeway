@@ -4,102 +4,102 @@ import path from "path";
 import fs from "fs";
 import express from "express";
 import { db } from "@db";
-import { messages } from "@db/schema";
+import { file_attachments } from "@db/schema";
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    console.log('Upload: Processing file in destination:', file.originalname);
     const uploadDir = path.join(process.cwd(), 'uploads');
     // Create uploads directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
-      console.log('Upload: Creating upload directory:', uploadDir);
       fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename
+    // Generate unique filename while preserving extension
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const filename = uniqueSuffix + path.extname(file.originalname);
-    console.log('Upload: Generated filename:', filename, 'for file:', file.originalname);
-    cb(null, filename);
+    const ext = path.extname(file.originalname);
+    cb(null, `${uniqueSuffix}${ext}`);
   }
 });
+
+// File size and type validation
+const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedTypes = [
+    // Images
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    // Documents
+    'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+    // Media
+    'audio/mpeg', 'video/mp4',
+    'application/zip', 'application/x-zip-compressed'
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
+  }
+};
 
 const upload = multer({
   storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    files: 5 // Max 5 files per upload
   },
-  fileFilter: (req, file, cb) => {
-    console.log('Upload: Filtering file:', file.originalname, 'type:', file.mimetype);
-    // Allow only specific file types
-    const allowedMimes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/svg+xml',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain',
-      'audio/mpeg',
-      'video/mp4'
-    ];
-
-    if (allowedMimes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      console.log('Upload: Rejected file type:', file.mimetype);
-      cb(new Error(`Invalid file type. Allowed types: ${allowedMimes.join(', ')}`));
-    }
-  }
+  fileFilter
 });
 
 export function registerUploadRoutes(app: Express) {
-  console.log('Upload: Registering upload routes');
   // Serve uploaded files
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-  // Handle file uploads for channels
-  app.post('/api/channels/:channelId/upload', 
+  // Handle file uploads for messages
+  app.post('/api/upload', 
     (req, res, next) => {
-      console.log('Upload: Received upload request for channel:', req.params.channelId);
       if (!req.isAuthenticated()) {
-        console.log('Upload: Unauthorized upload attempt');
-        return res.status(401).send('Not authenticated');
+        return res.status(401).json({ error: 'Authentication required' });
       }
       next();
     },
-    upload.array('files', 10),
+    upload.array('files', 5),
     async (req, res) => {
       try {
-        console.log('Upload: Processing uploaded files');
         const files = req.files as Express.Multer.File[];
 
         if (!files || files.length === 0) {
-          console.log('Upload: No files received');
-          return res.status(400).send('No files uploaded');
+          return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        console.log('Upload: Successfully received files:', files.map(f => f.originalname));
+        // Process uploaded files and create attachment records
+        const attachments = await Promise.all(files.map(async (file) => {
+          const [attachment] = await db.insert(file_attachments).values({
+            file_url: `/uploads/${file.filename}`,
+            file_name: file.originalname,
+            file_type: file.mimetype,
+            file_size: file.size,
+          }).returning();
 
-        // Process uploaded files
-        const attachments = files.map(file => ({
-          filename: file.filename,
-          originalName: file.originalname,
-          mimetype: file.mimetype,
-          size: file.size,
-          url: `/uploads/${file.filename}`
+          return {
+            id: attachment.id,
+            url: `/uploads/${file.filename}`,
+            originalName: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size
+          };
         }));
 
-        console.log('Upload: Processed attachments:', attachments);
         res.json(attachments);
       } catch (error) {
         console.error('Upload error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Upload failed';
-        res.status(500).json({ message: errorMessage });
+        res.status(500).json({ 
+          error: 'Upload failed',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
   );

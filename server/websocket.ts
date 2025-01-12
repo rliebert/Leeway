@@ -34,13 +34,18 @@ export function setupWebSocketServer(server: Server) {
         }
 
         // Verify session exists in database
-        const sessionResult = await db.execute<{ user_id: string }>(
-          sql`SELECT sess->'passport'->'user' as user_id FROM session WHERE sid = ${sessionId}`
+        const sessionResult = await db.execute<{ sess: { passport: { user: string } } }>(
+          sql`SELECT sess FROM session WHERE sid = ${sessionId}`
         );
 
-        const userId = sessionResult.rows[0]?.user_id;
-        if (!userId) {
+        if (!sessionResult.rows?.length) {
           callback(false, 401, 'Unauthorized: Invalid session');
+          return;
+        }
+
+        const userId = sessionResult.rows[0]?.sess?.passport?.user;
+        if (!userId) {
+          callback(false, 401, 'Unauthorized: Invalid session user');
           return;
         }
 
@@ -113,15 +118,13 @@ export function setupWebSocketServer(server: Server) {
 
             if (newMessage) {
               // Fetch full message with author details
-              const result = await db.query.messages.findMany({
+              const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),
                 with: {
                   author: true,
-                },
-                limit: 1
+                }
               });
 
-              const messageWithAuthor = result[0];
               if (messageWithAuthor) {
                 broadcastToChannel(message.channelId, {
                   type: 'message',
