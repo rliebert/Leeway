@@ -17,6 +17,14 @@ interface FileAttachment {
   file_size: number;
 }
 
+interface FileAttachment {
+  url: string;
+  originalName: string;
+  mimetype: string;
+  file_size: number;
+  path: string;
+}
+
 interface MessageProps {
   message: MessageType & {
     author?: { username: string; avatar_url?: string };

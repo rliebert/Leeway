@@ -73,7 +73,13 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         channelId: channelId.toString(),
         content: message.trim() || "(attachment)",
         parentId: parentMessageId,
-        attachments: attachments.map((attachment: any) => attachment.id),
+        attachments: attachments.map((attachment: any) => ({
+          url: attachment.url,
+          originalName: attachment.originalName,
+          mimetype: attachment.mimetype,
+          file_size: attachment.size,
+          path: attachment.path
+        })),
       });
 
       // Reset form state
