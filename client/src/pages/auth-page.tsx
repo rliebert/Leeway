@@ -1,6 +1,7 @@
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import AuthForm from "@/components/auth/AuthForm";
+import leewayLogo from "@/assets/leeway-logo3.svg";
 
 export default function AuthPage() {
   const { login, register } = useUser();
