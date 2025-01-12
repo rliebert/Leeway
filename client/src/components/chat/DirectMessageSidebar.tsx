@@ -57,11 +57,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   }
 
   // Sort users: current user first, then alphabetically
-  const sortedUsers = [...users].sort((a, b) => {
-    if (a.id === currentUser?.id) return -1;
-    if (b.id === currentUser?.id) return 1;
-    return a.username.localeCompare(b.username);
-  });
+  // Ensure current user is first
+  const sortedUsers = currentUser ? [currentUser, ...users.filter(u => u.id !== currentUser.id)] : users;
 
   return (
     <ScrollArea className="flex-1">
@@ -125,6 +122,10 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                     variant="ghost"
                     size="icon"
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      createDMMutation.mutate(user.id);
+                    }}
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
