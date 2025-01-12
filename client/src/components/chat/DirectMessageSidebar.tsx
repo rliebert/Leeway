@@ -94,7 +94,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                 <div
                   key={user.id}
                   className={cn(
-                    "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent group cursor-pointer",
+                    "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
                     selectedDM === user.id && "bg-accent"
                   )}
                 >
@@ -125,8 +125,11 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => createDMMutation.mutate(user.id)}
-                    className="opacity-100 ml-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      createDMMutation.mutate(user.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
