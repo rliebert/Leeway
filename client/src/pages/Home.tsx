@@ -10,6 +10,8 @@ import SearchMessages from "@/components/chat/SearchMessages";
 import UserProfile from "@/components/UserProfile";
 import type { Channel } from "@db/schema";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
 
 interface HomeProps {
