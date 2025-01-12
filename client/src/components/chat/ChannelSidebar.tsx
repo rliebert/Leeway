@@ -206,7 +206,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
           </div>
         </div>
 
