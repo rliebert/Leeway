@@ -4,16 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-import { 
-  ChevronRight, 
-  Hash, 
-  MoreVertical, 
-  Plus, 
-  Pencil, 
-  Trash2, 
-  ChevronDown,
-  ChevronRightSquare
-} from "lucide-react";
+import { ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -21,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -51,6 +43,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const { data: channels } = useQuery<Channel[]>({
@@ -180,35 +173,34 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   return (
     <div className="flex flex-col h-full">
       <div className="relative">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="flex items-center justify-between w-full px-3 h-12 hover:bg-accent/50 group"
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              <div className="flex items-center gap-2">
-                <ChevronRightSquare 
-                  className={`h-4 w-4 transition-transform ${
-                    isExpanded ? 'rotate-90' : ''
-                  }`}
-                />
-                <span className="text-lg font-semibold">Channels</span>
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Channel
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Section
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div
+          className="flex items-center justify-between px-3 h-12 group cursor-pointer"
+          onMouseEnter={() => setShowHeaderMenu(true)}
+          onMouseLeave={() => setShowHeaderMenu(false)}
+        >
+          <div className="flex items-center flex-1">
+            <span className="text-lg font-semibold">Channels</span>
+            {showHeaderMenu && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-2">
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onSelect={() => setIsDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Channel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Section
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
 
         <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogContent>
@@ -273,58 +265,56 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
         </Dialog>
       </div>
 
-      {isExpanded && (
-        <ScrollArea className="flex-1">
-          <div className="px-3 py-2">
-            {/* Uncategorized channels */}
-            <div className="ml-2">
-              {channelsBySection?.uncategorized?.map((channel) => (
-                <ChannelItem
-                  key={channel.id}
-                  channel={channel}
-                  isSelected={selectedChannel === channel.id.toString()}
-                  onSelect={onSelectChannel}
-                  onEdit={() => handleEditChannel(channel)}
-                  onDelete={() => handleDeleteChannel(channel.id)}
-                  isCreator={channel.creator_id === user?.id}
-                />
-              ))}
-            </div>
-
-            {/* Sections with their channels */}
-            {sections?.map((section) => (
-              <div key={section.id} className="mt-4">
-                <div 
-                  className="flex items-center px-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
-                  onClick={() => toggleSection(section.id)}
-                >
-                  <ChevronRight 
-                    className={`h-4 w-4 mr-1 transition-transform ${
-                      expandedSections[section.id] ? 'rotate-90' : ''
-                    }`} 
-                  />
-                  <span className="text-sm font-medium">{section.name}</span>
-                </div>
-                {expandedSections[section.id] && (
-                  <div className="ml-4">
-                    {channelsBySection?.[section.id]?.map((channel) => (
-                      <ChannelItem
-                        key={channel.id}
-                        channel={channel}
-                        isSelected={selectedChannel === channel.id.toString()}
-                        onSelect={onSelectChannel}
-                        onEdit={() => handleEditChannel(channel)}
-                        onDelete={() => handleDeleteChannel(channel.id)}
-                        isCreator={channel.creator_id === user?.id}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+      <ScrollArea className="flex-1">
+        <div className="px-3 py-2">
+          {/* Uncategorized channels */}
+          <div className="ml-2">
+            {channelsBySection?.uncategorized?.map((channel) => (
+              <ChannelItem
+                key={channel.id}
+                channel={channel}
+                isSelected={selectedChannel === channel.id.toString()}
+                onSelect={onSelectChannel}
+                onEdit={() => handleEditChannel(channel)}
+                onDelete={() => handleDeleteChannel(channel.id)}
+                isCreator={channel.creator_id === user?.id}
+              />
             ))}
           </div>
-        </ScrollArea>
-      )}
+
+          {/* Sections with their channels */}
+          {sections?.map((section) => (
+            <div key={section.id} className="mt-4">
+              <div 
+                className="flex items-center px-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
+                onClick={() => toggleSection(section.id)}
+              >
+                <ChevronRight 
+                  className={`h-4 w-4 mr-1 transition-transform ${
+                    expandedSections[section.id] ? 'rotate-90' : ''
+                  }`} 
+                />
+                <span className="text-sm font-medium">{section.name}</span>
+              </div>
+              {expandedSections[section.id] && (
+                <div className="ml-4">
+                  {channelsBySection?.[section.id]?.map((channel) => (
+                    <ChannelItem
+                      key={channel.id}
+                      channel={channel}
+                      isSelected={selectedChannel === channel.id.toString()}
+                      onSelect={onSelectChannel}
+                      onEdit={() => handleEditChannel(channel)}
+                      onDelete={() => handleDeleteChannel(channel.id)}
+                      isCreator={channel.creator_id === user?.id}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
