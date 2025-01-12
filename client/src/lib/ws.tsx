@@ -87,7 +87,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         ws.onopen = () => {
           console.log('WebSocket connection established successfully');
           clearTimeout(connectionTimeout);
-          
+
           // Set up heartbeat
           heartbeatInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
@@ -189,7 +189,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(reconnectTimeout);
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
       if (socket) {
         socket.close(1000, "Component unmounting");
       }
