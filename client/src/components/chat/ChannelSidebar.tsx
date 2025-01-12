@@ -350,10 +350,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
       <ScrollArea className="flex-1">
         <div className="px-3 pt-1 space-y-4">
           {/* Channels Section */}
-          {/* Uncategorized channels */}
-          <div className="ml-4">
-            {channelsBySection?.uncategorized?.map((channel) => (
-              ((isChannelsExpanded || selectedChannel === channel.id.toString()) &&
+          {isChannelsExpanded && (
+            <div className="ml-4">
+              {channelsBySection?.uncategorized?.map((channel) => (
                 <ChannelItem
                   key={channel.id}
                   channel={channel}
@@ -383,7 +382,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
               <div className="ml-6">
                 {channelsBySection?.[section.id]?.map((channel) => (
-                  ((expandedSections[section.id] || selectedChannel === channel.id.toString()) &&
+                  (expandedSections[section.id] &&
                     <ChannelItem
                       key={channel.id}
                       channel={channel}
