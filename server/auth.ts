@@ -1,14 +1,12 @@
 import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
-import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { sessionConfig } from "./config/session";
 
 const scryptAsync = promisify(scrypt);
 
@@ -43,10 +41,7 @@ const registrationSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
-
 export function setupAuth(app: Express) {
-  // Use the new session configuration
-  app.use(session(sessionConfig));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -88,7 +83,7 @@ export function setupAuth(app: Express) {
     done(null, user.id);
   });
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await db.query.users.findFirst({
         where: eq(users.id, id),

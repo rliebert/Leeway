@@ -6,8 +6,7 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set for session management");
 }
 
-// Configure Neon client for session store with retries
-neonConfig.fetchConnectionCache = true;
+// Configure Neon client for session store
 neonConfig.webSocketConstructor = undefined; // Disable WebSocket for HTTP-only mode
 neonConfig.pipelineConnect = false; // Disable pipelining for more stable connections
 
@@ -38,30 +37,28 @@ async function createSessionConnection() {
 let sql = neon(process.env.DATABASE_URL);
 const PostgresStore = pgSession(session);
 
-// Initialize session store
+// Initialize session store and return middleware
 export async function initializeSessionStore() {
   sql = await createSessionConnection();
-  return createSessionConfig();
-}
+  const store = new PostgresStore({
+    conObject: {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production",
+    },
+    createTableIfMissing: true,
+    pruneSessionInterval: 60, // Cleanup expired sessions every minute
+    errorLog: (error: Error) => {
+      console.error("Session store error:", {
+        error: error.message,
+        timestamp: new Date().toISOString(),
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined
+      });
+    },
+  });
 
-// Create session configuration
-function createSessionConfig() {
-  return {
-    store: new PostgresStore({
-      conObject: {
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === "production",
-      },
-      createTableIfMissing: true,
-      pruneSessionInterval: 60, // Cleanup expired sessions every minute
-      errorLog: (error: Error) => {
-        console.error("Session store error:", {
-          error: error.message,
-          timestamp: new Date().toISOString(),
-          stack: process.env.NODE_ENV === "development" ? error.stack : undefined
-        });
-      },
-    }),
+  // Return the session middleware
+  return session({
+    store,
     secret: process.env.SESSION_SECRET || "development_secret",
     name: "sid", // Change cookie name from connect.sid to sid
     resave: false,
@@ -73,11 +70,8 @@ function createSessionConfig() {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: "lax" as const,
     },
-  };
+  });
 }
-
-// Export initial config
-export const sessionConfig = createSessionConfig();
 
 // Enhanced health check for session store with detailed diagnostics
 export async function checkSessionStore() {

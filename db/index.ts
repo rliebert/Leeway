@@ -8,8 +8,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Configure Neon client with retries and enhanced logging
-neonConfig.fetchConnectionCache = true;
+// Configure Neon client with enhanced stability
 neonConfig.webSocketConstructor = undefined; // Disable WebSocket for HTTP-only mode
 neonConfig.pipelineConnect = false; // Disable pipelining for more stable connections
 

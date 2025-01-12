@@ -58,9 +58,9 @@ app.get("/health", async (_req, res) => {
     await initializeDatabase();
     log("Database connection established successfully");
 
-    // Initialize session store
-    const sessionConfig = await initializeSessionStore();
-    app.use(sessionConfig);
+    // Initialize session store and apply middleware
+    const sessionMiddleware = await initializeSessionStore();
+    app.use(sessionMiddleware);
     log("Session store initialized successfully");
 
     const server = registerRoutes(app);

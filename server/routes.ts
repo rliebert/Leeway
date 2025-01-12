@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { db } from "@db";
 import { messages, channels, users, sections } from "@db/schema";
-import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
+import { eq, and, or, desc, asc, ilike, sql } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
@@ -26,6 +26,27 @@ export function registerRoutes(app: Express): Server {
 
   // Register upload routes
   registerUploadRoutes(app);
+
+  // Health check endpoint
+  app.get("/api/health", async (_req, res) => {
+    try {
+      // Use a simple query to check database connection
+      const result = await db.execute(sql`SELECT COUNT(*) FROM users`);
+      res.json({ 
+        status: "healthy",
+        database: "connected",
+        count: result[0]?.count,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        status: "error",
+        database: "disconnected",
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
 
   // Admin routes
   app.post("/api/admin/set", requireAuth, async (req: any, res) => {
@@ -200,90 +221,5 @@ export function registerRoutes(app: Express): Server {
   });
 
   const httpServer = createServer(app);
-  const wss = new WebSocketServer({ noServer: true });
-
-  httpServer.on("upgrade", (request, socket, head) => {
-    const protocol = request.headers["sec-websocket-protocol"];
-    if (protocol === "vite-hmr") {
-      return;
-    }
-
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-  });
-
-  type WSMessage = {
-    type: "message";
-    content: string;
-    channelId: string;
-    userId: string;
-  };
-
-  // WebSocket connection handling
-  wss.on("connection", (ws) => {
-    console.log("New WebSocket connection established");
-
-    ws.on("message", async (data) => {
-      try {
-        const message = JSON.parse(data.toString()) as WSMessage;
-
-        if (message.type === "message") {
-          try {
-            const [savedMessage] = await db
-              .insert(messages)
-              .values({
-                content: message.content,
-                channel_id: message.channelId,
-                user_id: message.userId,
-              })
-              .returning()
-              .then((result): Message[] => result);
-
-            if (!savedMessage) {
-              throw new Error("Failed to save message");
-            }
-
-            const messageWithAuthor = await db.query.messages.findFirst({
-              where: eq(messages.id, savedMessage.id),
-              with: {
-                author: true,
-              },
-            });
-
-            if (messageWithAuthor) {
-              const broadcastMessage = JSON.stringify({
-                type: "message",
-                message: messageWithAuthor,
-              });
-
-              wss.clients.forEach((client) => {
-                if (client.readyState === ws.OPEN) {
-                  client.send(broadcastMessage);
-                }
-              });
-            }
-          } catch (error) {
-            console.error("Error saving message:", error);
-            ws.send(JSON.stringify({
-              type: "error",
-              message: "Failed to save message"
-            }));
-          }
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    });
-
-    ws.on("error", (error) => {
-      console.error("WebSocket error:", error);
-    });
-
-    ws.on("close", () => {
-      console.log("WebSocket connection closed");
-    });
-  });
-
   return httpServer;
 }
