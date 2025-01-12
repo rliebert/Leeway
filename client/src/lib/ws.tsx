@@ -80,11 +80,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
         }
 
         const ws = new WebSocket(wsUrl);
-        
+
         // Add error event listener for more detailed error logging
-        ws.addEventListener('error', (error) => {
-          console.error('WebSocket Error:', error);
-          setError('Connection error. Please check console for details.');
+        ws.addEventListener("error", (error) => {
+          console.error("WebSocket Error:", error);
+          setError("Connection error. Please check console for details.");
         });
         let connectionTimeout: NodeJS.Timeout;
 
@@ -200,9 +200,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 return [...prev, data.message];
               });
             }
-            
+
             if (data.type === "message_deleted") {
-              setMessages((prev) => prev.filter(msg => msg.id !== data.messageId));
+              setMessages((prev) =>
+                prev.filter((msg) => msg.id !== data.messageId),
+              );
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
@@ -235,7 +237,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       messageQueue.push(data);
       return;
     }
-    
+
     if (socket.readyState === WebSocket.CONNECTING) {
       console.log("Socket still connecting, queueing message");
       messageQueue.push(data);
@@ -279,7 +281,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   return (
     <WSContext.Provider
-      value={{ messages, setMessages, send, connected, error, subscribe, unsubscribe }}
+      value={{
+        messages,
+        setMessages,
+        send,
+        connected,
+        error,
+        subscribe,
+        unsubscribe,
+      }}
     >
       {children}
     </WSContext.Provider>
