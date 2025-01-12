@@ -98,10 +98,9 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Message = typeof messages.$inferSelect & {
   author?: User;
-  channel?: Channel;
 };
 export type Channel = typeof channels.$inferSelect & {
-  section?: Section;
+  section?: typeof sections.$inferSelect;
   creator?: User;
 };
 export type Section = typeof sections.$inferSelect & {

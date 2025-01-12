@@ -213,36 +213,48 @@ export function registerRoutes(app: Express): Server {
     });
   });
 
+  type WSMessage = {
+    type: "message";
+    content: string;
+    channelId: string;
+    userId: string;
+  };
+
   // WebSocket connection handling
   wss.on("connection", (ws) => {
     console.log("New WebSocket connection established");
 
     ws.on("message", async (data) => {
       try {
-        const message = JSON.parse(data.toString());
+        const message = JSON.parse(data.toString()) as WSMessage;
 
         if (message.type === "message") {
-          const [savedMessage] = await db
-            .insert(messages)
-            .values({
-              content: message.content,
-              channel_id: message.channelId,
-              user_id: message.userId,
-            })
-            .returning();
+          try {
+            const [savedMessage] = await db
+              .insert(messages)
+              .values({
+                content: message.content,
+                channel_id: message.channelId,
+                user_id: message.userId,
+              })
+              .returning()
+              .then((result): Message[] => result);
 
-          if (savedMessage) {
-            const fullMessage = await db.query.messages.findFirst({
+            if (!savedMessage) {
+              throw new Error("Failed to save message");
+            }
+
+            const messageWithAuthor = await db.query.messages.findFirst({
               where: eq(messages.id, savedMessage.id),
               with: {
                 author: true,
               },
             });
 
-            if (fullMessage) {
+            if (messageWithAuthor) {
               const broadcastMessage = JSON.stringify({
                 type: "message",
-                message: fullMessage,
+                message: messageWithAuthor,
               });
 
               wss.clients.forEach((client) => {
@@ -251,6 +263,12 @@ export function registerRoutes(app: Express): Server {
                 }
               });
             }
+          } catch (error) {
+            console.error("Error saving message:", error);
+            ws.send(JSON.stringify({
+              type: "error",
+              message: "Failed to save message"
+            }));
           }
         }
       } catch (error) {
