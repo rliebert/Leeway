@@ -277,6 +277,19 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch replies" });
     }
   });
+    app.get("/api/users", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).send("Not authenticated");
+    }
+
+    try {
+      const users = await db.query.users.findMany();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).send("Internal server error");
+    }
+  });
 
   const httpServer = createServer(app);
 
