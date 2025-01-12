@@ -399,9 +399,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           ))}
 
           {/* Direct Messages Section */}
-          <div className="relative">
-            <div className="flex items-center justify-between px-3 h-10 group">
-              <div className="flex items-center flex-1">
+          <div className="relative mt-8">
+            <div className="flex items-center justify-between h-10 group">
+              <div className="flex items-center flex-1 pl-[11px]">
                 <Button 
                   variant="ghost" 
                   size="icon" 
