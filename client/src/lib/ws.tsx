@@ -36,70 +36,99 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let reconnectTimeout: NodeJS.Timeout;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
     const connect = () => {
-      if (!user) return;
+      if (!user) {
+        console.log('No user logged in, skipping WebSocket connection');
+        return;
+      }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      try {
+        // Use same protocol and host as the current page
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws`;
+        console.log('Connecting to WebSocket:', wsUrl);
 
-      // Create WebSocket connection with credentials
-      const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
-      websocket.addEventListener('open', () => {
-        console.log('WebSocket connection established');
-        setConnected(true);
-        toast({
-          description: "Connected to chat server",
-          duration: 3000,
-        });
-      });
+        // Create new WebSocket connection
+        const ws = new WebSocket(wsUrl);
 
-      websocket.addEventListener('close', (event) => {
-        console.log('WebSocket connection closed:', event);
-        setConnected(false);
-        toast({
-          variant: "destructive",
-          description: "Connection lost. Reconnecting...",
-          duration: 3000,
-        });
+        // Set up event handlers
+        ws.onopen = () => {
+          console.log('WebSocket connection established');
+          setConnected(true);
+          reconnectAttempts = 0;
+          toast({
+            description: "Connected to chat server",
+            duration: 3000,
+          });
+        };
 
-        // Attempt to reconnect after 5 seconds
-        reconnectTimeout = setTimeout(connect, 5000);
-      });
+        ws.onclose = (event) => {
+          console.log('WebSocket connection closed:', event);
+          setConnected(false);
+          setSocket(null);
 
-      websocket.addEventListener('error', (error) => {
-        console.error('WebSocket Error:', error);
-        toast({
-          variant: "destructive",
-          description: "Connection error. Trying to reconnect...",
-          duration: 3000,
-        });
-      });
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+            toast({
+              variant: "destructive",
+              description: "Connection lost. Reconnecting...",
+              duration: 3000,
+            });
 
-      websocket.addEventListener('message', (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
-          if (data.type === 'message' && data.message) {
-            setMessages((prev) => {
-              // Avoid duplicate messages
-              if (prev.some(msg => msg.id === data.message.id)) {
-                return prev;
-              }
-              return [...prev, data.message];
+            reconnectTimeout = setTimeout(() => {
+              reconnectAttempts++;
+              connect();
+            }, delay);
+          } else {
+            toast({
+              variant: "destructive",
+              description: "Unable to connect to chat server. Please refresh the page.",
+              duration: 5000,
             });
           }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      });
+        };
 
-      setSocket(websocket);
+        ws.onerror = (error) => {
+          console.error('WebSocket Error:', error);
+          toast({
+            variant: "destructive",
+            description: "Connection error. Trying to reconnect...",
+            duration: 3000,
+          });
+        };
 
-      return () => {
-        if (websocket.readyState === WebSocket.OPEN) {
-          websocket.close();
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('WebSocket message received:', data);
+
+            if (data.type === 'message' && data.message) {
+              setMessages((prev) => {
+                if (prev.some(msg => msg.id === data.message.id)) {
+                  return prev;
+                }
+                return [...prev, data.message];
+              });
+            }
+          } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+          }
+        };
+
+        setSocket(ws);
+      } catch (error) {
+        console.error('Error creating WebSocket connection:', error);
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectTimeout = setTimeout(() => {
+            reconnectAttempts++;
+            connect();
+          }, 2000 * Math.pow(2, reconnectAttempts));
         }
-      };
+      }
     };
 
     connect();
@@ -113,10 +142,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
   }, [toast, user]);
 
   const send = (data: WSMessage) => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(data));
-    } else {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
       console.warn('WebSocket is not connected. Message not sent:', data);
+      toast({
+        variant: "destructive",
+        description: "Failed to send message. Please try again.",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      socket.send(JSON.stringify(data));
+    } catch (error) {
+      console.error('Error sending WebSocket message:', error);
       toast({
         variant: "destructive",
         description: "Failed to send message. Please try again.",
@@ -126,11 +165,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
   };
 
   const subscribe = (channelId: string) => {
-    send({ type: 'subscribe', channelId });
+    if (channelId) {
+      send({ type: 'subscribe', channelId });
+    }
   };
 
   const unsubscribe = (channelId: string) => {
-    send({ type: 'unsubscribe', channelId });
+    if (channelId) {
+      send({ type: 'unsubscribe', channelId });
+    }
   };
 
   return (

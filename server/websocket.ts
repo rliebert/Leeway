@@ -1,8 +1,8 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { messages, channels, users, sections, file_attachments, sessions } from "@db/schema";
+import { eq, and, or, desc, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 
@@ -23,57 +23,58 @@ export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ 
     server,
     path: '/ws',
-    verifyClient: async (info, callback) => {
+    clientTracking: true,
+    verifyClient: async ({ req, origin }, callback) => {
       try {
-        console.log('WebSocket connection attempt with headers:', info.req.headers);
-        const cookies = parseCookie(info.req.headers.cookie || '');
-        console.log('Parsed cookies:', cookies);
+        console.log('WebSocket connection attempt from origin:', origin);
+        const cookies = parseCookie(req.headers.cookie || '');
 
-        // Find session cookie - it could be connect.sid or any other name
-        const sessionCookie = Object.entries(cookies).find(([key]) => 
-          key.includes('.sid') || key.includes('connect.sid')
-        );
-
-        if (!sessionCookie) {
+        // Find connect.sid cookie
+        const sessionId = cookies['connect.sid'];
+        if (!sessionId) {
           console.error('WebSocket connection failed: No session cookie found');
-          callback(false, 401, 'Unauthorized: No session found');
+          callback(false, 401, 'Unauthorized');
           return;
         }
 
-        const [cookieName, sessionId] = sessionCookie;
-        console.log('Found session cookie:', cookieName, 'with value:', sessionId);
+        // Clean the session ID - remove s: prefix and signature
+        const cleanSessionId = sessionId.split('.')[0].replace('s:', '');
+        console.log('Verifying session:', cleanSessionId);
 
-        // Clean the session ID
-        const cleanSessionId = decodeURIComponent(sessionId.replace(/^s%3A/, ''));
+        const session = await db.query.sessions.findFirst({
+          where: eq(sessions.sid, cleanSessionId),
+        });
 
-        try {
-          const result = await db.execute(
-            `SELECT sess FROM "session" WHERE sid = $1`,
-            [cleanSessionId]
-          );
-
-          console.log('Session query result:', result);
-
-          if (!result.rows?.length) {
-            console.error('WebSocket connection failed: Invalid session');
-            callback(false, 401, 'Unauthorized: Invalid session');
-            return;
-          }
-
-          const session = result.rows[0];
-          if (!session?.sess?.passport?.user) {
-            console.error('WebSocket connection failed: No user in session');
-            callback(false, 401, 'Unauthorized: No user found in session');
-            return;
-          }
-
-          (info.req as any).userId = session.sess.passport.user;
-          console.log('WebSocket connection authorized for user:', session.sess.passport.user);
-          callback(true);
-        } catch (error) {
-          console.error('Error querying session:', error);
-          callback(false, 500, 'Internal server error');
+        if (!session) {
+          console.error('WebSocket connection failed: Invalid session');
+          callback(false, 401, 'Unauthorized');
+          return;
         }
+
+        // Parse session data
+        const sessionData = typeof session.sess === 'string' 
+          ? JSON.parse(session.sess) 
+          : session.sess;
+
+        if (!sessionData?.passport?.user) {
+          console.error('WebSocket connection failed: No user in session');
+          callback(false, 401, 'Unauthorized');
+          return;
+        }
+
+        // Store user ID in request for later use
+        (req as any).userId = sessionData.passport.user;
+        console.log('WebSocket connection authorized for user:', sessionData.passport.user);
+
+        // Add CORS headers for WebSocket upgrade
+        const headers = {
+          'Access-Control-Allow-Origin': origin || '*',
+          'Access-Control-Allow-Methods': 'GET, POST',
+          'Access-Control-Allow-Headers': 'Cookie, Authorization',
+          'Access-Control-Allow-Credentials': 'true',
+        };
+
+        callback(true, 200, 'Connection authorized', headers);
       } catch (error) {
         console.error('WebSocket authentication error:', error);
         callback(false, 500, 'Internal server error');
@@ -131,18 +132,23 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message': {
             if (!message.channelId || !message.content || !ws.userId) {
-              console.log('Invalid message data:', { channelId: message.channelId, content: !!message.content, userId: ws.userId });
+              console.log('Invalid message data:', { 
+                channelId: message.channelId, 
+                content: !!message.content, 
+                userId: ws.userId 
+              });
               break;
             }
 
             try {
-              console.log('Inserting message:', {
+              console.log('Creating new message:', {
                 channelId: message.channelId,
                 userId: ws.userId,
                 content: message.content,
                 parentId: message.parentId
               });
 
+              // Insert message
               const [newMessage] = await db.insert(messages).values({
                 channel_id: message.channelId,
                 user_id: ws.userId,
@@ -150,6 +156,7 @@ export function setupWebSocketServer(server: Server) {
                 parent_id: message.parentId || null,
               }).returning();
 
+              // Handle attachments if any
               if (message.attachments?.length) {
                 console.log('Processing attachments:', message.attachments);
                 for (const attachmentId of message.attachments) {
@@ -163,6 +170,7 @@ export function setupWebSocketServer(server: Server) {
                 }
               }
 
+              // Fetch complete message with author and attachments
               const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),
                 with: {
@@ -180,6 +188,10 @@ export function setupWebSocketServer(server: Server) {
               }
             } catch (error) {
               console.error('Error handling message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to send message'
+              }));
             }
             break;
           }
@@ -194,7 +206,11 @@ export function setupWebSocketServer(server: Server) {
           }
         }
       } catch (error) {
-        console.error('WebSocket message handling error:', error);
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Failed to process message'
+        }));
       }
     });
 
@@ -206,6 +222,7 @@ export function setupWebSocketServer(server: Server) {
     });
   });
 
+  // Heartbeat interval to check for stale connections
   const interval = setInterval(() => {
     wss.clients.forEach((client: WebSocket) => {
       const ws = client as AuthenticatedWebSocket;

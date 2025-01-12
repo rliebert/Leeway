@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, uuid, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, varchar, json } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -15,6 +15,12 @@ export const users = pgTable("users", {
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   role: text("role").default('user').notNull(),
   is_admin: boolean("is_admin").default(false).notNull(),
+});
+
+export const sessions = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
 });
 
 export const sections = pgTable("sections", {

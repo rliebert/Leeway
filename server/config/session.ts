@@ -41,19 +41,24 @@ export async function initializeSessionStore() {
     errorLog: console.error.bind(console),
   });
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   // Return the session middleware
   return session({
     store,
     secret: process.env.SESSION_SECRET || "leeway_development_secret",
-    name: "leeway.sid",
+    name: "connect.sid",
     resave: false,
     saveUninitialized: false,
     rolling: true,
+    proxy: isProduction, // Trust proxy in production
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction, // Only use secure cookies in production
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "lax",
+      sameSite: isProduction ? 'none' : 'lax', // Allow cross-site cookies in production
+      path: '/',
+      domain: undefined, // Let browser set this automatically
     },
   });
 }
