@@ -27,133 +27,123 @@ async function hashPassword(password: string) {
 }
 
 async function main() {
-  console.log("🌱 Seeding database...");
+  console.log("🎬 Seeding database with awesome movie references...");
 
-  // Create test users
+  // Create movie-themed users
   console.log("Creating users...");
-  const testUsers = await Promise.all([
+  const movieUsers = await Promise.all([
     db.insert(users).values({
-      username: "alice",
-      password: await hashPassword("password123"),
-      email: "alice@example.com",
+      username: "marty.mcfly",
+      password: await hashPassword("hoverboard88"),
+      email: "marty@bttf.com",
+      status: "⚡ 1.21 GIGAWATTS!",
     }).returning(),
     db.insert(users).values({
-      username: "bob",
-      password: await hashPassword("password123"),
-      email: "bob@example.com",
+      username: "t800",
+      password: await hashPassword("illbeback"),
+      email: "terminator@skynet.com",
+      status: "🤖 Hasta la vista, baby",
     }).returning(),
     db.insert(users).values({
-      username: "charlie",
-      password: await hashPassword("password123"),
-      email: "charlie@example.com",
+      username: "john.mcclane",
+      password: await hashPassword("yippikayay"),
+      email: "john@nakatomi.com",
+      status: "🏢 Welcome to the party, pal!",
     }).returning(),
   ]);
 
-  console.log("Creating sections...");
-  const testSections = await Promise.all([
+  console.log("Creating movie-themed sections...");
+  const movieSections = await Promise.all([
     db.insert(sections).values({
-      name: "Important",
-      creator_id: testUsers[0][0].id,
+      name: "80s Classics",
+      creator_id: movieUsers[0][0].id,
       order_index: 0,
     }).returning(),
     db.insert(sections).values({
-      name: "Projects",
-      creator_id: testUsers[0][0].id,
+      name: "90s Blockbusters",
+      creator_id: movieUsers[1][0].id,
       order_index: 1,
     }).returning(),
   ]);
 
-  console.log("Creating channels...");
-  const testChannels = await Promise.all([
-    // Channels in Important section
+  console.log("Creating movie-themed channels...");
+  const movieChannels = await Promise.all([
+    // 80s channels
     db.insert(channels).values({
-      name: "announcements",
-      description: "Important announcements for the team",
-      creator_id: testUsers[0][0].id,
-      section_id: testSections[0][0].id,
+      name: "time-travelers",
+      description: "Great Scott! A place to discuss time travel paradoxes",
+      creator_id: movieUsers[0][0].id,
+      section_id: movieSections[0][0].id,
       order_index: 0,
     }).returning(),
     db.insert(channels).values({
-      name: "general",
-      description: "General discussion",
-      creator_id: testUsers[0][0].id,
-      section_id: testSections[0][0].id,
+      name: "ghost-busters",
+      description: "Who ya gonna call?",
+      creator_id: movieUsers[0][0].id,
+      section_id: movieSections[0][0].id,
       order_index: 1,
     }).returning(),
-    // Channels in Projects section
+    // 90s channels
     db.insert(channels).values({
-      name: "project-alpha",
-      description: "Discussion for Project Alpha",
-      creator_id: testUsers[1][0].id,
-      section_id: testSections[1][0].id,
+      name: "jurassic-lab",
+      description: "Life, uh, finds a way",
+      creator_id: movieUsers[1][0].id,
+      section_id: movieSections[1][0].id,
       order_index: 0,
     }).returning(),
     db.insert(channels).values({
-      name: "project-beta",
-      description: "Discussion for Project Beta",
-      creator_id: testUsers[1][0].id,
-      section_id: testSections[1][0].id,
+      name: "matrix",
+      description: "There is no spoon",
+      creator_id: movieUsers[2][0].id,
+      section_id: movieSections[1][0].id,
       order_index: 1,
-    }).returning(),
-    // Unsectioned channel
-    db.insert(channels).values({
-      name: "random",
-      description: "Random discussions",
-      creator_id: testUsers[2][0].id,
-      section_id: null,
-      order_index: 0,
     }).returning(),
   ]);
 
-  console.log("Creating messages...");
+  console.log("Creating nostalgic messages...");
   const now = new Date();
   await Promise.all([
-    // Messages in announcements
+    // Time travelers channel
     db.insert(messages).values({
-      content: "Welcome to the team chat! 👋",
-      user_id: testUsers[0][0].id,
-      channel_id: testChannels[0][0].id,
-      created_at: new Date(now.getTime() - 7200000), // 2 hours ago
-    }),
-    db.insert(messages).values({
-      content: "Please remember to keep discussions in their appropriate channels!",
-      user_id: testUsers[0][0].id,
-      channel_id: testChannels[0][0].id,
-      created_at: new Date(now.getTime() - 3600000), // 1 hour ago
-    }),
-    // Messages in general
-    db.insert(messages).values({
-      content: "Hey everyone! How's it going?",
-      user_id: testUsers[1][0].id,
-      channel_id: testChannels[1][0].id,
-      created_at: new Date(now.getTime() - 1800000), // 30 mins ago
-    }),
-    db.insert(messages).values({
-      content: "Great! Working on the new features 🚀",
-      user_id: testUsers[2][0].id,
-      channel_id: testChannels[1][0].id,
-      created_at: new Date(now.getTime() - 900000), // 15 mins ago
-    }),
-    // Messages in project channels
-    db.insert(messages).values({
-      content: "Project Alpha kickoff meeting tomorrow at 10 AM!",
-      user_id: testUsers[1][0].id,
-      channel_id: testChannels[2][0].id,
+      content: "🚗 Anyone seen my DeLorean? I parked it here in 2025... or was it 1955? 🤔",
+      user_id: movieUsers[0][0].id,
+      channel_id: movieChannels[0][0].id,
       created_at: new Date(now.getTime() - 7200000),
     }),
     db.insert(messages).values({
-      content: "Just pushed the latest changes to the beta branch",
-      user_id: testUsers[2][0].id,
-      channel_id: testChannels[3][0].id,
+      content: "Doc, are you telling me you built a time machine... out of a DeLorean? 🚘⚡",
+      user_id: movieUsers[1][0].id,
+      channel_id: movieChannels[0][0].id,
       created_at: new Date(now.getTime() - 3600000),
+    }),
+    // Ghostbusters channel
+    db.insert(messages).values({
+      content: "👻 I ain't afraid of no ghost! But that Stay Puft Marshmallow Man... different story 🍡",
+      user_id: movieUsers[2][0].id,
+      channel_id: movieChannels[1][0].id,
+      created_at: new Date(now.getTime() - 1800000),
+    }),
+    // Jurassic Lab channel
+    db.insert(messages).values({
+      content: "🦖 Clever girl... Just lost another security guard. HR is getting really annoyed 😅",
+      user_id: movieUsers[1][0].id,
+      channel_id: movieChannels[2][0].id,
+      created_at: new Date(now.getTime() - 900000),
+    }),
+    // Matrix channel
+    db.insert(messages).values({
+      content: "💊 Red pill or blue pill? Also, anyone know a good chiropractor? All this dodging bullets is killing my back 🤸‍♂️",
+      user_id: movieUsers[2][0].id,
+      channel_id: movieChannels[3][0].id,
+      created_at: new Date(now.getTime() - 300000),
     }),
   ]);
 
-  console.log("✅ Seeding complete!");
+  console.log("✨ Seeding complete! Time circuits functioning normally.");
   process.exit(0);
 }
 
 main().catch((err) => {
-  console.error("❌ Seeding failed:", err);
+  console.error("❌ Great Scott! Seeding failed:", err);
   process.exit(1);
 });
