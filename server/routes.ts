@@ -1,13 +1,51 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { messages, channels, users, sections } from "@db/schema";
+import { messages, channels, users, sections, file_attachments } from "@db/schema";
 import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
 import type { User, Message, Channel, Section } from "@db/schema";
+import multer from "multer";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = uuidv4();
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and common document types
+    const allowedMimes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -22,6 +60,29 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
   app.use("/api/dm", requireAuth, dmRoutes);
   registerUploadRoutes(app);
+
+  // File upload endpoint
+  app.post("/api/upload", requireAuth, upload.array('files', 10), async (req, res) => {
+    try {
+      if (!req.files || !Array.isArray(req.files)) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const files = req.files.map(file => ({
+        id: uuidv4(),
+        url: `/uploads/${file.filename}`,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      }));
+
+      res.json(files);
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ error: "File upload failed" });
+    }
+  });
+
 
   // Section management endpoints
   app.post("/api/sections", requireAuth, async (req, res) => {

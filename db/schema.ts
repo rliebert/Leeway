@@ -48,7 +48,7 @@ export const messages = pgTable("messages", {
 
 export const file_attachments = pgTable("file_attachments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }),
+  message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }).notNull(),
   file_url: text("file_url").notNull(),
   file_name: text("file_name").notNull(),
   file_type: text("file_type").notNull(),
@@ -101,6 +101,14 @@ export const sectionsRelations = relations(sections, ({ one, many }) => ({
   channels: many(channels),
 }));
 
+export const fileAttachmentsRelations = relations(file_attachments, ({ one }) => ({
+  message: one(messages, {
+    fields: [file_attachments.message_id],
+    references: [messages.id],
+  }),
+}));
+
+
 // Export schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -108,14 +116,10 @@ export const selectUserSchema = createSelectSchema(users);
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type FileAttachment = typeof file_attachments.$inferSelect;
 export type Message = typeof messages.$inferSelect & {
   author?: User;
-  replies?: Message[];
-  attachments?: {
-    url: string;
-    originalName: string;
-    mimetype: string;
-  }[];
+  attachments?: FileAttachment[];
 };
 export type Channel = typeof channels.$inferSelect & {
   section?: typeof sections.$inferSelect;

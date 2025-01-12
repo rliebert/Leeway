@@ -2,7 +2,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import type { User } from "@db/schema";
 import { db } from "@db";
-import { messages } from "@db/schema";
+import { messages, file_attachments } from "@db/schema";
 import { eq, sql } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
@@ -34,23 +34,22 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        // Verify session exists in database
         const sessionResult = await db.execute<{ sess: { passport: { user: string } } }>(
           sql`SELECT sess FROM session WHERE sid = ${sessionId}`
         );
 
-        if (!sessionResult.rows?.length) {
+        const rows = sessionResult.rows || [];
+        if (!rows.length) {
           callback(false, 401, 'Unauthorized: Invalid session');
           return;
         }
 
-        const userId = sessionResult.rows[0]?.sess?.passport?.user;
+        const userId = rows[0]?.sess?.passport?.user;
         if (!userId) {
           callback(false, 401, 'Unauthorized: Invalid session user');
           return;
         }
 
-        // Attach userId to request for later use
         (info.req as any).userId = userId;
         callback(true);
       } catch (error) {
@@ -60,7 +59,6 @@ export function setupWebSocketServer(server: Server) {
     }
   });
 
-  // Store active connections by channel
   const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
   const heartbeat = (ws: AuthenticatedWebSocket) => {
@@ -117,6 +115,19 @@ export function setupWebSocketServer(server: Server) {
                 parent_id: message.parentId || null,
               }).returning();
 
+              // Add file attachments if present
+              if (message.attachments?.length) {
+                for (const attachmentId of message.attachments) {
+                  await db.insert(file_attachments).values({
+                    message_id: newMessage.id,
+                    file_url: `/uploads/${attachmentId}`,
+                    file_name: attachmentId,
+                    file_type: 'application/octet-stream',
+                    file_size: 0, // This will be updated when we properly handle file metadata
+                  });
+                }
+              }
+
               if (newMessage) {
                 // Fetch full message with author details and attachments
                 const messageWithAuthor = await db.query.messages.findFirst({
@@ -164,7 +175,7 @@ export function setupWebSocketServer(server: Server) {
 
   // Ping clients every 30 seconds to keep connections alive
   const interval = setInterval(() => {
-    Array.from(wss.clients).forEach((client: WebSocket) => {
+    wss.clients.forEach((client: WebSocket) => {
       const ws = client as AuthenticatedWebSocket;
       if (ws.isAlive === false) {
         return ws.terminate();
