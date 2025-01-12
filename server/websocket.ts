@@ -16,7 +16,7 @@ interface WSMessage {
   channelId?: string;
   content?: string;
   parentId?: string;
-  attachments?: string[];
+  attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
 }
 
 export function setupWebSocketServer(server: Server) {
@@ -137,7 +137,7 @@ export function setupWebSocketServer(server: Server) {
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
             console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
-            
+
             // Fetch and send existing messages
             try {
               const existingMessages = await db.query.messages.findMany({
@@ -148,7 +148,7 @@ export function setupWebSocketServer(server: Server) {
                 },
                 orderBy: [asc(messages.created_at)],
               });
-              
+
               existingMessages.forEach(msg => {
                 ws.send(JSON.stringify({
                   type: 'message',
@@ -179,17 +179,17 @@ export function setupWebSocketServer(server: Server) {
                 parent_id: message.parentId || null,
               }).returning();
 
-              // Handle attachments
-              if (message.attachments?.length) {
-                await Promise.all(message.attachments.map(attachmentId =>
-                  db.insert(file_attachments).values({
+              // Create file attachments if any
+              if (message.attachments && message.attachments.length > 0) {
+                await Promise.all(message.attachments.map(async (attachment) => {
+                  await db.insert(file_attachments).values({
                     message_id: newMessage.id,
-                    file_url: `/uploads/${attachmentId}`,
-                    file_name: attachmentId,
-                    file_type: 'application/octet-stream',
-                    file_size: 0,
-                  })
-                ));
+                    file_url: attachment.url,
+                    file_name: attachment.originalName,
+                    file_type: attachment.mimetype,
+                    file_size: attachment.size,
+                  });
+                }));
               }
 
               // Get message with author details

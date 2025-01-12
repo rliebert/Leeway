@@ -86,25 +86,16 @@ export function registerUploadRoutes(app: Express) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        // Process uploaded files and create attachment records
-        const attachments = await Promise.all(files.map(async (file) => {
-          const [attachment] = await db.insert(file_attachments).values({
-            file_url: `/uploads/${file.filename}`,
-            file_name: file.originalname,
-            file_type: file.mimetype,
-            file_size: file.size,
-          }).returning();
-
-          return {
-            id: attachment.id,
-            url: `/uploads/${file.filename}`,
-            originalName: file.originalname,
-            mimetype: file.mimetype,
-            size: file.size
-          };
+        // Return file info without creating attachment records yet
+        const fileInfo = files.map(file => ({
+          url: `/uploads/${file.filename}`,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.filename
         }));
 
-        res.json(attachments);
+        res.json(fileInfo);
       } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ 
