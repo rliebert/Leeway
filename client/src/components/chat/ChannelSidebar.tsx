@@ -272,19 +272,21 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
       </div>
 
       <ScrollArea className="flex-1">
-        <div className={`px-3 py-2 ${isExpanded ? '' : 'hidden'}`}>
+        <div className="px-3 py-2">
           {/* Uncategorized channels */}
           <div className="ml-2">
             {channelsBySection?.uncategorized?.map((channel) => (
-              <ChannelItem
-                key={channel.id}
-                channel={channel}
-                isSelected={selectedChannel === channel.id.toString()}
-                onSelect={onSelectChannel}
-                onEdit={() => handleEditChannel(channel)}
-                onDelete={() => handleDeleteChannel(channel.id)}
-                isCreator={channel.creator_id === user?.id}
-              />
+              ((isExpanded || selectedChannel === channel.id.toString()) &&
+                <ChannelItem
+                  key={channel.id}
+                  channel={channel}
+                  isSelected={selectedChannel === channel.id.toString()}
+                  onSelect={onSelectChannel}
+                  onEdit={() => handleEditChannel(channel)}
+                  onDelete={() => handleDeleteChannel(channel.id)}
+                  isCreator={channel.creator_id === user?.id}
+                />
+              )
             ))}
           </div>
 
@@ -302,9 +304,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 />
                 <span className="text-sm font-medium">{section.name}</span>
               </div>
-              {expandedSections[section.id] && (
-                <div className="ml-4">
-                  {channelsBySection?.[section.id]?.map((channel) => (
+              <div className="ml-4">
+                {channelsBySection?.[section.id]?.map((channel) => (
+                  ((expandedSections[section.id] || selectedChannel === channel.id.toString()) &&
                     <ChannelItem
                       key={channel.id}
                       channel={channel}
@@ -314,8 +316,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                       onDelete={() => handleDeleteChannel(channel.id)}
                       isCreator={channel.creator_id === user?.id}
                     />
-                  ))}
-                </div>
+                  )
+                ))}
+              </div>
               )}
             </div>
           ))}
