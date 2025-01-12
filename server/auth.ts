@@ -5,7 +5,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users } from "@db/schema";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -45,6 +45,23 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Serialize the entire user object for the session
+  passport.serializeUser((user: Express.User, done) => {
+    done(null, user.id);
+  });
+
+  // Deserialize by fetching the user from the database
+  passport.deserializeUser(async (id: string, done) => {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, id),
+      });
+      done(null, user);
+    } catch (err) {
+      done(err, null);
+    }
+  });
+
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -79,28 +96,7 @@ export function setupAuth(app: Express) {
     })
   );
 
-  passport.serializeUser((user, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, id),
-      });
-
-      if (!user) {
-        return done(new Error("User not found"), null);
-      }
-
-      done(null, user);
-    } catch (err) {
-      console.error("Deserialization error:", err);
-      done(err);
-    }
-  });
-
-  // Registration endpoint
+  // Registration endpoint with proper session handling
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log("Registration request body:", req.body);
@@ -128,8 +124,8 @@ export function setupAuth(app: Express) {
       const hashedPassword = await crypto.hash(password);
 
       // Create the new user - make first user an admin
-      const userCount = await db.query.users.count();
-      const isFirstUser = userCount === 0;
+      const userCount = await db.execute(sql`SELECT COUNT(*) FROM users`);
+      const isFirstUser = userCount.length === 0 || userCount[0].count === 0;
 
       const [newUser] = await db
         .insert(users)
@@ -144,20 +140,26 @@ export function setupAuth(app: Express) {
 
       console.log("User registered successfully:", username);
 
-      // Log the user in after registration
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({
-          message: "Registration successful",
-          user: {
-            id: newUser.id,
-            username: newUser.username,
-            is_admin: newUser.is_admin,
-            role: newUser.role
-          },
+      // Log the user in after registration using a Promise
+      await new Promise<void>((resolve, reject) => {
+        req.login(newUser, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
         });
+      });
+
+      return res.json({
+        message: "Registration successful",
+        user: {
+          id: newUser.id,
+          username: newUser.username,
+          email: newUser.email,
+          is_admin: newUser.is_admin,
+          role: newUser.role
+        },
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -184,7 +186,7 @@ export function setupAuth(app: Express) {
         return res.status(400).send(info.message ?? "Login failed");
       }
 
-      req.logIn(user, (err) => {
+      req.login(user, (err) => {
         if (err) {
           return next(err);
         }
@@ -194,6 +196,7 @@ export function setupAuth(app: Express) {
           user: {
             id: user.id,
             username: user.username,
+            email: user.email,
             is_admin: user.is_admin,
             role: user.role
           },

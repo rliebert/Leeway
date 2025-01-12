@@ -16,7 +16,8 @@ import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import leewayLogo from "@/assets/leeway-logo3.png";
+// Update image import to use @/ alias
+import leewayLogo from "@/assets/leeway-logo.png";
 
 // Login schema matches backend expectations
 const loginSchema = z.object({
@@ -87,7 +88,9 @@ export default function AuthForm() {
     <Card className="w-[400px]">
       <CardHeader>
         <div className="flex items-center gap-3 mb-4">
-          <img src={leewayLogo} alt="Leeway Logo" className="w-8 h-8" />
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <span className="text-lg font-bold text-primary">L</span>
+          </div>
           <h2 className="text-2xl font-bold">Welcome to Leeway</h2>
         </div>
       </CardHeader>
