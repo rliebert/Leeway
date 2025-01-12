@@ -5,59 +5,45 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-
-// Form data types
-interface ChannelFormData {
-  name: string;
-  description?: string;
-  section_id?: string | null;
-}
-
-interface SectionFormData {
-  name: string;
-}
+import { ChevronRight, Hash, MoreVertical } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   selectedChannel: string;
   onSelectChannel: (channelId: string) => void;
 }
 
-export default function ChannelSidebar({
-  selectedChannel,
-  onSelectChannel,
-}: Props) {
+export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Props) {
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-
-  const [channelFormData, setChannelFormData] = useState<ChannelFormData>({
-    name: "",
-  });
-  const [sectionFormData, setSectionFormData] = useState<SectionFormData>({
-    name: "",
-  });
-  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
   });
 
-  const { data: sections } = useQuery<Section[]>({
-    queryKey: ["/api/sections"],
+  const [channelFormData, setChannelFormData] = useState<{ name: string; description?: string }>({
+    name: "",
   });
 
-  // Create/update channel mutation
+  const handleCreateChannel = () => {
+    if (!channelFormData.name.trim()) {
+      toast({ variant: "destructive", description: "Channel name is required" });
+      return;
+    }
+    createChannelMutation.mutate(channelFormData);
+    setChannelFormData({ name: "" });
+  };
+
   const createChannelMutation = useMutation({
-    mutationFn: async (data: ChannelFormData) => {
+    mutationFn: async (data: { name: string; description?: string }) => {
       const response = await fetch("/api/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
+      if (!response.ok) throw new Error(await response.text());
       return response.json();
     },
     onSuccess: () => {
@@ -66,119 +52,40 @@ export default function ChannelSidebar({
     },
   });
 
-  const updateChannelMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: ChannelFormData }) => {
-      const response = await fetch(`/api/channels/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-      toast({ description: "Channel updated successfully" });
-    },
-  });
-
-  const deleteChannelMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/channels/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-      toast({ description: "Channel deleted successfully" });
-    },
-  });
-
-  const handleCreateChannel = () => {
-    if (!channelFormData.name.trim()) {
-      toast({
-        variant: "destructive",
-        description: "Channel name is required",
-      });
-      return;
-    }
-    createChannelMutation.mutate(channelFormData);
-  };
-
-  const handleUpdateChannel = () => {
-    if (editingChannel) {
-      updateChannelMutation.mutate({
-        id: editingChannel.id.toString(),
-        data: channelFormData,
-      });
-      setEditingChannel(null); // Clear editing state
-    }
-  };
-
-  const handleDeleteChannel = (channelId: string) => {
-    if (confirm("Are you sure you want to delete this channel?")) {
-      deleteChannelMutation.mutate(channelId);
-    }
-  };
-
-  // JSX for the sidebar UI
   return (
-    <div>
-      <h2>Channels</h2>
-      {channels?.map((channel) => (
-        <div key={channel.id}>
-          <span>{channel.name}</span>
-          <Button
-            onClick={() => {
-              setEditingChannel(channel);
-              setChannelFormData({
-                name: channel.name,
-                description: channel.description || "",
-                section_id: channel.section_id
-                  ? channel.section_id.toString()
-                  : null,
-              });
-            }}
-          >
-            Edit
-          </Button>
-          <Button onClick={() => handleDeleteChannel(channel.id.toString())}>
-            Delete
-          </Button>
-        </div>
-      ))}
+    <div className="flex flex-col h-full">
+      <div 
+        className="flex items-center px-3 h-12 cursor-pointer hover:bg-accent/50"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <ChevronRight className={`h-4 w-4 mr-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+        <span className="font-medium">Channels</span>
+      </div>
 
-      {/* Channel creation form */}
-      <h3>Add Channel</h3>
-      <input
-        type="text"
-        placeholder="Channel Name"
-        value={channelFormData.name}
-        onChange={(e) =>
-          setChannelFormData({ ...channelFormData, name: e.target.value })
-        }
-      />
-      <Button onClick={handleCreateChannel}>Save</Button>
-
-      {/* Editing the selected channel */}
-      {editingChannel && (
-        <div>
-          <h3>Edit Channel: {editingChannel.name}</h3>
-          <input
-            type="text"
-            placeholder="Channel Name"
-            value={channelFormData.name}
-            onChange={(e) =>
-              setChannelFormData({ ...channelFormData, name: e.target.value })
-            }
-          />
-          <Button onClick={handleUpdateChannel}>Update</Button>
-        </div>
+      {isExpanded && (
+        <ScrollArea className="flex-1">
+          <div className="px-1 py-2">
+            {channels?.map((channel) => (
+              <div
+                key={channel.id}
+                className={`group flex items-center px-2 h-8 rounded-md cursor-pointer hover:bg-accent/50 ${
+                  selectedChannel === channel.id.toString() ? 'bg-accent' : ''
+                }`}
+                onClick={() => onSelectChannel(channel.id.toString())}
+              >
+                <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="flex-1">{channel.name}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
       )}
     </div>
   );
