@@ -16,6 +16,7 @@ interface WSMessage {
   channelId?: string;
   content?: string;
   parentId?: string;
+  attachments?: string[]; // Add attachments support to WSMessage
 }
 
 const WSContext = createContext<WSContextType>({

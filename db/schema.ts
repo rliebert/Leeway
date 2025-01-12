@@ -63,7 +63,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   created_sections: many(sections, { relationName: "creator" }),
 }));
 
-export const messagesRelations = relations(messages, ({ one }) => ({
+export const messagesRelations = relations(messages, ({ one, many }) => ({
   channel: one(channels, {
     fields: [messages.channel_id],
     references: [channels.id],
@@ -76,6 +76,7 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     fields: [messages.parent_id],
     references: [messages.id],
   }),
+  attachments: many(file_attachments),
 }));
 
 export const channelsRelations = relations(channels, ({ one, many }) => ({
@@ -110,7 +111,11 @@ export type InsertUser = typeof users.$inferInsert;
 export type Message = typeof messages.$inferSelect & {
   author?: User;
   replies?: Message[];
-  attachments?: typeof file_attachments.$inferSelect[];
+  attachments?: {
+    url: string;
+    originalName: string;
+    mimetype: string;
+  }[];
 };
 export type Channel = typeof channels.$inferSelect & {
   section?: typeof sections.$inferSelect;

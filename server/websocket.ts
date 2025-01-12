@@ -108,30 +108,34 @@ export function setupWebSocketServer(server: Server) {
           case 'message': {
             if (!message.channelId || !message.content || !ws.userId) break;
 
-            // Insert new message into database
-            const [newMessage] = await db.insert(messages).values({
-              channel_id: message.channelId,
-              user_id: ws.userId,
-              content: message.content,
-              parent_id: message.parentId || null,
-            }).returning();
+            try {
+              // Insert new message into database
+              const [newMessage] = await db.insert(messages).values({
+                channel_id: message.channelId,
+                user_id: ws.userId,
+                content: message.content,
+                parent_id: message.parentId || null,
+              }).returning();
 
-            if (newMessage) {
-              // Fetch full message with author details
-              const messageWithAuthor = await db.query.messages.findFirst({
-                where: eq(messages.id, newMessage.id),
-                with: {
-                  author: true,
-                  attachments: true,
-                }
-              });
-
-              if (messageWithAuthor) {
-                broadcastToChannel(message.channelId, {
-                  type: 'message',
-                  message: messageWithAuthor
+              if (newMessage) {
+                // Fetch full message with author details and attachments
+                const messageWithAuthor = await db.query.messages.findFirst({
+                  where: eq(messages.id, newMessage.id),
+                  with: {
+                    author: true,
+                    attachments: true,
+                  }
                 });
+
+                if (messageWithAuthor) {
+                  broadcastToChannel(message.channelId, {
+                    type: 'message',
+                    message: messageWithAuthor
+                  });
+                }
               }
+            } catch (error) {
+              console.error('Error inserting message:', error);
             }
             break;
           }

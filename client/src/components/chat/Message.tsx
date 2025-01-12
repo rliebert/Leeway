@@ -8,9 +8,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
 
 interface FileAttachment {
+  id: string;
   url: string;
   originalName: string;
   mimetype: string;
+  file_size: number;
 }
 
 interface MessageProps {
@@ -55,12 +57,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     return mimetype.startsWith('image/');
   };
 
-  const formatTimestamp = (date: string | Date | null) => {
+  const formatTimestamp = (date: string | Date | null): string => {
     if (!date) return '';
     return new Date(date).toLocaleTimeString();
   };
 
-  // Invalidate replies query when new messages come in
   useEffect(() => {
     const newReplies = wsMessages.filter(msg => msg.parent_id === message.id);
     if (newReplies.length > 0) {
@@ -102,10 +103,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
 
-            {/* Display attachments */}
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-2">
-                {/* Display image previews */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
                     .filter(file => isImageFile(file.mimetype))
@@ -126,7 +125,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                     ))}
                 </div>
 
-                {/* Display non-image file links */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
                     .filter(file => !isImageFile(file.mimetype))
@@ -182,10 +180,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       </div>
                       <p className="text-sm mt-1">{reply.content}</p>
 
-                      {/* Display attachments in replies */}
                       {reply.attachments && reply.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
-                          {/* Display image previews */}
                           <div className="flex flex-wrap gap-2">
                             {reply.attachments
                               .filter(file => isImageFile(file.mimetype))
@@ -206,7 +202,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               ))}
                           </div>
 
-                          {/* Display non-image file links */}
                           <div className="flex flex-wrap gap-2">
                             {reply.attachments
                               .filter(file => !isImageFile(file.mimetype))

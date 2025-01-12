@@ -18,7 +18,7 @@ interface ThreadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   parentMessage: Message & {
-    author?: { username: string; avatar_url?: string };
+    author?: { username: string; avatar_url?: string | null };
     attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
   };
 }
@@ -33,7 +33,7 @@ export default function ThreadModal({
   const { messages: wsMessages } = useWS();
 
   const { data: replies = [] } = useQuery<(Message & {
-    author?: { username: string; avatar_url?: string };
+    author?: { username: string; avatar_url?: string | null };
     attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
   })[]>({
     queryKey: [`/api/messages/${parentMessage.id}/replies`],
@@ -58,7 +58,6 @@ export default function ThreadModal({
     }
   }, [open, allReplies.length]);
 
-  // Invalidate replies query when new messages come in
   useEffect(() => {
     const newReplies = wsMessages.filter(msg => msg.parent_id === parentMessage.id);
     if (newReplies.length > 0) {
@@ -84,7 +83,7 @@ export default function ThreadModal({
           <div className="p-4">
             <div className="flex gap-4">
               <Avatar>
-                <AvatarImage src={parentMessage.author?.avatar_url} />
+                <AvatarImage src={parentMessage.author?.avatar_url || undefined} />
                 <AvatarFallback>
                   {parentMessage.author?.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
@@ -106,7 +105,7 @@ export default function ThreadModal({
               {allReplies.map((reply) => (
                 <div key={reply.id} className="flex gap-4">
                   <Avatar>
-                    <AvatarImage src={reply.author?.avatar_url} />
+                    <AvatarImage src={reply.author?.avatar_url || undefined} />
                     <AvatarFallback>
                       {reply.author?.username?.[0]?.toUpperCase()}
                     </AvatarFallback>
@@ -128,8 +127,8 @@ export default function ThreadModal({
           <Separator />
           <div className="p-4">
             <ChatInput 
-              channelId={parentMessage.channel_id} 
-              parentMessageId={parentMessage.id}
+              channelId={parentMessage.channel_id.toString()} 
+              parentMessageId={parentMessage.id.toString()}
             />
           </div>
         </div>
