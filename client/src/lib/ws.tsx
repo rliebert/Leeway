@@ -240,6 +240,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const subscribe = (channelId: string) => {
     if (channelId) {
       console.log("Subscribing to channel:", channelId);
+      setMessages([]); // Clear existing messages
       send({ type: "subscribe", channelId });
     }
   };
