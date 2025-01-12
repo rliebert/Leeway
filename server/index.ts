@@ -43,12 +43,9 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoint
-app.get("/health", async (_req, res) => {
-  const sessionStatus = await checkSessionStore();
-
+app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    session: sessionStatus ? "connected" : "error",
     timestamp: new Date().toISOString()
   });
 });
@@ -77,10 +74,26 @@ app.get("/health", async (_req, res) => {
       serveStatic(app);
     }
 
-    const PORT = 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-      log(`Server started successfully on port ${PORT}`);
-    });
+    // Try alternative ports if 5000 is in use
+    const tryPort = (port: number): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        server.listen(port, "0.0.0.0")
+          .once('listening', () => {
+            log(`Server started successfully on port ${port}`);
+            resolve();
+          })
+          .once('error', (err: any) => {
+            if (err.code === 'EADDRINUSE') {
+              log(`Port ${port} is in use, trying next port...`);
+              tryPort(port + 1).then(resolve).catch(reject);
+            } else {
+              reject(err);
+            }
+          });
+      });
+    };
+
+    await tryPort(5000);
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);

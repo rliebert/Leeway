@@ -20,6 +20,7 @@ interface ThreadModalProps {
   parentMessage: Message & {
     author?: { username: string; avatar_url?: string | null };
     attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
+    channel_id: string; // Make channel_id required
   };
 }
 
@@ -127,7 +128,7 @@ export default function ThreadModal({
           <Separator />
           <div className="p-4">
             <ChatInput 
-              channelId={parentMessage.channel_id.toString()} 
+              channelId={parentMessage.channel_id} 
               parentMessageId={parentMessage.id.toString()}
             />
           </div>

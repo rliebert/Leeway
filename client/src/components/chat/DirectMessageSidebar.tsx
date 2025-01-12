@@ -58,16 +58,16 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   });
 
   // Helper function to check if user is online (active in last 5 minutes)
-  function isUserOnline(lastActiveAt: Date | null): boolean {
-    if (!lastActiveAt) return false;
+  function isUserOnline(last_active: Date | null): boolean {
+    if (!last_active) return false;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    return new Date(lastActiveAt) > fiveMinutesAgo;
+    return new Date(last_active) > fiveMinutesAgo;
   }
 
   // Sort users: online users first, then alphabetically by username
   const sortedUsers = [...users].sort((a, b) => {
-    const aIsOnline = isUserOnline(a.lastActiveAt);
-    const bIsOnline = isUserOnline(b.lastActiveAt);
+    const aIsOnline = isUserOnline(a.last_active);
+    const bIsOnline = isUserOnline(b.last_active);
 
     if (aIsOnline && !bIsOnline) return -1;
     if (!aIsOnline && bIsOnline) return 1;
@@ -101,7 +101,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
         <CollapsibleContent className="space-y-4 mt-2">
           <div className="px-2 space-y-1">
             {sortedUsers.map((user) => {
-              const isOnline = isUserOnline(user.lastActiveAt);
+              const isOnline = isUserOnline(user.last_active);
 
               return (
                 <div
@@ -111,7 +111,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar || undefined} />
+                        <AvatarImage src={user.avatar_url || undefined} />
                         <AvatarFallback>
                           {user.username[0].toUpperCase()}
                         </AvatarFallback>
@@ -130,7 +130,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                       variant="ghost"
                       size="icon"
                       className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => createDMMutation.mutate(user.id)}
+                      onClick={() => createDMMutation.mutate(Number(user.id))}
                     >
                       <MessageSquare className="h-4 w-4" />
                     </Button>
