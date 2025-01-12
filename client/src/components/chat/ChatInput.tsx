@@ -179,15 +179,28 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
             }}
           />
           {files.length === 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11"
-              onClick={() => document.getElementById('file-upload')?.click()}
-            >
-              <PaperclipIcon className="h-5 w-5" />
-            </Button>
+            <>
+              <input
+                type="file"
+                id="file-upload"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const selectedFiles = Array.from(e.target.files || []);
+                  handleFileSelect(selectedFiles);
+                }}
+                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
+                <PaperclipIcon className="h-5 w-5" />
+              </Button>
+            </>
           )}
         </div>
         <Button type="submit" size="sm" className="h-11">Send</Button>

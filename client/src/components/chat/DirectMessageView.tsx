@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { User } from "lucide-react";
+import { FileUpload } from "./FileUpload";
 
 interface DirectMessageViewProps {
   channelId: number;
