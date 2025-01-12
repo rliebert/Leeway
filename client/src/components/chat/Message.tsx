@@ -26,9 +26,12 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
 
-  const { data: replies = [] } = useQuery<MessageType[]>({
+  const { data: replies = [] } = useQuery<(MessageType & {
+    author?: { username: string; avatar_url?: string };
+    attachments?: FileAttachment[];
+  })[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
-    enabled: true, // Always fetch replies to show correct count
+    enabled: true,
   });
 
   // Combine initial replies with new WebSocket messages
@@ -39,13 +42,22 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         wsMsg.parent_id === message.id &&
         !replies.some(reply => reply.id === wsMsg.id)
     ),
-  ];
+  ].sort((a, b) => {
+    const dateA = new Date(a.created_at || '').getTime();
+    const dateB = new Date(b.created_at || '').getTime();
+    return dateA - dateB;
+  });
 
   const replyCount = allReplies.length;
 
   // Helper function to check if file is an image
   const isImageFile = (mimetype: string): boolean => {
     return mimetype.startsWith('image/');
+  };
+
+  const formatTimestamp = (date: string | Date | null) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString();
   };
 
   // Invalidate replies query when new messages come in
@@ -75,7 +87,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               <div className="flex items-center gap-2">
                 <span className="font-semibold">{message.author?.username}</span>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(message.created_at || '').toLocaleTimeString()}
+                  {formatTimestamp(message.created_at)}
                 </span>
               </div>
               <Button 
@@ -85,7 +97,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 onClick={() => setShowThread(true)}
               >
                 <Reply className="h-4 w-4 mr-1" />
-                Reply
+                {replyCount > 0 ? `Reply (${replyCount})` : 'Reply'}
               </Button>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
@@ -96,8 +108,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {/* Display image previews */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter((file: FileAttachment) => isImageFile(file.mimetype))
-                    .map((file: FileAttachment, index: number) => (
+                    .filter(file => isImageFile(file.mimetype))
+                    .map((file, index) => (
                       <a 
                         key={index}
                         href={file.url}
@@ -117,8 +129,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {/* Display non-image file links */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter((file: FileAttachment) => !isImageFile(file.mimetype))
-                    .map((file: FileAttachment, index: number) => (
+                    .filter(file => !isImageFile(file.mimetype))
+                    .map((file, index) => (
                       <a
                         key={index}
                         href={file.url}
@@ -150,75 +162,77 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
               </Button>
             )}
+
+            {showReplies && allReplies.length > 0 && (
+              <div className="ml-12 pl-4 border-l mt-2">
+                {allReplies.map((reply) => (
+                  <div key={reply.id} className="flex gap-4 mt-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={reply.author?.avatar_url} />
+                      <AvatarFallback className="bg-primary/10">
+                        {reply.author?.username?.[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{reply.author?.username}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatTimestamp(reply.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm mt-1">{reply.content}</p>
+
+                      {/* Display attachments in replies */}
+                      {reply.attachments && reply.attachments.length > 0 && (
+                        <div className="mt-2 space-y-2">
+                          {/* Display image previews */}
+                          <div className="flex flex-wrap gap-2">
+                            {reply.attachments
+                              .filter(file => isImageFile(file.mimetype))
+                              .map((file, index) => (
+                                <a 
+                                  key={index}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block max-w-xs hover:opacity-90 transition-opacity"
+                                >
+                                  <img
+                                    src={file.url}
+                                    alt={file.originalName}
+                                    className="rounded-md max-h-48 object-cover"
+                                  />
+                                </a>
+                              ))}
+                          </div>
+
+                          {/* Display non-image file links */}
+                          <div className="flex flex-wrap gap-2">
+                            {reply.attachments
+                              .filter(file => !isImageFile(file.mimetype))
+                              .map((file, index) => (
+                                <a
+                                  key={index}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
+                                >
+                                  <FileIcon className="h-4 w-4" />
+                                  {file.originalName}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-        {showReplies && allReplies.length > 0 && (
-          <div className="ml-12 pl-4 border-l mt-2">
-            {allReplies.map((reply) => (
-              <div key={reply.id} className="flex gap-4 mt-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={reply.author?.avatar_url} />
-                  <AvatarFallback className="bg-primary/10">
-                    {reply.author?.username?.[0]?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{reply.author?.username}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(reply.created_at || '').toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-sm mt-1">{reply.content}</p>
-                  {/* Display attachments in replies */}
-                  {reply.attachments && reply.attachments.length > 0 && (
-                    <div className="mt-2 space-y-2">
-                      {/* Display image previews */}
-                      <div className="flex flex-wrap gap-2">
-                        {reply.attachments
-                          .filter((file: FileAttachment) => isImageFile(file.mimetype))
-                          .map((file: FileAttachment, index: number) => (
-                            <a 
-                              key={index}
-                              href={file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block max-w-xs hover:opacity-90 transition-opacity"
-                            >
-                              <img
-                                src={file.url}
-                                alt={file.originalName}
-                                className="rounded-md max-h-48 object-cover"
-                              />
-                            </a>
-                          ))}
-                      </div>
-
-                      {/* Display non-image file links */}
-                      <div className="flex flex-wrap gap-2">
-                        {reply.attachments
-                          .filter((file: FileAttachment) => !isImageFile(file.mimetype))
-                          .map((file: FileAttachment, index: number) => (
-                            <a
-                              key={index}
-                              href={file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
-                            >
-                              <FileIcon className="h-4 w-4" />
-                              {file.originalName}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
       <ThreadModal
         open={showThread}

@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useWS } from "@/lib/ws.tsx";
+import { useWS } from "@/lib/ws";
 import { useUser } from "@/hooks/use-user";
 import { Smile, PaperclipIcon } from "lucide-react";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
@@ -14,8 +14,8 @@ import {
 import { FileUpload } from "./FileUpload";
 
 interface ChatInputProps {
-  channelId: number;
-  parentMessageId?: number;
+  channelId: string;
+  parentMessageId?: string;
 }
 
 interface FormData {
@@ -27,10 +27,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   const { user } = useUser();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  console.log('ChatInput: Current files:', files.map(f => f.name));
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -53,7 +50,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       });
 
       try {
-        const response = await fetch(`/api/channels/${channelId}/upload`, {
+        const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
           credentials: 'include',
@@ -71,13 +68,13 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       }
     }
 
+    // Send message through WebSocket
     send({
       type: "message",
       channelId,
       content: message,
-      userId: user.id,
-      parentMessageId,
-      attachments,
+      parentId: parentMessageId,
+      attachments: attachments.map((attachment: any) => attachment.id),
     });
 
     form.reset();
@@ -104,6 +101,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       shouldTouch: true,
     });
 
+    // Set cursor position after emoji
     setTimeout(() => {
       if (textarea) {
         textarea.focus();
@@ -160,9 +158,9 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
             {...form.register("message")}
             ref={(e) => {
               form.register("message").ref(e);
-              if (e) textareaRef.current = e;
+              textareaRef.current = e;
             }}
-            placeholder="Type your message..."
+            placeholder={parentMessageId ? "Reply to thread..." : "Type your message..."}
             className="resize-none min-h-[2.75rem] py-2.5"
             rows={1}
             onKeyDown={(e) => {
@@ -180,19 +178,6 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
               className="h-11 w-11"
               onClick={() => document.getElementById('file-upload')?.click()}
             >
-              <input
-                type="file"
-                id="file-upload"
-                className="hidden"
-                multiple
-                onChange={(e) => {
-                  console.log('ChatInput: File input change event triggered');
-                  const selectedFiles = Array.from(e.target.files || []);
-                  handleFileSelect(selectedFiles);
-                  e.target.value = ''; // Reset input
-                }}
-                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-              />
               <PaperclipIcon className="h-5 w-5" />
             </Button>
           )}

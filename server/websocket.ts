@@ -17,6 +17,7 @@ interface WSMessage {
   channelId?: string;
   content?: string;
   parentId?: string;
+  attachments?: string[];
 }
 
 export function setupWebSocketServer(server: Server) {
@@ -112,7 +113,7 @@ export function setupWebSocketServer(server: Server) {
               channel_id: message.channelId,
               user_id: ws.userId,
               content: message.content,
-              parent_id: message.parentId,
+              parent_id: message.parentId || null,
             }).returning();
 
             if (newMessage) {
@@ -121,6 +122,7 @@ export function setupWebSocketServer(server: Server) {
                 where: eq(messages.id, newMessage.id),
                 with: {
                   author: true,
+                  attachments: true,
                 }
               });
 

@@ -19,6 +19,7 @@ interface ThreadModalProps {
   onOpenChange: (open: boolean) => void;
   parentMessage: Message & {
     author?: { username: string; avatar_url?: string };
+    attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
   };
 }
 
@@ -33,6 +34,7 @@ export default function ThreadModal({
 
   const { data: replies = [] } = useQuery<(Message & {
     author?: { username: string; avatar_url?: string };
+    attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
   })[]>({
     queryKey: [`/api/messages/${parentMessage.id}/replies`],
     enabled: open,
@@ -64,6 +66,11 @@ export default function ThreadModal({
     }
   }, [wsMessages, parentMessage.id, queryClient]);
 
+  const formatTimestamp = (date: string | Date | null) => {
+    if (!date) return '';
+    return new Date(date).toLocaleTimeString();
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl h-[80vh]">
@@ -86,7 +93,7 @@ export default function ThreadModal({
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">{parentMessage.author?.username}</span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(parentMessage.created_at).toLocaleTimeString()}
+                    {formatTimestamp(parentMessage.created_at)}
                   </span>
                 </div>
                 <p className="text-sm mt-1">{parentMessage.content}</p>
@@ -108,7 +115,7 @@ export default function ThreadModal({
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{reply.author?.username}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(reply.created_at).toLocaleTimeString()}
+                        {formatTimestamp(reply.created_at)}
                       </span>
                     </div>
                     <p className="text-sm mt-1">{reply.content}</p>
