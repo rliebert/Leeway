@@ -11,6 +11,7 @@ import { useUser } from "@/hooks/use-user";
 
 interface WSContextType {
   messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   send: (data: WSMessage) => void;
   connected: boolean;
   error: string | null;
@@ -28,6 +29,7 @@ interface WSMessage {
 
 const WSContext = createContext<WSContextType>({
   messages: [],
+  setMessages: () => {},
   send: () => {},
   connected: false,
   error: null,
@@ -273,7 +275,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   return (
     <WSContext.Provider
-      value={{ messages, send, connected, error, subscribe, unsubscribe }}
+      value={{ messages, setMessages, send, connected, error, subscribe, unsubscribe }}
     >
       {children}
     </WSContext.Provider>
