@@ -15,12 +15,23 @@ export default function MessageList({ channelId }: MessageListProps) {
   const { messages: wsMessages, subscribe, unsubscribe } = useWS();
   
   useEffect(() => {
+    let isActive = true;
+
     if (channelId && channelId !== "0") {
       console.log('MessageList: Subscribing to channel:', channelId);
-      subscribe(channelId);
-      return () => unsubscribe(channelId);
+      if (isActive) {
+        subscribe(channelId);
+      }
     }
-  }, [channelId, subscribe, unsubscribe]);
+
+    return () => {
+      isActive = false;
+      if (channelId && channelId !== "0") {
+        console.log('MessageList: Cleaning up subscription for channel:', channelId);
+        unsubscribe(channelId);
+      }
+    };
+  }, [channelId]);
 
   useEffect(() => {
     console.log('MessageList: Received WS messages:', wsMessages);

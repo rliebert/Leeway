@@ -224,9 +224,22 @@ export function WSProvider({ children }: { children: ReactNode }) {
   }, [toast, user, messageQueue]);
 
   const send = (data: WSMessage) => {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.log("Connection not ready, queueing message");
+    if (!socket) {
+      console.log("No socket connection, queueing message");
       messageQueue.push(data);
+      return;
+    }
+    
+    if (socket.readyState === WebSocket.CONNECTING) {
+      console.log("Socket still connecting, queueing message");
+      messageQueue.push(data);
+      return;
+    }
+
+    if (socket.readyState !== WebSocket.OPEN) {
+      console.log("Socket not open, reconnecting");
+      messageQueue.push(data);
+      socket.close();
       return;
     }
 
