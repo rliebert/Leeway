@@ -171,15 +171,15 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   }, {} as Record<string | number, Channel[]>);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
         <div
-          className="flex items-center justify-between px-3 h-12 group cursor-pointer"
-          onMouseEnter={() => setShowHeaderMenu(true)}
-          onMouseLeave={() => setShowHeaderMenu(false)}
+          className="flex items-center justify-between px-3 h-12 group cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+          onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center flex-1">
-            <span className="text-lg font-semibold">Channels</span>
+            <ChevronRight className={`h-4 w-4 mr-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            <span className="text-sm font-medium">Channels</span>
             {showHeaderMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -331,13 +331,13 @@ interface ChannelItemProps {
 function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreator }: ChannelItemProps) {
   return (
     <div
-      className={`group flex items-center px-2 h-8 rounded-md cursor-pointer hover:bg-accent/50 ${
-        isSelected ? 'bg-accent' : ''
+      className={`group flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
+        isSelected ? 'bg-blue-50 dark:bg-blue-900/50' : ''
       }`}
       onClick={() => onSelect(channel.id.toString())}
     >
-      <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
-      <span className="flex-1">{channel.name}</span>
+      <Hash className="h-4 w-4 mr-2 text-gray-500" />
+      <span className="flex-1 text-sm">{channel.name}</span>
       {isCreator && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
