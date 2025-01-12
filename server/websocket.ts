@@ -151,10 +151,10 @@ export function setupWebSocketServer(server: Server) {
 
             try {
               const [newMessage] = await db.insert(messages).values({
-                channel_id: parseInt(message.channelId),
-                user_id: parseInt(ws.userId),
+                channel_id: message.channelId,
+                user_id: ws.userId,
                 content: message.content,
-                parent_id: message.parentId ? parseInt(message.parentId) : null,
+                parent_id: message.parentId || null,
               }).returning();
 
               // Handle attachments
