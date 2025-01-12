@@ -364,6 +364,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 />
               ))}
           </div>
+          </div>
 
           {/* Sections with their channels */}
           {sections?.map((section) => (
