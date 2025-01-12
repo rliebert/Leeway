@@ -64,7 +64,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         // Determine WebSocket protocol and host
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
         const wsHost = loc.host;
-        //const wsPath = "/ws";
+        const wsPath = "/ws";
 
         // Construct WebSocket URL
         const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
