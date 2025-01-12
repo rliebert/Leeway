@@ -43,7 +43,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
+  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const { data: channels } = useQuery<Channel[]>({
@@ -174,7 +174,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
         <div
-          className="flex items-center justify-between px-3 h-12 group"
+          className="flex items-center justify-between px-3 h-8 group"
         >
           <div className="flex items-center flex-1">
             <Button 
@@ -185,20 +185,16 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
             >
               <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </Button>
-            <Button
-              variant="ghost"
-              className="h-8 px-2 hover:bg-transparent"
-              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-            >
-              <span className="text-lg font-semibold">Channels</span>
-            </Button>
-            {showHeaderMenu && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 ml-2">
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="h-6 px-2 hover:bg-transparent flex items-center gap-1"
+                >
+                  <span className="text-lg font-semibold">Channels</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onSelect={() => setIsDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
