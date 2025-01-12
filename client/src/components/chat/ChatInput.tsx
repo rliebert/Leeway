@@ -40,16 +40,16 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
     const message = data?.message || "";
     if ((!message.trim() && files.length === 0) || !user || !channelId) return;
 
-    // Upload files if any
-    let attachments = [];
-    if (files.length > 0) {
-      console.log('ChatInput: Uploading files');
-      const formData = new FormData();
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
+    try {
+      // Upload files if any
+      let attachments = [];
+      if (files.length > 0) {
+        console.log('ChatInput: Uploading files');
+        const formData = new FormData();
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
 
-      try {
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
@@ -62,32 +62,27 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
 
         attachments = await response.json();
         console.log('ChatInput: Files uploaded successfully:', attachments);
-      } catch (error) {
-        console.error('Error uploading files:', error);
-        return;
       }
+
+      // Send message through WebSocket
+      console.log('ChatInput: Sending message with attachments:', attachments);
+      
+      send({
+        type: "message",
+        channelId: channelId.toString(),
+        content: message.trim() || "(attachment)",
+        parentId: parentMessageId,
+        attachments: attachments.map((attachment: any) => attachment.id),
+      });
+
+      // Reset form state
+      form.reset();
+      setFiles([]);
+      setShowEmojiPicker(false);
+    } catch (error) {
+      console.error('Error sending message with attachments:', error);
+      alert('Failed to send message with attachments. Please try again.');
     }
-
-    // Send message through WebSocket
-    console.log('ChatInput: Sending message with channelId type:', typeof channelId, 'value:', channelId);
-    
-    send({
-      type: "message",
-      channelId: channelId.toString(), // Ensure channelId is a string
-      content: message,
-      parentId: parentMessageId,
-      attachments: attachments.map((attachment: any) => attachment.id),
-    });
-
-    console.log('Sending message:', {
-      channelId,
-      content: message,
-      parentId: parentMessageId
-    });
-
-    form.reset();
-    setFiles([]);
-    setShowEmojiPicker(false);
   };
 
   const onEmojiClick = (emojiData: EmojiClickData) => {
