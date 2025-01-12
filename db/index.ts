@@ -1,5 +1,5 @@
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon, neonConfig } from '@neondatabase/serverless';
 import * as schema from "@db/schema";
 
 if (!process.env.DATABASE_URL) {
@@ -8,41 +8,34 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Configure connection with pooling and proper timeouts
-const poolConfig = {
-  max: 20, // Maximum number of connections
-  connectionTimeoutMillis: 10000, // Connection timeout
-  idleTimeoutMillis: 30000, // How long a connection can be idle before being closed
-  retryInterval: 1000, // Time between connection retries
-  maxRetries: 3, // Maximum number of connection retries
-};
+// Configure Neon client
+neonConfig.fetchConnectionCache = true;
+
+// Create optimized database connection
+const sql = neon(process.env.DATABASE_URL);
 
 // Export the database instance with proper configuration
-export const db = drizzle({
-  connection: process.env.DATABASE_URL,
-  schema,
-  ws,
-  connectionOptions: {
-    ...poolConfig,
-    keepAlive: true,
-    onError: (err) => {
-      console.error("Database connection error:", err);
-      // Implement proper error handling and logging
-    },
-    onConnect: () => {
-      console.log("Database connected successfully");
-    },
-  },
-});
+export const db = drizzle(sql);
 
-// Add a health check function
+// Add a health check function with proper error handling
 export async function checkDatabaseConnection() {
   try {
-    // Simple query to verify connection
-    await db.select().from(schema.users).limit(1);
+    const result = await sql`SELECT NOW()`;
+    console.log("Database connection verified:", result);
     return true;
   } catch (error) {
     console.error("Database health check failed:", error);
     return false;
   }
 }
+
+// Graceful shutdown handling
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM signal, closing database connections...');
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT signal, closing database connections...');
+  process.exit(0);
+});
