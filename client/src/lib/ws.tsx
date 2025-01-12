@@ -16,7 +16,7 @@ interface WSMessage {
   channelId?: string;
   content?: string;
   parentId?: string;
-  attachments?: string[]; // Add attachments support to WSMessage
+  attachments?: string[];
 }
 
 const WSContext = createContext<WSContextType>({
@@ -41,67 +41,65 @@ export function WSProvider({ children }: { children: ReactNode }) {
       if (!user) return;
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
-      websocket.onopen = () => {
+      // Create WebSocket connection with credentials
+      const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+      websocket.addEventListener('open', () => {
+        console.log('WebSocket connection established');
         setConnected(true);
         toast({
           description: "Connected to chat server",
           duration: 3000,
         });
-      };
+      });
 
-      websocket.onclose = (event) => {
+      websocket.addEventListener('close', (event) => {
+        console.log('WebSocket connection closed:', event);
         setConnected(false);
-        const message = event.code === 1000 
-          ? "Disconnected from chat server"
-          : "Connection lost. Reconnecting...";
-
         toast({
           variant: "destructive",
-          description: message,
+          description: "Connection lost. Reconnecting...",
           duration: 3000,
         });
 
         // Attempt to reconnect after 5 seconds
-        reconnectTimeout = setTimeout(() => {
-          connect();
-        }, 5000);
-      };
+        reconnectTimeout = setTimeout(connect, 5000);
+      });
 
-      websocket.onerror = (error) => {
+      websocket.addEventListener('error', (error) => {
         console.error('WebSocket Error:', error);
         toast({
           variant: "destructive",
           description: "Connection error. Trying to reconnect...",
           duration: 3000,
         });
-      };
+      });
 
-      websocket.onmessage = (event) => {
+      websocket.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(event.data);
-          switch (data.type) {
-            case 'message':
-              if (data.message) {
-                setMessages((prev) => {
-                  // Avoid duplicate messages
-                  const exists = prev.some(msg => msg.id === data.message.id);
-                  if (exists) return prev;
-                  return [...prev, data.message];
-                });
+          console.log('WebSocket message received:', data);
+          if (data.type === 'message' && data.message) {
+            setMessages((prev) => {
+              // Avoid duplicate messages
+              if (prev.some(msg => msg.id === data.message.id)) {
+                return prev;
               }
-              break;
-            case 'typing':
-              // Handle typing indicators
-              break;
+              return [...prev, data.message];
+            });
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
-      };
+      });
 
       setSocket(websocket);
+
+      return () => {
+        if (websocket.readyState === WebSocket.OPEN) {
+          websocket.close();
+        }
+      };
     };
 
     connect();

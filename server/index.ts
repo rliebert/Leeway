@@ -3,10 +3,14 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDatabase, checkDatabaseConnection } from "@db";
 import { initializeSessionStore, checkSessionStore } from "./config/session";
+import path from "path";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Enhanced logging middleware with timing
 app.use((req, res, next) => {
