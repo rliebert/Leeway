@@ -1,12 +1,18 @@
+
 import { useState } from "react";
-import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-import { ChevronRight, Hash, MoreVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Hash, MoreVertical } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Props {
   selectedChannel: string;
@@ -54,12 +60,40 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   return (
     <div className="flex flex-col h-full">
-      <div 
-        className="flex items-center px-3 h-12 cursor-pointer hover:bg-accent/50"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <ChevronRight className={`h-4 w-4 mr-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-        <span className="font-medium">Channels</span>
+      <div className="flex items-center px-3 h-12">
+        <div className="flex items-center flex-1 group">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="p-0 hover:bg-transparent"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 mr-1" />
+            ) : (
+              <ChevronRight className="h-4 w-4 mr-1" />
+            )}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="px-2 hover:bg-accent/50 font-medium"
+              >
+                Channels
+                <ChevronDown className="h-4 w-4 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={handleCreateChannel}>
+                Create New Channel
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                Create New Section
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {isExpanded && (
