@@ -90,16 +90,37 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 <span className="text-xs text-muted-foreground">
                   {formatTimestamp(message.created_at)}
                 </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                  onClick={() => setShowThread(true)}
+                >
+                  <Reply className="h-3 w-3 mr-1" />
+                  {replyCount > 0 ? `${replyCount}` : 'Reply'}
+                </Button>
+                {message.user_id === user?.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Are you sure you want to delete this message?')) {
+                        const response = await fetch(`/api/messages/${message.id}`, {
+                          method: 'DELETE',
+                        });
+                        if (response.ok) {
+                          toast({ description: "Message deleted" });
+                          queryClient.invalidateQueries({ queryKey: [`/api/channels/${message.channel_id}/messages`] });
+                        }
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 px-2"
-                onClick={() => setShowThread(true)}
-              >
-                <Reply className="h-4 w-4 mr-1" />
-                {replyCount > 0 ? `Reply (${replyCount})` : 'Reply'}
-              </Button>
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
 

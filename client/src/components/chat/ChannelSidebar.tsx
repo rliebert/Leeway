@@ -50,6 +50,13 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
+    onSuccess: (channels) => {
+      if (!selectedChannel && channels?.length > 0) {
+        const lastChannel = localStorage.getItem('lastSelectedChannel');
+        const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
+        onSelectChannel(defaultChannel.id);
+      }
+    }
   });
 
   const { data: sections } = useQuery<Section[]>({
@@ -382,7 +389,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
               <div className="ml-6">
                 {channelsBySection?.[section.id]?.map((channel) => (
-                  (expandedSections[section.id] &&
+                  (expandedSections[section.id] || channel.id.toString() === selectedChannel) &&
                     <ChannelItem
                       key={channel.id}
                       channel={channel}

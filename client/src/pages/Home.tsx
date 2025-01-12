@@ -47,14 +47,14 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
     <div className="flex flex-col h-screen bg-background">
       <div className="w-full border-b">
         <div className="flex items-center h-14">
-          <div className="w-64 px-4 bg-sidebar border-r flex items-center gap-2">
+          <div className="w-64 px-4 bg-sidebar flex items-center gap-2">
             <img src={leewayLogo} alt="Leeway" className="w-6 h-6" />
             <h1 className="font-bold text-xl text-sidebar-foreground">Leeway</h1>
           </div>
-          <div className="flex-1 px-4">
-            <SearchMessages />
-          </div>
-          <div className="px-4">
+          <div className="flex-1 pr-2 pl-4 flex items-center">
+            <div className="flex-1">
+              <SearchMessages />
+            </div>
             <ConnectionStatus />
           </div>
         </div>
