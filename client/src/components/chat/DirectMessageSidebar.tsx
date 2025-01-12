@@ -1,13 +1,9 @@
+
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
@@ -20,17 +16,15 @@ interface DirectMessageSidebarProps {
 }
 
 export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
   const { user: currentUser } = useUser();
   const { toast } = useToast();
 
-  // Fetch all users
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: !!currentUser,
   });
 
-  // Create DM channel mutation
   const createDMMutation = useMutation({
     mutationFn: async (userId: number) => {
       const response = await fetch("/api/dm/channels", {
@@ -57,58 +51,50 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     },
   });
 
-  // Helper function to check if user is online (active in last 5 minutes)
   function isUserOnline(last_active: Date | null): boolean {
     if (!last_active) return false;
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     return new Date(last_active) > fiveMinutesAgo;
   }
 
-  // Sort users: online users first, then alphabetically by username
-  const sortedUsers = [...users].sort((a, b) => {
-    const aIsOnline = isUserOnline(a.last_active);
-    const bIsOnline = isUserOnline(b.last_active);
-
-    if (aIsOnline && !bIsOnline) return -1;
-    if (!aIsOnline && bIsOnline) return 1;
-
-    return a.username.localeCompare(b.username);
-  });
+  // Current user should be first, followed by other users sorted alphabetically
+  const sortedUsers = [
+    currentUser,
+    ...users.filter(u => u.id !== currentUser?.id)
+      .sort((a, b) => a.username.localeCompare(b.username))
+  ].filter(Boolean);
 
   return (
     <ScrollArea className="flex-1">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex items-center px-4">
-          <CollapsibleTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-4 w-4 p-0"
-            >
-              <ChevronDown className={cn(
-                "h-3 w-3 transition-transform",
-                !isOpen && "-rotate-90"
-              )} />
-            </Button>
-          </CollapsibleTrigger>
-          <div className="flex-1">
-            <h2 className="px-2 font-semibold text-lg">
-              Users
-            </h2>
-          </div>
+      <div className="p-2">
+        <div className="flex items-center px-2 mb-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-4 w-4 p-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <ChevronDown className={cn(
+              "h-3 w-3 transition-transform",
+              !isExpanded && "-rotate-90"
+            )} />
+          </Button>
+          <span className="text-lg font-semibold ml-2">Direct Messages</span>
         </div>
 
-        <CollapsibleContent className="space-y-4 mt-2">
-          <div className="px-2 space-y-1">
+        {isExpanded && (
+          <div className="space-y-1">
             {sortedUsers.map((user) => {
+              if (!user) return null;
               const isOnline = isUserOnline(user.last_active);
+              const isSelf = user.id === currentUser?.id;
 
               return (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-2 rounded-md hover:bg-accent group"
+                  className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent group"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1">
                     <div className="relative">
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={user.avatar_url || undefined} />
@@ -120,27 +106,32 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
                       )}
                     </div>
-                    <span className="font-medium">
-                      {user.username}
-                      {user.id === currentUser?.id && " (You)"}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">
+                        {user.username}
+                        {isSelf && " (You)"}
+                      </span>
+                      {isSelf && (
+                        <span className="text-xs text-muted-foreground">
+                          Note to self
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {user.id !== currentUser?.id && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => createDMMutation.mutate(Number(user.id))}
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => createDMMutation.mutate(Number(user.id))}
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
                 </div>
               );
             })}
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        )}
+      </div>
     </ScrollArea>
   );
 }
