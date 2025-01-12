@@ -25,6 +25,7 @@ export function setupWebSocketServer(server: Server) {
     path: '/ws',
     perMessageDeflate: false, // Disable compression for better compatibility
     clientTracking: true,
+    handleProtocols: () => 'chat',
     verifyClient: async ({ req }, done) => {
       try {
         // Always allow Vite HMR connections

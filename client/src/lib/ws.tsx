@@ -78,6 +78,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
         }
 
         const ws = new WebSocket(wsUrl);
+        
+        // Add error event listener for more detailed error logging
+        ws.addEventListener('error', (error) => {
+          console.error('WebSocket Error:', error);
+          setError('Connection error. Please check console for details.');
+        });
         let connectionTimeout: NodeJS.Timeout;
 
         // Set connection timeout
