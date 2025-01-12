@@ -46,38 +46,36 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Use same protocol and host as the current page
+        // Construct WebSocket URL
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws`;
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
         console.log('Connecting to WebSocket:', wsUrl);
 
-        // Create new WebSocket connection
+        // Create WebSocket connection
         const ws = new WebSocket(wsUrl);
+        console.log('WebSocket connection initialized');
 
-        // Set up event handlers
         ws.onopen = () => {
-          console.log('WebSocket connection established');
+          console.log('WebSocket connection opened');
           setConnected(true);
           reconnectAttempts = 0;
-          toast({
-            description: "Connected to chat server",
-            duration: 3000,
-          });
         };
 
         ws.onclose = (event) => {
-          console.log('WebSocket connection closed:', event);
+          console.log('WebSocket connection closed:', event.code, event.reason);
           setConnected(false);
           setSocket(null);
 
+          // Don't attempt to reconnect if the closure was clean
+          if (event.code === 1000 || event.code === 1001) {
+            console.log('Clean WebSocket closure, not attempting to reconnect');
+            return;
+          }
+
+          // Handle reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
             const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
-            toast({
-              variant: "destructive",
-              description: "Connection lost. Reconnecting...",
-              duration: 3000,
-            });
+            console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
 
             reconnectTimeout = setTimeout(() => {
               reconnectAttempts++;
@@ -93,12 +91,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         };
 
         ws.onerror = (error) => {
-          console.error('WebSocket Error:', error);
-          toast({
-            variant: "destructive",
-            description: "Connection error. Trying to reconnect...",
-            duration: 3000,
-          });
+          console.error('WebSocket error occurred:', error);
         };
 
         ws.onmessage = (event) => {
@@ -106,8 +99,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
             const data = JSON.parse(event.data);
             console.log('WebSocket message received:', data);
 
+            if (data.type === 'connected') {
+              console.log('Connection confirmed with userId:', data.userId);
+              return;
+            }
+
             if (data.type === 'message' && data.message) {
               setMessages((prev) => {
+                // Prevent duplicate messages
                 if (prev.some(msg => msg.id === data.message.id)) {
                   return prev;
                 }
@@ -115,19 +114,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
               });
             }
           } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
+            console.error('Error processing WebSocket message:', error);
           }
         };
 
         setSocket(ws);
       } catch (error) {
         console.error('Error creating WebSocket connection:', error);
-        if (reconnectAttempts < maxReconnectAttempts) {
-          reconnectTimeout = setTimeout(() => {
-            reconnectAttempts++;
-            connect();
-          }, 2000 * Math.pow(2, reconnectAttempts));
-        }
       }
     };
 
@@ -135,7 +128,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(reconnectTimeout);
-      if (socket?.readyState === WebSocket.OPEN) {
+      if (socket) {
         socket.close(1000, "Component unmounting");
       }
     };
@@ -143,12 +136,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const send = (data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn('WebSocket is not connected. Message not sent:', data);
-      toast({
-        variant: "destructive",
-        description: "Failed to send message. Please try again.",
-        duration: 3000,
-      });
+      console.warn('WebSocket is not connected, message not sent:', data);
       return;
     }
 
@@ -166,12 +154,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const subscribe = (channelId: string) => {
     if (channelId) {
+      console.log('Subscribing to channel:', channelId);
       send({ type: 'subscribe', channelId });
     }
   };
 
   const unsubscribe = (channelId: string) => {
     if (channelId) {
+      console.log('Unsubscribing from channel:', channelId);
       send({ type: 'unsubscribe', channelId });
     }
   };
