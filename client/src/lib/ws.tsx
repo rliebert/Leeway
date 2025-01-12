@@ -74,13 +74,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
         const ws = new WebSocket(wsUrl);
         let connectionTimeout: NodeJS.Timeout;
 
-        // Set connection timeout
+        // Set connection timeout with longer duration
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
             console.log('WebSocket connection timeout, closing socket');
-            ws.close();
+            ws.close(1000, "Connection timeout");
           }
-        }, 5000);
+        }, 15000);
 
         ws.onopen = () => {
           console.log('WebSocket connection established successfully');
@@ -111,14 +111,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Implement exponential backoff for reconnection
+          // Implement more stable reconnection logic
           if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(initialDelay * Math.pow(2, reconnectAttempts), 10000);
+            const delay = Math.min(initialDelay * Math.pow(1.5, reconnectAttempts), 15000);
             console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
 
             reconnectTimeout = setTimeout(() => {
-              reconnectAttempts++;
-              connect();
+              if (!connected) {
+                reconnectAttempts++;
+                connect();
+              }
             }, delay);
           } else {
             console.log('Max reconnection attempts reached');
