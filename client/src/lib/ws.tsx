@@ -60,8 +60,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
         // Use the same host as the page
         const wsHost = currentLocation.host;
 
-        // Construct the WebSocket URL
-        const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+        // Construct the WebSocket URL with explicit protocol and host
+        const wsUrl = window.location.protocol === 'https:' 
+          ? `wss://${window.location.host}/ws`
+          : `ws://${window.location.host}/ws`;
 
         console.log(`Attempting WebSocket connection to: ${wsUrl}`);
 
@@ -73,7 +75,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         const ws = new WebSocket(wsUrl);
         let connectionTimeout: NodeJS.Timeout;
-        let heartbeatInterval: NodeJS.Timeout;
+        let heartbeatInterval: NodeJS.Timeout | undefined;
         const messageQueue: WSMessage[] = [];
 
         // Set connection timeout
@@ -191,9 +193,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
       clearTimeout(reconnectTimeout);
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
+        heartbeatInterval = undefined;
       }
-      if (socket) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close(1000, "Component unmounting");
+        setSocket(null);
       }
     };
   }, [toast, user, socket]);
