@@ -14,6 +14,12 @@ function AuthenticatedApp() {
     return localStorage.getItem('channelSidebar.selectedChannel');
   });
 
+  React.useEffect(() => {
+    if (selectedChannel) {
+      localStorage.setItem('channelSidebar.selectedChannel', selectedChannel);
+    }
+  }, [selectedChannel]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -33,8 +39,8 @@ function AuthenticatedApp() {
           <Route path="/">
             <Home selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
           </Route>
-          <Route path="/dm/:channelId">
-            {(params) => <DirectMessageView channelId={params.channelId} />}
+          <Route path="/dm/:userId">
+            {(params) => <DirectMessageView userId={params.userId} />}
           </Route>
           <Route component={NotFound} />
         </Switch>

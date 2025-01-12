@@ -26,6 +26,7 @@ interface SearchResult extends Message {
   channel?: {
     name: string;
   };
+  channel_id: number;
 }
 
 interface HomeProps {
@@ -153,7 +154,7 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
               {searchResults.map((message) => (
                 <CommandItem
                   key={message.id}
-                  onSelect={() => handleSelectChannel(message.channelId.toString())}
+                  onSelect={() => handleSelectChannel(message.channel_id.toString())}
                   className="flex flex-col items-start gap-1"
                 >
                   <div className="flex items-center gap-2 text-sm">
