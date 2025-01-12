@@ -71,10 +71,16 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
     // Send message through WebSocket
     send({
       type: "message",
-      channelId,
+      channelId: channelId,
       content: message,
       parentId: parentMessageId,
       attachments: attachments.map((attachment: any) => attachment.id),
+    });
+
+    console.log('Sending message:', {
+      channelId,
+      content: message,
+      parentId: parentMessageId
     });
 
     form.reset();
