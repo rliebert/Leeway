@@ -11,10 +11,10 @@ interface WSContextType {
 interface WSMessage {
   type: string;
   message?: Message;
-  channelId?: number;
+  channelId?: string;
   content?: string;
-  userId?: number;
-  parentMessageId?: number;
+  userId?: string;
+  parentMessageId?: string;
 }
 
 const WSContext = createContext<WSContextType>({
@@ -34,17 +34,25 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const websocket = new WebSocket(`${protocol}//${window.location.host}`);
+      const websocket = new WebSocket(`${protocol}//${window.location.host}/ws`);
 
       websocket.onopen = () => {
         setConnected(true);
-        console.log('WebSocket Connected');
+        toast({
+          description: "Connected to chat server",
+          duration: 3000,
+        });
       };
 
       websocket.onclose = () => {
         setConnected(false);
-        console.log('WebSocket Disconnected');
+        toast({
+          variant: "destructive",
+          description: "Disconnected from chat server. Reconnecting...",
+          duration: 3000,
+        });
 
+        // Attempt to reconnect after 5 seconds
         reconnectTimeout = setTimeout(() => {
           connect();
         }, 5000);
@@ -52,19 +60,32 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
       websocket.onerror = (error) => {
         console.error('WebSocket Error:', error);
+        toast({
+          variant: "destructive",
+          description: "Connection error. Trying to reconnect...",
+          duration: 3000,
+        });
       };
 
       websocket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WSMessage;
-          if (data.type === 'message' && data.message) {
-            setMessages((prev) => {
-              const exists = prev.some(msg => msg.id === data.message!.id);
-              if (exists) {
-                return prev;
+          switch (data.type) {
+            case 'message':
+              if (data.message) {
+                setMessages((prev) => {
+                  const exists = prev.some(msg => msg.id === data.message!.id);
+                  if (exists) return prev;
+                  return [...prev, data.message!];
+                });
               }
-              return [...prev, data.message!];
-            });
+              break;
+            case 'typing':
+              // Handle typing indicators
+              break;
+            case 'presence':
+              // Handle user presence updates
+              break;
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
@@ -82,7 +103,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         socket.close();
       }
     };
-  }, []);
+  }, [toast]);
 
   const send = (data: WSMessage) => {
     if (socket?.readyState === WebSocket.OPEN) {
