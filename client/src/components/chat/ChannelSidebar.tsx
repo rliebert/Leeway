@@ -363,8 +363,8 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   isCreator={channel.creator_id === user?.id}
                 />
               ))}
-          </div>
-          </div>
+            </div>
+          )}
 
           {/* Sections with their channels */}
           {sections?.map((section) => (
