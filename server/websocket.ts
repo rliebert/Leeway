@@ -9,7 +9,6 @@ import { parse as parseCookie } from "cookie";
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
   isAlive: boolean;
-  isHMR?: boolean;
 }
 
 interface WSMessage {
@@ -24,27 +23,18 @@ export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ 
     server,
     path: '/ws',
-    perMessageDeflate: false,
+    perMessageDeflate: false, // Disable compression for better compatibility
     clientTracking: true,
     verifyClient: async ({ req }, done) => {
       try {
-        // Handle Vite HMR connections
+        // Always allow Vite HMR connections
         if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
-          console.log('Allowing Vite HMR WebSocket connection');
-          (req as any).isHMR = true;
           done(true);
           return;
         }
 
-        // For chat application connections, verify session
-        const cookieHeader = req.headers.cookie;
-        if (!cookieHeader) {
-          console.error('WebSocket connection rejected: No cookies present');
-          done(false, 401, 'Authentication required');
-          return;
-        }
-
-        const cookies = parseCookie(cookieHeader);
+        // For application WebSocket connections, verify authentication
+        const cookies = parseCookie(req.headers.cookie || '');
         const sessionId = cookies['connect.sid'];
 
         if (!sessionId) {
@@ -83,7 +73,6 @@ export function setupWebSocketServer(server: Server) {
         }
 
         (req as any).userId = sessionData.passport.user;
-        console.log('WebSocket authentication successful for user:', sessionData.passport.user);
         done(true);
       } catch (error) {
         console.error('WebSocket authentication error:', error);

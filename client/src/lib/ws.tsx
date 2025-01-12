@@ -34,16 +34,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [messageQueue, setMessageQueue] = useState<WSMessage[]>([]);
+  const [messageQueue] = useState<WSMessage[]>([]);
   const { toast } = useToast();
   const { user } = useUser();
 
   useEffect(() => {
-    let heartbeatInterval: NodeJS.Timeout;
+    let heartbeatInterval: NodeJS.Timeout | undefined;
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
-    const initialDelay = 1000;
+    const initialDelay = 1000; // Start with 1 second delay
 
     const connect = () => {
       if (!user) {
@@ -52,16 +52,24 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
+        // Get the current location
+        const loc = window.location;
+
+        // Determine WebSocket protocol and host
+        const wsProtocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = loc.host;
+        const wsPath = '/ws';
+
+        // Construct WebSocket URL
+        const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
+
+        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+
         // Close existing socket if any
         if (socket?.readyState === WebSocket.OPEN) {
           console.log('Closing existing WebSocket connection');
           socket.close();
         }
-
-        // Get the location and construct the WebSocket URL
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
 
         const ws = new WebSocket(wsUrl);
         let connectionTimeout: NodeJS.Timeout;
@@ -70,7 +78,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
             console.log('WebSocket connection timeout, closing socket');
-            ws.close();
+            ws.close(1000, "Connection timeout");
             setError("Connection timeout");
           }
         }, 10000);
@@ -78,12 +86,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
         ws.onopen = () => {
           console.log('WebSocket connection established successfully');
           clearTimeout(connectionTimeout);
-          setConnected(true);
-          setError(null);
-          reconnectAttempts = 0;
-          setSocket(ws);
 
-          // Setup heartbeat after successful connection
+          // Set up heartbeat
           heartbeatInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: 'ping' }));
@@ -91,31 +95,42 @@ export function WSProvider({ children }: { children: ReactNode }) {
           }, 15000);
 
           // Send any queued messages
-          messageQueue.forEach(msg => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify(msg));
-            }
-          });
-          setMessageQueue([]);
+          while (messageQueue.length > 0) {
+            const msg = messageQueue.shift();
+            if (msg) ws.send(JSON.stringify(msg));
+          }
 
-          // Send initial ping
+          setConnected(true);
+          setError(null);
+          reconnectAttempts = 0;
+          setSocket(ws);
+
+          // Send initial ping to verify connection
           ws.send(JSON.stringify({ type: 'ping' }));
         };
 
         ws.onclose = (event) => {
-          console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason}`);
+          console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`);
           clearTimeout(connectionTimeout);
-          clearInterval(heartbeatInterval);
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
           setConnected(false);
           setSocket(null);
 
-          if (event.code === 1000 || event.code === 1001 || !user) {
-            console.log('Clean WebSocket closure or no user, not attempting reconnect');
+          // Don't reconnect on normal closure
+          if (event.code === 1000 || event.code === 1001) {
+            console.log('Clean WebSocket closure, not attempting reconnect');
             return;
           }
 
+          // Don't reconnect if user is not logged in
+          if (!user) {
+            console.log('User not logged in, skipping reconnection');
+            return;
+          }
+
+          // Implement exponential backoff for reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(initialDelay * Math.pow(2, reconnectAttempts), 15000);
+            const delay = Math.min(initialDelay * Math.pow(1.5, reconnectAttempts), 15000);
             console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
 
             reconnectTimeout = setTimeout(() => {
@@ -125,6 +140,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
               }
             }, delay);
           } else {
+            console.log('Max reconnection attempts reached');
             setError("Connection lost. Please refresh the page.");
             toast({
               variant: "destructive",
@@ -155,7 +171,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
 
             if (data.type === 'message' && data.message) {
-              setMessages(prev => {
+              setMessages((prev) => {
                 if (prev.some(msg => msg.id === data.message.id)) {
                   return prev;
                 }
@@ -178,16 +194,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(reconnectTimeout);
-      clearInterval(heartbeatInterval);
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close(1000, "Component unmounting");
+        setSocket(null);
       }
     };
-  }, [user, toast, messageQueue]);
+  }, [toast, user, messageQueue]);
 
   const send = (data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      setMessageQueue(prev => [...prev, data]);
+      console.log('Connection not ready, queueing message');
+      messageQueue.push(data);
       return;
     }
 
@@ -195,7 +215,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       socket.send(JSON.stringify(data));
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
-      setMessageQueue(prev => [...prev, data]);
+      messageQueue.push(data);
       toast({
         variant: "destructive",
         description: "Message will be sent when connection is restored.",
