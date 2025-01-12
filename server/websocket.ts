@@ -2,7 +2,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import type { Server } from "http";
 import type { User } from "@db/schema";
 import { db } from "@db";
-import { messages, channels } from "@db/schema";
+import { messages } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 interface AuthenticatedWebSocket extends WebSocket {
@@ -31,16 +31,16 @@ export function setupWebSocketServer(server: Server) {
     if (!subscribers) return;
 
     const data = JSON.stringify(message);
-    subscribers.forEach((client) => {
+    for (const client of subscribers) {
       if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
         client.send(data);
       }
-    });
+    }
   };
 
   wss.on('connection', (ws: AuthenticatedWebSocket, request) => {
     ws.isAlive = true;
-    
+
     // Extract user ID from session
     const userId = (request as any).session?.passport?.user;
     if (!userId) {
@@ -54,7 +54,7 @@ export function setupWebSocketServer(server: Server) {
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data.toString());
-        
+
         switch (message.type) {
           case 'subscribe':
             // Subscribe to channel updates
@@ -76,18 +76,20 @@ export function setupWebSocketServer(server: Server) {
           case 'message':
             // Handle new message
             if (!message.channelId || !message.content) break;
-            
-            const newMessage = await db.insert(messages).values({
+
+            const [newMessage] = await db.insert(messages).values({
               channel_id: message.channelId,
               user_id: ws.userId!,
               content: message.content,
             }).returning();
 
-            broadcastToChannel(message.channelId, {
-              type: 'message',
-              channelId: message.channelId,
-              data: newMessage[0]
-            }, ws);
+            if (newMessage) {
+              broadcastToChannel(message.channelId, {
+                type: 'message',
+                channelId: message.channelId,
+                data: newMessage
+              });
+            }
             break;
 
           case 'typing':
@@ -114,13 +116,14 @@ export function setupWebSocketServer(server: Server) {
 
   // Ping clients every 30 seconds
   const interval = setInterval(() => {
-    wss.clients.forEach((ws: AuthenticatedWebSocket) => {
+    for (const client of wss.clients) {
+      const ws = client as AuthenticatedWebSocket;
       if (ws.isAlive === false) {
         return ws.terminate();
       }
       ws.isAlive = false;
       ws.ping();
-    });
+    }
   }, 30000);
 
   wss.on('close', () => {
