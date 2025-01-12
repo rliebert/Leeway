@@ -12,10 +12,11 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted';
   channelId?: string;
   content?: string;
   parentId?: string;
+  messageId?: string;
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
 }
 

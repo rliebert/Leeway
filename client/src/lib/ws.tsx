@@ -200,6 +200,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 return [...prev, data.message];
               });
             }
+            
+            if (data.type === "message_deleted") {
+              setMessages((prev) => prev.filter(msg => msg.id !== data.messageId));
+            }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
             setError("Error processing message");

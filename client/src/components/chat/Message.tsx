@@ -116,29 +116,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          
-                          // Update the WebSocket context
-                          const { setMessages } = useWS();
-                          setMessages(prevMessages => 
-                            prevMessages.filter(msg => msg.id !== message.id)
-                          );
-                          
-                          // Update the query cache for messages
-                          queryClient.setQueryData(
-                            [`/api/channels/${message.channel_id}/messages`],
-                            (oldData: any) => oldData?.filter((msg: MessageType) => msg.id !== message.id) ?? []
-                          );
-                          
-                          // Update the query cache for replies
-                          queryClient.setQueryData(
-                            [`/api/messages/${message.id}/replies`],
-                            []
-                          );
-                          
-                          // Invalidate related queries to trigger refetch
-                          queryClient.invalidateQueries({ 
-                            queryKey: [`/api/channels/${message.channel_id}/messages`]
-                          });
+                          // The WebSocket broadcast will handle the UI update
                         } else {
                           toast({ 
                             variant: "destructive",
