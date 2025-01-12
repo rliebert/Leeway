@@ -1,4 +1,19 @@
 import { db } from "@db";
+import { sql } from "drizzle-orm";
+import { file_attachments } from "@db/schema";
+
+// Create file_attachments table if it doesn't exist
+await db.execute(sql`
+  CREATE TABLE IF NOT EXISTS file_attachments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+    file_url TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    file_type TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 import { users, channels, sections, messages } from "@db/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
