@@ -273,9 +273,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-3 py-2">
+        <div className="px-3 pt-1">
           {/* Uncategorized channels */}
-          <div className="ml-2">
+          <div className="ml-4">
             {channelsBySection?.uncategorized?.map((channel) => (
               ((isExpanded || selectedChannel === channel.id.toString()) &&
                 <ChannelItem
@@ -293,7 +293,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
           {/* Sections with their channels */}
           {sections?.map((section) => (
-            <div key={section.id} className="mt-4">
+            <div key={section.id} className="mt-3">
               <div 
                 className="flex items-center px-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
                 onClick={() => toggleSection(section.id)}
@@ -305,7 +305,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 />
                 <span className="text-sm font-medium">{section.name}</span>
               </div>
-              <div className="ml-4">
+              <div className="ml-6">
                 {channelsBySection?.[section.id]?.map((channel) => (
                   ((expandedSections[section.id] || selectedChannel === channel.id.toString()) &&
                     <ChannelItem
