@@ -193,11 +193,19 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
 
             if (data.type === "message" && data.message) {
+              const messageWithAttachments = {
+                ...data.message,
+                attachments: data.message.attachments?.map((attachment: any) => ({
+                  ...attachment,
+                  url: `/uploads/${attachment.file_name}`
+                }))
+              };
+              
               setMessages((prev) => {
-                if (prev.some((msg) => msg.id === data.message.id)) {
+                if (prev.some((msg) => msg.id === messageWithAttachments.id)) {
                   return prev;
                 }
-                return [...prev, data.message];
+                return [...prev, messageWithAttachments];
               });
             }
 
