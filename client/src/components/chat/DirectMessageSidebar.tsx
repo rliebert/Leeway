@@ -11,8 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 
 interface DirectMessageSidebarProps {
-  selectedDM: number | null;
-  onSelectDM: (id: number) => void;
+  selectedDM: string | null;
+  onSelectDM: (id: string) => void;
 }
 
 export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
@@ -22,11 +22,10 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
-    enabled: !!currentUser,
   });
 
   const createDMMutation = useMutation({
-    mutationFn: async (userId: number) => {
+    mutationFn: async (userId: string) => {
       const response = await fetch("/api/dm/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,7 +41,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
       onSelectDM(data.id);
       return data;
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
         description: error.message || "Failed to create chat",
@@ -57,12 +56,9 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     return new Date(last_active) > fiveMinutesAgo;
   }
 
-  // Current user should be first, followed by other users sorted alphabetically
-  const sortedUsers = [
-    currentUser,
-    ...users.filter(u => u.id !== currentUser?.id)
-      .sort((a, b) => a.username.localeCompare(b.username))
-  ].filter(Boolean);
+  // Sort users alphabetically, but put current user first
+  const sortedUsers = users
+    .sort((a, b) => a.username.localeCompare(b.username));
 
   return (
     <ScrollArea className="flex-1">
@@ -92,7 +88,10 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent group"
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent group cursor-pointer",
+                    selectedDM === user.id && "bg-accent"
+                  )}
                 >
                   <div className="flex items-center gap-2 flex-1">
                     <div className="relative">
@@ -122,7 +121,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                     variant="ghost"
                     size="icon"
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => createDMMutation.mutate(Number(user.id))}
+                    onClick={() => createDMMutation.mutate(user.id)}
                   >
                     <MessageSquare className="h-4 w-4" />
                   </Button>
