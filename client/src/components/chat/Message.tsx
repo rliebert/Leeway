@@ -116,23 +116,28 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          // Update both cache and WS messages
-                          // Update WebSocket state first
-                          setMessages(prevMessages => prevMessages.filter(msg => msg.id !== message.id));
                           
-                          // Update query cache
-                          queryClient.setQueryData(
-                            [`/api/channels/${message.channel_id}/messages`],
-                            (oldData: any) => {
-                              if (!oldData) return [];
-                              return oldData.filter((msg: MessageType) => msg.id !== message.id);
-                            }
+                          // Update the WebSocket context
+                          const { setMessages } = useWS();
+                          setMessages(prevMessages => 
+                            prevMessages.filter(msg => msg.id !== message.id)
                           );
                           
-                          // Remove any replies
-                          queryClient.removeQueries({ 
-                            queryKey: [`/api/messages/${message.id}/replies`],
-                            exact: true
+                          // Update the query cache for messages
+                          queryClient.setQueryData(
+                            [`/api/channels/${message.channel_id}/messages`],
+                            (oldData: any) => oldData?.filter((msg: MessageType) => msg.id !== message.id) ?? []
+                          );
+                          
+                          // Update the query cache for replies
+                          queryClient.setQueryData(
+                            [`/api/messages/${message.id}/replies`],
+                            []
+                          );
+                          
+                          // Invalidate related queries to trigger refetch
+                          queryClient.invalidateQueries({ 
+                            queryKey: [`/api/channels/${message.channel_id}/messages`]
                           });
                         } else {
                           toast({ 
