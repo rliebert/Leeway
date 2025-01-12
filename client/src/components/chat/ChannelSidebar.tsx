@@ -218,10 +218,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-6 px-2 hover:bg-transparent flex items-center gap-1"
+                  className="h-6 px-2 hover:bg-accent group flex items-center gap-1"
                 >
                   <span className="text-lg font-semibold">Channels</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
               </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
