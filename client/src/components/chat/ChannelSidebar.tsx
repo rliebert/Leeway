@@ -62,6 +62,35 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     name: "",
   });
 
+  const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
+  const [sectionName, setSectionName] = useState("");
+
+  const createSectionMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const response = await fetch("/api/sections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sections"] });
+      toast({ description: "Section created successfully" });
+      setIsSectionDialogOpen(false);
+      setSectionName("");
+    },
+  });
+
+  const handleCreateSection = () => {
+    if (!sectionName.trim()) {
+      toast({ variant: "destructive", description: "Section name is required" });
+      return;
+    }
+    createSectionMutation.mutate(sectionName);
+  };
+
   // Reset form when dialog closes
   const handleDialogChange = (open: boolean) => {
     if (!open) {
@@ -200,7 +229,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Channel
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setIsSectionDialogOpen(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Create New Section
                   </DropdownMenuItem>
@@ -266,6 +295,31 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
               <Button onClick={handleSaveChannel} className="w-full">
                 {editingChannel ? 'Update Channel' : 'Create Channel'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isSectionDialogOpen} onOpenChange={setIsSectionDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create New Section</DialogTitle>
+              <DialogDescription>
+                Create a new section to organize your channels.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="sectionName">Section Name</Label>
+                <Input
+                  id="sectionName"
+                  value={sectionName}
+                  onChange={(e) => setSectionName(e.target.value)}
+                  placeholder="e.g. Projects"
+                />
+              </div>
+              <Button onClick={handleCreateSection} className="w-full">
+                Create Section
               </Button>
             </div>
           </DialogContent>
