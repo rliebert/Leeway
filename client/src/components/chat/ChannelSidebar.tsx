@@ -388,7 +388,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 <span className="text-sm font-medium">{section.name}</span>
               </div>
               <div className="ml-6">
-                {channelsBySection?.[section.id]?.map((channel) => (
+                {channelsBySection?.[section.id]?.map((channel) => 
                   (expandedSections[section.id] || channel.id.toString() === selectedChannel) &&
                     <ChannelItem
                       key={channel.id}
@@ -399,8 +399,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                       onDelete={() => handleDeleteChannel(channel.id)}
                       isCreator={channel.creator_id === user?.id}
                     />
-                  )
-                ))}
+                )}
               </div>
             </div>
           ))}
