@@ -41,7 +41,8 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
+  const [isDMExpanded, setIsDMExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
   
@@ -230,9 +231,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               variant="ghost" 
               size="icon" 
               className="h-6 w-6 p-0 hover:bg-transparent"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => setIsChannelsExpanded(!isChannelsExpanded)}
             >
-              <ChevronRightSquare className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+              <ChevronRightSquare className={`h-4 w-4 transition-transform ${isChannelsExpanded ? 'rotate-90' : ''}`} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -352,7 +353,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           {/* Uncategorized channels */}
           <div className="ml-4">
             {channelsBySection?.uncategorized?.map((channel) => (
-              ((isExpanded || selectedChannel === channel.id.toString()) &&
+              ((isChannelsExpanded || selectedChannel === channel.id.toString()) &&
                 <ChannelItem
                   key={channel.id}
                   channel={channel}
@@ -406,16 +407,16 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   variant="ghost" 
                   size="icon" 
                   className="h-6 w-6 p-0 hover:bg-transparent"
-                  onClick={() => setIsExpanded(!isExpanded)}
+                  onClick={() => setIsDMExpanded(!isDMExpanded)}
                 >
-                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isDMExpanded ? 'rotate-90' : ''}`} />
                 </Button>
                 <span className="text-lg font-semibold ml-2">Direct Messages</span>
               </div>
             </div>
 
             {/* Users List */}
-            {isExpanded && (
+            {isDMExpanded && (
               <div className="ml-4 space-y-1">
                 {users?.filter(u => u.id !== user?.id).map((otherUser) => (
                   <div
