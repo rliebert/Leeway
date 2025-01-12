@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-import { ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { CaretRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -212,7 +212,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               className="h-6 w-6 p-0 hover:bg-transparent"
               onClick={() => setIsExpanded(!isExpanded)}
             >
-              <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+              <CaretRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
