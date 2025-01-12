@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-import { ChevronRight, Hash, MoreVertical, Plus } from "lucide-react";
+import { ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -13,6 +13,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +34,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -45,14 +52,23 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     name: "",
   });
 
-  const handleCreateChannel = () => {
-    if (!channelFormData.name.trim()) {
-      toast({ variant: "destructive", description: "Channel name is required" });
-      return;
+  // Reset form when dialog closes
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      setChannelFormData({ name: "" });
+      setEditingChannel(null);
     }
-    createChannelMutation.mutate(channelFormData);
-    setChannelFormData({ name: "" });
-    setIsDialogOpen(false);
+    setIsDialogOpen(open);
+  };
+
+  const handleEditChannel = (channel: Channel) => {
+    setEditingChannel(channel);
+    setChannelFormData({
+      name: channel.name,
+      description: channel.description || "",
+      section_id: channel.section_id,
+    });
+    setIsDialogOpen(true);
   };
 
   const createChannelMutation = useMutation({
@@ -68,8 +84,65 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
       toast({ description: "Channel created successfully" });
+      setIsDialogOpen(false);
     },
   });
+
+  const updateChannelMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Channel> }) => {
+      const response = await fetch(`/api/channels/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+      toast({ description: "Channel updated successfully" });
+      setIsDialogOpen(false);
+    },
+  });
+
+  const deleteChannelMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/channels/${id}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
+      toast({ description: "Channel deleted successfully" });
+    },
+  });
+
+  const handleSaveChannel = () => {
+    if (!channelFormData.name.trim()) {
+      toast({ variant: "destructive", description: "Channel name is required" });
+      return;
+    }
+
+    if (editingChannel) {
+      updateChannelMutation.mutate({
+        id: editingChannel.id,
+        data: channelFormData,
+      });
+    } else {
+      createChannelMutation.mutate(channelFormData);
+    }
+  };
+
+  const handleDeleteChannel = (channelId: string) => {
+    if (window.confirm("Are you sure you want to delete this channel?")) {
+      deleteChannelMutation.mutate(channelId);
+      if (selectedChannel === channelId) {
+        onSelectChannel("");
+      }
+    }
+  };
 
   const channelsBySection = channels?.reduce((acc, channel) => {
     const sectionId = channel.section_id || 'uncategorized';
@@ -90,7 +163,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           <ChevronRight className={`h-4 w-4 mr-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
           <span className="font-medium">Channels</span>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
           <DialogTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6">
               <Plus className="h-4 w-4" />
@@ -98,7 +171,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Channel</DialogTitle>
+              <DialogTitle>
+                {editingChannel ? 'Edit Channel' : 'Create New Channel'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -119,8 +194,8 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   placeholder="What's this channel about?"
                 />
               </div>
-              <Button onClick={handleCreateChannel} className="w-full">
-                Create Channel
+              <Button onClick={handleSaveChannel} className="w-full">
+                {editingChannel ? 'Update Channel' : 'Create Channel'}
               </Button>
             </div>
           </DialogContent>
@@ -137,6 +212,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 channel={channel}
                 isSelected={selectedChannel === channel.id.toString()}
                 onSelect={onSelectChannel}
+                onEdit={() => handleEditChannel(channel)}
+                onDelete={() => handleDeleteChannel(channel.id)}
+                isCreator={channel.creator_id === user?.id}
               />
             ))}
 
@@ -153,6 +231,9 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                     channel={channel}
                     isSelected={selectedChannel === channel.id.toString()}
                     onSelect={onSelectChannel}
+                    onEdit={() => handleEditChannel(channel)}
+                    onDelete={() => handleDeleteChannel(channel.id)}
+                    isCreator={channel.creator_id === user?.id}
                   />
                 ))}
               </div>
@@ -168,9 +249,12 @@ interface ChannelItemProps {
   channel: Channel;
   isSelected: boolean;
   onSelect: (channelId: string) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  isCreator: boolean;
 }
 
-function ChannelItem({ channel, isSelected, onSelect }: ChannelItemProps) {
+function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreator }: ChannelItemProps) {
   return (
     <div
       className={`group flex items-center px-2 h-8 rounded-md cursor-pointer hover:bg-accent/50 ${
@@ -180,13 +264,33 @@ function ChannelItem({ channel, isSelected, onSelect }: ChannelItemProps) {
     >
       <Hash className="h-4 w-4 mr-2 text-muted-foreground" />
       <span className="flex-1">{channel.name}</span>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 opacity-0 group-hover:opacity-100"
-      >
-        <MoreVertical className="h-4 w-4" />
-      </Button>
+      {isCreator && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }

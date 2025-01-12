@@ -90,6 +90,67 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update channel
+  app.patch("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name, description, section_id } = req.body;
+    try {
+      // First check if user is creator or admin
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, id),
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
+        return res.status(403).json({ error: "Not authorized to edit this channel" });
+      }
+
+      const [updatedChannel] = await db.update(channels)
+        .set({
+          name,
+          description,
+          section_id,
+        })
+        .where(eq(channels.id, id))
+        .returning();
+
+      res.json(updatedChannel);
+    } catch (error) {
+      console.error('Failed to update channel:', error);
+      res.status(500).json({ error: "Failed to update channel" });
+    }
+  });
+
+  // Delete channel
+  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+      // First check if user is creator or admin
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, id),
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
+        return res.status(403).json({ error: "Not authorized to delete this channel" });
+      }
+
+      await db.delete(channels)
+        .where(eq(channels.id, id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+      res.status(500).json({ error: "Failed to delete channel" });
+    }
+  });
+
   // Message endpoints
   app.get("/api/channels/:channelId/messages", requireAuth, async (req, res) => {
     const { channelId } = req.params;
