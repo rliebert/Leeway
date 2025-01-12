@@ -38,7 +38,7 @@ export function setupWebSocketServer(server: Server) {
         }
 
         // Clean the session ID - remove s: prefix and signature
-        const cleanSessionId = sessionId.split('.')[0].replace('s:', '');
+        const cleanSessionId = decodeURIComponent(sessionId).split('.')[0].replace('s:', '');
         console.log('Verifying session:', cleanSessionId);
 
         const session = await db.query.sessions.findFirst({
@@ -72,6 +72,7 @@ export function setupWebSocketServer(server: Server) {
           'Access-Control-Allow-Methods': 'GET, POST',
           'Access-Control-Allow-Headers': 'Cookie, Authorization',
           'Access-Control-Allow-Credentials': 'true',
+          'Sec-WebSocket-Protocol': req.headers['sec-websocket-protocol'],
         };
 
         callback(true, 200, 'Connection authorized', headers);
