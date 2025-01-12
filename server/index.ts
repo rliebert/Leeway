@@ -1,8 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { checkDatabaseConnection } from "@db";
-import { checkSessionStore } from "./config/session";
+import { initializeDatabase, checkDatabaseConnection } from "@db";
+import { initializeSessionStore, checkSessionStore } from "./config/session";
 
 const app = express();
 app.use(express.json());
@@ -54,18 +54,13 @@ app.get("/health", async (_req, res) => {
 
 (async () => {
   try {
-    // Verify database connection on startup
-    const dbConnected = await checkDatabaseConnection();
-    if (!dbConnected) {
-      throw new Error("Failed to connect to database");
-    }
+    // Initialize database
+    await initializeDatabase();
     log("Database connection established successfully");
 
-    // Verify session store
-    const sessionStoreReady = await checkSessionStore();
-    if (!sessionStoreReady) {
-      throw new Error("Failed to initialize session store");
-    }
+    // Initialize session store
+    const sessionConfig = await initializeSessionStore();
+    app.use(sessionConfig);
     log("Session store initialized successfully");
 
     const server = registerRoutes(app);
