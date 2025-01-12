@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Channel, Section } from "@db/schema";
+import type { Channel, Section, User } from "@db/schema";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { ChevronRightSquare, ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,6 +53,25 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
+  });
+
+  const { data: users } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const createDMMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch("/api/dm/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Direct message channel created" });
+    },
   });
 
   const [channelFormData, setChannelFormData] = useState<{
@@ -327,7 +347,8 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-3 pt-1">
+        <div className="px-3 pt-1 space-y-4">
+          {/* Channels Section */}
           {/* Uncategorized channels */}
           <div className="ml-4">
             {channelsBySection?.uncategorized?.map((channel) => (
@@ -376,6 +397,44 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
             </div>
           ))}
+
+          {/* Direct Messages Section */}
+          <div className="relative">
+            <div className="flex items-center justify-between px-3 h-10 group">
+              <div className="flex items-center flex-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 p-0 hover:bg-transparent"
+                  onClick={() => setIsExpanded(!isExpanded)}
+                >
+                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                </Button>
+                <span className="text-lg font-semibold ml-2">Direct Messages</span>
+              </div>
+            </div>
+
+            {/* Users List */}
+            {isExpanded && (
+              <div className="ml-4 space-y-1">
+                {users?.filter(u => u.id !== user?.id).map((otherUser) => (
+                  <div
+                    key={otherUser.id}
+                    className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                    onClick={() => createDMMutation.mutate(otherUser.id)}
+                  >
+                    <Avatar className="h-6 w-6 mr-2">
+                      <AvatarImage src={otherUser.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {otherUser.username[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 text-sm">{otherUser.username}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </ScrollArea>
     </div>
