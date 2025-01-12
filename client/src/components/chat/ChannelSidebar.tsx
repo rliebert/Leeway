@@ -174,18 +174,24 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
         <div
-          className="flex items-center justify-between px-3 h-12 group cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center justify-between px-3 h-12 group"
         >
           <div className="flex items-center flex-1">
-            <ChevronRight 
-              className={`h-4 w-4 mr-2 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsExpanded(!isExpanded);
-              }}
-            />
-            <span className="text-lg font-semibold">Channels</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 p-0 hover:bg-transparent"
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <ChevronRight className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-8 px-2 hover:bg-transparent"
+              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+            >
+              <span className="text-lg font-semibold">Channels</span>
+            </Button>
             {showHeaderMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
