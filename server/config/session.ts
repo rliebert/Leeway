@@ -12,14 +12,17 @@ const PostgresStore = pgSession(session);
 // Initialize session store and return middleware
 export async function initializeSessionStore() {
   // Create a dedicated pool for session management
+  const poolUrl = process.env.DATABASE_URL?.replace('.us-east-2', '-pooler.us-east-2');
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: poolUrl,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-    maxUses: 7500,
-    allowExitOnIdle: true
+    max: 10,
+    idleTimeoutMillis: 1000,
+    connectionTimeoutMillis: 10000,
+    maxUses: 1000,
+    allowExitOnIdle: true,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000
   });
 
   // Test the connection
