@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Channel, Section } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
-import { ChevronRightSquare, CaretRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { ChevronRightSquare, ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -352,7 +352,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 className="flex items-center pl-[11px] pr-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
                 onClick={() => toggleSection(section.id)}
               >
-                <CaretRight 
+                <ChevronRight 
                   className={`h-4 w-4 mr-1 transition-transform ${
                     expandedSections[section.id] ? 'rotate-90' : ''
                   }`} 
