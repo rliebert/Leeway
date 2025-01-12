@@ -57,7 +57,8 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         });
 
         if (!response.ok) {
-          throw new Error('File upload failed');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'File upload failed');
         }
 
         attachments = await response.json();

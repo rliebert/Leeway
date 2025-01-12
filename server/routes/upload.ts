@@ -66,7 +66,18 @@ export function registerUploadRoutes(app: Express) {
       }
       next();
     },
-    upload.array('files', 5),
+    (req, res, next) => {
+      upload.array('files', 5)(req, res, (err) => {
+        if (err) {
+          console.error('Upload middleware error:', err);
+          return res.status(500).json({ 
+            error: err.message || 'File upload failed',
+            details: err instanceof Error ? err.message : 'Unknown error'
+          });
+        }
+        next();
+      });
+    },
     async (req, res) => {
       try {
         const files = req.files as Express.Multer.File[];
