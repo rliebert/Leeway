@@ -349,7 +349,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           {sections?.map((section) => (
             <div key={section.id} className="mt-3">
               <div 
-                className="flex items-center px-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
+                className="flex items-center pl-[11px] pr-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
                 onClick={() => toggleSection(section.id)}
               >
                 <ChevronRight 
