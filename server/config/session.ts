@@ -1,6 +1,6 @@
 import session from "express-session";
 import pgSession from "connect-pg-simple";
-import pg from 'pg';
+import { Pool } from "pg";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set for session management");
@@ -11,7 +11,7 @@ const PostgresStore = pgSession(session);
 // Initialize session store and return middleware
 export async function initializeSessionStore() {
   // Create a dedicated pool for session management
-  const pool = new pg.Pool({
+  const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum number of clients in the pool
@@ -54,7 +54,7 @@ export async function initializeSessionStore() {
 
 // Health check for session store
 export async function checkSessionStore() {
-  const pool = new pg.Pool({
+  const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
   });
@@ -86,7 +86,7 @@ export async function checkSessionStore() {
 async function cleanup() {
   console.log('Cleaning up session store connections...');
   try {
-    const pool = new pg.Pool({
+    const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     });
