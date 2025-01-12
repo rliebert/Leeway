@@ -136,6 +136,27 @@ export function setupWebSocketServer(server: Server) {
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
             console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
+            
+            // Fetch and send existing messages
+            try {
+              const existingMessages = await db.query.messages.findMany({
+                where: eq(messages.channel_id, message.channelId),
+                with: {
+                  author: true,
+                  attachments: true,
+                },
+                orderBy: [asc(messages.created_at)],
+              });
+              
+              existingMessages.forEach(msg => {
+                ws.send(JSON.stringify({
+                  type: 'message',
+                  message: msg
+                }));
+              });
+            } catch (error) {
+              console.error('Error fetching message history:', error);
+            }
             break;
           }
 
