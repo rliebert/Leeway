@@ -7,8 +7,7 @@ import ThreadModal from "./ThreadModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
 import { useUser } from "@/hooks/use-user";
-import { useToast } from "@/hooks/use-toast"; // Added import for useUser hook
-
+import { useToast } from "@/hooks/use-toast";
 
 interface FileAttachment {
   id: string;
@@ -30,7 +29,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showReplies, setShowReplies] = useState(false);
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
-  const { user } = useUser(); // Use useUser hook here
+  const { user } = useUser();
+  const { toast } = useToast(); // Use useToast hook here
 
   const { data: replies = [] } = useQuery<(MessageType & {
     author?: { username: string; avatar_url?: string };
@@ -103,7 +103,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   <Reply className="h-3 w-3 mr-1" />
                   {replyCount > 0 ? `${replyCount}` : 'Reply'}
                 </Button>
-                {message.user_id === user?.id && ( // Conditional rendering based on user
+                {message.user_id === user?.id && (
                   <Button
                     variant="ghost"
                     size="sm"
