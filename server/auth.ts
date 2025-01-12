@@ -2,15 +2,17 @@ import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
-import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, type User } from "@db/schema";
+import { users } from "@db/schema";
 import { db } from "@db";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { sessionConfig } from "./config/session";
 
 const scryptAsync = promisify(scrypt);
+
+// Crypto utilities for password hashing
 const crypto = {
   hash: async (password: string) => {
     const salt = randomBytes(16).toString("hex");
@@ -29,6 +31,7 @@ const crypto = {
   },
 };
 
+// Validation schemas
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -40,28 +43,10 @@ const registrationSchema = z.object({
   email: z.string().email("Invalid email address"),
 });
 
-// Extend Express.User with our User type
-declare global {
-  namespace Express {
-    interface User extends User {}
-  }
-}
 
 export function setupAuth(app: Express) {
-  const MemoryStore = createMemoryStore(session);
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID || "leeway-chat-app",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    },
-    store: new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
-    }),
-  };
-
-  app.use(session(sessionSettings));
+  // Use the new session configuration
+  app.use(session(sessionConfig));
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -69,11 +54,9 @@ export function setupAuth(app: Express) {
     new LocalStrategy(async (username, password, done) => {
       try {
         console.log("Attempting login for username:", username);
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.username, username))
-          .limit(1);
+        const user = await db.query.users.findFirst({
+          where: eq(users.username, username),
+        });
 
         if (!user) {
           console.log("User not found:", username);
@@ -101,17 +84,15 @@ export function setupAuth(app: Express) {
     })
   );
 
-  passport.serializeUser((user: Express.User, done) => {
+  passport.serializeUser((user, done) => {
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, id),
+      });
 
       if (!user) {
         return done(new Error("User not found"), null);
@@ -124,6 +105,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Registration endpoint
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log("Registration request body:", req.body);
@@ -136,14 +118,12 @@ export function setupAuth(app: Express) {
         return res.status(400).send(errorMessage);
       }
 
-      const { username, password } = result.data;
+      const { username, password, email } = result.data;
 
       // Check if user already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, username))
-        .limit(1);
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.username, username),
+      });
 
       if (existingUser) {
         return res.status(400).send("Username already exists");
@@ -153,18 +133,15 @@ export function setupAuth(app: Express) {
       const hashedPassword = await crypto.hash(password);
 
       // Create the new user - make first user an admin
-      const [{ count }] = await db.select({ 
-        count: sql<number>`cast(count(*) as integer)` 
-      }).from(users);
-
-      const isFirstUser = count === 0;
+      const userCount = await db.query.users.count();
+      const isFirstUser = userCount === 0;
 
       const [newUser] = await db
         .insert(users)
         .values({
           username,
           password: hashedPassword,
-          email: result.data.email,
+          email,
           is_admin: isFirstUser,
           role: isFirstUser ? 'admin' : 'user'
         })
@@ -179,8 +156,8 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { 
-            id: newUser.id, 
+          user: {
+            id: newUser.id,
             username: newUser.username,
             is_admin: newUser.is_admin,
             role: newUser.role
@@ -193,6 +170,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Login endpoint
   app.post("/api/login", (req, res, next) => {
     console.log("Login request body:", req.body);
     const result = loginSchema.safeParse(req.body);
@@ -218,8 +196,8 @@ export function setupAuth(app: Express) {
 
         return res.json({
           message: "Login successful",
-          user: { 
-            id: user.id, 
+          user: {
+            id: user.id,
             username: user.username,
             is_admin: user.is_admin,
             role: user.role
@@ -229,16 +207,17 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  // Logout endpoint
   app.post("/api/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
       }
-
       res.json({ message: "Logout successful" });
     });
   });
 
+  // Get current user endpoint
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
       const user = req.user;
@@ -254,7 +233,6 @@ export function setupAuth(app: Express) {
         created_at: user.created_at
       });
     }
-
     res.status(401).send("Not logged in");
   });
 }
