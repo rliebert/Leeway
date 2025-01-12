@@ -362,8 +362,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   onDelete={() => handleDeleteChannel(channel.id)}
                   isCreator={channel.creator_id === user?.id}
                 />
-              )
-            ))}
+              ))}
           </div>
 
           {/* Sections with their channels */}
