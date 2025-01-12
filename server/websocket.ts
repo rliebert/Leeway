@@ -192,7 +192,20 @@ export function setupWebSocketServer(server: Server) {
                 }));
               }
 
-              // Get message with author details
+              // Create file attachments if any
+              if (message.attachments && message.attachments.length > 0) {
+                await Promise.all(message.attachments.map(async (attachment) => {
+                  await db.insert(file_attachments).values({
+                    message_id: newMessage.id,
+                    file_url: attachment.url,
+                    file_name: attachment.originalName,
+                    file_type: attachment.mimetype,
+                    file_size: attachment.size,
+                  });
+                }));
+              }
+
+              // Get message with author and attachments
               const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),
                 with: {
