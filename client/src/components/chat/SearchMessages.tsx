@@ -1,116 +1,104 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useDebounce } from "use-debounce";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
-import { Search as SearchIcon, MessageSquare } from "lucide-react";
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Search as SearchIcon } from "lucide-react";
 import type { Message, Channel } from "@db/schema";
-import { useLocation } from "wouter";
 
 interface SearchResult extends Message {
   channel: Channel;
 }
 
 export default function SearchMessages() {
+  const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch] = useDebounce(searchTerm, 300);
-  const [, setLocation] = useLocation();
+
+  // Handle keyboard shortcut
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen((open) => !open);
+      }
+    };
+
+    document.addEventListener("keydown", down);
+    return () => document.removeEventListener("keydown", down);
+  }, []);
 
   const { data: searchResults, isLoading } = useQuery<SearchResult[]>({
     queryKey: ['messages', 'search', debouncedSearch],
     queryFn: async () => {
-      if (!debouncedSearch || debouncedSearch.length < 2) {
-        return [];
+      if (!debouncedSearch || debouncedSearch.length < 2) return [];
+
+      const params = new URLSearchParams({ q: debouncedSearch });
+      const response = await fetch(`/api/messages/search?${params.toString()}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
       }
 
-      try {
-        // Build search URL with parameters
-        const params = new URLSearchParams();
-        params.append('q', debouncedSearch);
-
-        console.log('Search parameters:', params.toString());
-        const url = `/api/messages/search?${params.toString()}`;
-        console.log('Request URL:', url);
-
-        const response = await fetch(url, {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-          }
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Search failed:', errorText);
-          throw new Error(`Search failed: ${errorText}`);
-        }
-
-        const results = await response.json();
-        console.log('Search results:', results);
-        return results;
-      } catch (error) {
-        console.error('Search error:', error);
-        return [];
-      }
+      return response.json();
     },
     enabled: debouncedSearch.length >= 2,
   });
 
-  const handleResultClick = (channelId: number, messageId: number) => {
-    setLocation(`/channels/${channelId}`);
-    setTimeout(() => {
-      const messageElement = document.getElementById(`message-${messageId}`);
-      if (messageElement) {
-        messageElement.scrollIntoView({ behavior: "smooth" });
-        messageElement.classList.add("highlight-message");
-        setTimeout(() => messageElement.classList.remove("highlight-message"), 2000);
-      }
-    }, 100);
-  };
-
   return (
-    <div className="relative">
-      <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search messages..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted w-full max-w-lg hover:bg-accent/50 transition-colors"
+      >
+        <SearchIcon className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Search messages...</span>
+        <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground ml-auto">
+          <span className="text-xs">⌘</span>K
+        </kbd>
+      </button>
 
-      {debouncedSearch.length >= 2 && (
-        <Card className="absolute top-full mt-2 w-full z-50 p-2">
-          <ScrollArea className="max-h-[300px]">
-            {isLoading ? (
-              <p className="text-sm text-muted-foreground p-2">Searching...</p>
-            ) : !searchResults || searchResults.length === 0 ? (
-              <p className="text-sm text-muted-foreground p-2">No results found</p>
-            ) : (
-              <div className="space-y-2">
-                {searchResults.map((result) => (
-                  <button
-                    key={result.id}
-                    onClick={() => handleResultClick(result.channelId, result.id)}
-                    className="w-full text-left p-2 hover:bg-muted rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>#{result.channel.name}</span>
-                      <span>·</span>
-                      <span>{result.user?.username}</span>
-                    </div>
-                    <p className="text-sm truncate">{result.content}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </Card>
-      )}
-    </div>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput 
+          placeholder="Search messages..." 
+          value={searchTerm}
+          onValueChange={setSearchTerm}
+        />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
+          {searchResults && searchResults.length > 0 && (
+            <CommandGroup heading="Messages">
+              {searchResults.map((result) => (
+                <CommandItem
+                  key={result.id}
+                  value={result.id.toString()}
+                  className="flex flex-col items-start gap-1 py-2"
+                >
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-medium">
+                      {result.author?.username}
+                    </span>
+                    <span className="text-muted-foreground">
+                      in #{result.channel.name}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {result.content}
+                  </p>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+        </CommandList>
+      </CommandDialog>
+    </>
   );
 }
