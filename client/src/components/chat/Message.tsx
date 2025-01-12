@@ -7,8 +7,17 @@ import ThreadModal from "./ThreadModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
 
+interface FileAttachment {
+  url: string;
+  originalName: string;
+  mimetype: string;
+}
+
 interface MessageProps {
-  message: MessageType;
+  message: MessageType & {
+    author?: { username: string; avatar_url?: string };
+    attachments?: FileAttachment[];
+  };
 }
 
 const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
@@ -17,7 +26,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
 
-  const { data: replies = message.replies || [] } = useQuery<MessageType[]>({
+  const { data: replies = [] } = useQuery<MessageType[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
     enabled: true, // Always fetch replies to show correct count
   });
@@ -27,7 +36,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     ...replies,
     ...wsMessages.filter(
       wsMsg => 
-        wsMsg.parentMessageId === message.id &&
+        wsMsg.parent_id === message.id &&
         !replies.some(reply => reply.id === wsMsg.id)
     ),
   ];
@@ -35,13 +44,13 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const replyCount = allReplies.length;
 
   // Helper function to check if file is an image
-  const isImageFile = (mimetype: string) => {
+  const isImageFile = (mimetype: string): boolean => {
     return mimetype.startsWith('image/');
   };
 
   // Invalidate replies query when new messages come in
   useEffect(() => {
-    const newReplies = wsMessages.filter(msg => msg.parentMessageId === message.id);
+    const newReplies = wsMessages.filter(msg => msg.parent_id === message.id);
     if (newReplies.length > 0) {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${message.id}/replies`] });
     }
@@ -56,17 +65,17 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       >
         <div className="flex gap-4">
           <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
-            <AvatarImage src={message.user?.avatar_url || undefined} />
+            <AvatarImage src={message.author?.avatar_url} />
             <AvatarFallback className="bg-primary/10">
-              {message.user?.username?.[0]?.toUpperCase()}
+              {message.author?.username?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{message.user?.username}</span>
+                <span className="font-semibold">{message.author?.username}</span>
                 <span className="text-xs text-muted-foreground">
-                  {new Date(message.createdAt || '').toLocaleTimeString()}
+                  {new Date(message.created_at || '').toLocaleTimeString()}
                 </span>
               </div>
               <Button 
@@ -87,8 +96,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {/* Display image previews */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => isImageFile(file.mimetype))
-                    .map((file, index) => (
+                    .filter((file: FileAttachment) => isImageFile(file.mimetype))
+                    .map((file: FileAttachment, index: number) => (
                       <a 
                         key={index}
                         href={file.url}
@@ -108,8 +117,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {/* Display non-image file links */}
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => !isImageFile(file.mimetype))
-                    .map((file, index) => (
+                    .filter((file: FileAttachment) => !isImageFile(file.mimetype))
+                    .map((file: FileAttachment, index: number) => (
                       <a
                         key={index}
                         href={file.url}
@@ -148,28 +157,27 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             {allReplies.map((reply) => (
               <div key={reply.id} className="flex gap-4 mt-2">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={reply.user?.avatar_url || undefined} />
+                  <AvatarImage src={reply.author?.avatar_url} />
                   <AvatarFallback className="bg-primary/10">
-                    {reply.user?.username?.[0]?.toUpperCase()}
+                    {reply.author?.username?.[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm">{reply.user?.username}</span>
+                    <span className="font-semibold text-sm">{reply.author?.username}</span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(reply.createdAt || '').toLocaleTimeString()}
+                      {new Date(reply.created_at || '').toLocaleTimeString()}
                     </span>
                   </div>
                   <p className="text-sm mt-1">{reply.content}</p>
-
                   {/* Display attachments in replies */}
                   {reply.attachments && reply.attachments.length > 0 && (
                     <div className="mt-2 space-y-2">
                       {/* Display image previews */}
                       <div className="flex flex-wrap gap-2">
                         {reply.attachments
-                          .filter(file => isImageFile(file.mimetype))
-                          .map((file, index) => (
+                          .filter((file: FileAttachment) => isImageFile(file.mimetype))
+                          .map((file: FileAttachment, index: number) => (
                             <a 
                               key={index}
                               href={file.url}
@@ -189,8 +197,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       {/* Display non-image file links */}
                       <div className="flex flex-wrap gap-2">
                         {reply.attachments
-                          .filter(file => !isImageFile(file.mimetype))
-                          .map((file, index) => (
+                          .filter((file: FileAttachment) => !isImageFile(file.mimetype))
+                          .map((file: FileAttachment, index: number) => (
                             <a
                               key={index}
                               href={file.url}

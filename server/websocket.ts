@@ -1,9 +1,9 @@
 import { WebSocket, WebSocketServer } from "ws";
-import type { Server } from "http";
+import { Server } from "http";
 import type { User } from "@db/schema";
 import { db } from "@db";
 import { messages } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 
@@ -34,7 +34,7 @@ export function setupWebSocketServer(server: Server) {
         }
 
         // Verify session exists in database
-        const sessionResult = await db.execute(
+        const sessionResult = await db.execute<{ user_id: string }>(
           sql`SELECT sess->'passport'->'user' as user_id FROM session WHERE sid = ${sessionId}`
         );
 
@@ -113,17 +113,21 @@ export function setupWebSocketServer(server: Server) {
 
             if (newMessage) {
               // Fetch full message with author details
-              const [messageWithAuthor] = await db.query.messages.findMany({
+              const result = await db.query.messages.findMany({
                 where: eq(messages.id, newMessage.id),
                 with: {
                   author: true,
                 },
+                limit: 1
               });
 
-              broadcastToChannel(message.channelId, {
-                type: 'message',
-                message: messageWithAuthor
-              });
+              const messageWithAuthor = result[0];
+              if (messageWithAuthor) {
+                broadcastToChannel(message.channelId, {
+                  type: 'message',
+                  message: messageWithAuthor
+                });
+              }
             }
             break;
           }
