@@ -1,11 +1,13 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink } from "lucide-react";
+import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2 } from "lucide-react";
 import type { Message as MessageType } from "@db/schema";
 import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
+import { useUser } from "@/hooks/use-user"; // Added import for useUser hook
+
 
 interface FileAttachment {
   id: string;
@@ -27,6 +29,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showReplies, setShowReplies] = useState(false);
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
+  const { user } = useUser(); // Use useUser hook here
 
   const { data: replies = [] } = useQuery<(MessageType & {
     author?: { username: string; avatar_url?: string };
@@ -99,7 +102,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   <Reply className="h-3 w-3 mr-1" />
                   {replyCount > 0 ? `${replyCount}` : 'Reply'}
                 </Button>
-                {message.user_id === user?.id && (
+                {message.user_id === user?.id && ( // Conditional rendering based on user
                   <Button
                     variant="ghost"
                     size="sm"
