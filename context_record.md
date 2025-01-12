@@ -247,6 +247,66 @@ export const messages = pgTable("messages", {
      - Expand/collapse threads
      - Thread history loading
 
+### Message Threading Implementation Plan
+
+1. Implementation Steps:
+   a. Backend Implementation:
+      - Add thread-specific API endpoints to routes.ts
+      - Implement thread reply functionality in websocket.ts
+      - Add thread participant tracking
+
+   b. Frontend Implementation:
+      - Create ThreadModal.tsx component
+      - Update Message.tsx for thread preview
+      - Add thread expansion UI
+      - Implement real-time thread updates
+
+2. Testing Strategy:
+   a. API Testing:
+      - Verify thread creation
+      - Test reply functionality
+      - Check participant tracking
+
+   b. UI Testing:
+      - Thread modal opening/closing
+      - Reply composition and sending
+      - Real-time updates in thread view
+      - Thread preview in main chat
+      - Thread participant list updates
+
+3. Success Criteria:
+   - Users can create thread replies to any message
+   - Thread replies appear in a modal view
+   - Real-time updates work for thread messages
+   - Thread participant list updates correctly
+   - Thread previews show correct reply counts
+   - Users can navigate between threads easily
+
+4. Implementation Order:
+   a. Phase 1 - Basic Threading:
+      - Implement ThreadModal.tsx
+      - Add thread reply endpoints
+      - Test basic threading functionality
+
+   b. Phase 2 - Real-time Updates:
+      - Add WebSocket support for threads
+      - Implement thread participant tracking
+      - Test real-time functionality
+
+   c. Phase 3 - UI Polish:
+      - Add loading states
+      - Implement error handling
+      - Add thread navigation
+      - Test edge cases
+
+5. Error Handling:
+   - Handle network failures gracefully
+   - Manage WebSocket disconnections
+   - Handle invalid thread states
+   - Provide user feedback for errors
+
+This implementation plan will be executed in phases, with testing and verification at each stage.
+
 
 ## Critical Implementation Details
 1. Auth Flow:

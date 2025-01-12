@@ -17,7 +17,9 @@ import { useWS } from "@/lib/ws";
 interface ThreadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  parentMessage: Message;
+  parentMessage: Message & {
+    author?: { username: string; avatar_url?: string };
+  };
 }
 
 export default function ThreadModal({
@@ -29,7 +31,9 @@ export default function ThreadModal({
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
 
-  const { data: replies = [] } = useQuery<Message[]>({
+  const { data: replies = [] } = useQuery<(Message & {
+    author?: { username: string; avatar_url?: string };
+  })[]>({
     queryKey: [`/api/messages/${parentMessage.id}/replies`],
     enabled: open,
   });
@@ -39,7 +43,7 @@ export default function ThreadModal({
     ...replies,
     ...wsMessages.filter(
       msg => 
-        msg.parentMessageId === parentMessage.id &&
+        msg.parent_id === parentMessage.id &&
         !replies.some(reply => reply.id === msg.id)
     ),
   ];
@@ -54,7 +58,7 @@ export default function ThreadModal({
 
   // Invalidate replies query when new messages come in
   useEffect(() => {
-    const newReplies = wsMessages.filter(msg => msg.parentMessageId === parentMessage.id);
+    const newReplies = wsMessages.filter(msg => msg.parent_id === parentMessage.id);
     if (newReplies.length > 0) {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${parentMessage.id}/replies`] });
     }
@@ -73,16 +77,16 @@ export default function ThreadModal({
           <div className="p-4">
             <div className="flex gap-4">
               <Avatar>
-                <AvatarImage src={parentMessage.user?.avatar} />
+                <AvatarImage src={parentMessage.author?.avatar_url} />
                 <AvatarFallback>
-                  {parentMessage.user?.username?.[0]?.toUpperCase()}
+                  {parentMessage.author?.username?.[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold">{parentMessage.user?.username}</span>
+                  <span className="font-semibold">{parentMessage.author?.username}</span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(parentMessage.createdAt).toLocaleTimeString()}
+                    {new Date(parentMessage.created_at).toLocaleTimeString()}
                   </span>
                 </div>
                 <p className="text-sm mt-1">{parentMessage.content}</p>
@@ -95,16 +99,16 @@ export default function ThreadModal({
               {allReplies.map((reply) => (
                 <div key={reply.id} className="flex gap-4">
                   <Avatar>
-                    <AvatarImage src={reply.user?.avatar} />
+                    <AvatarImage src={reply.author?.avatar_url} />
                     <AvatarFallback>
-                      {reply.user?.username?.[0]?.toUpperCase()}
+                      {reply.author?.username?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold">{reply.user?.username}</span>
+                      <span className="font-semibold">{reply.author?.username}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(reply.createdAt).toLocaleTimeString()}
+                        {new Date(reply.created_at).toLocaleTimeString()}
                       </span>
                     </div>
                     <p className="text-sm mt-1">{reply.content}</p>
@@ -117,7 +121,7 @@ export default function ThreadModal({
           <Separator />
           <div className="p-4">
             <ChatInput 
-              channelId={parentMessage.channelId} 
+              channelId={parentMessage.channel_id} 
               parentMessageId={parentMessage.id}
             />
           </div>

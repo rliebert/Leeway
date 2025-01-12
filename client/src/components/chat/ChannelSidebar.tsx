@@ -47,7 +47,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const [channelFormData, setChannelFormData] = useState<{
     name: string;
     description?: string;
-    section_id?: number;
+    section_id?: string | null;
   }>({
     name: "",
   });
@@ -72,7 +72,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   };
 
   const createChannelMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; section_id?: number }) => {
+    mutationFn: async (data: { name: string; description?: string; section_id?: string | null }) => {
       const response = await fetch("/api/channels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -156,7 +156,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 h-12">
-        <div 
+        <div
           className="flex items-center flex-1 cursor-pointer hover:bg-accent/50"
           onClick={() => setIsExpanded(!isExpanded)}
         >
@@ -281,7 +281,7 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               className="text-destructive"
             >
