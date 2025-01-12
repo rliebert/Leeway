@@ -38,7 +38,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   const onSubmit = async (data: FormData) => {
     console.log('ChatInput: Submitting form with files:', files.map(f => f.name));
     const message = data?.message || "";
-    if ((!message.trim() && files.length === 0) || !user) return;
+    if ((!message.trim() && files.length === 0) || !user || !channelId) return;
 
     // Upload files if any
     let attachments = [];
