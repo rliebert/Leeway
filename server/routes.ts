@@ -83,7 +83,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
   // Section management endpoints
   app.post("/api/sections", requireAuth, async (req, res) => {
     const { name, order_index } = req.body;

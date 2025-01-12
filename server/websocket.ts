@@ -23,11 +23,17 @@ export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ 
     server,
     path: '/ws',
-    perMessageDeflate: true,
+    perMessageDeflate: false, // Disable compression for better compatibility
     clientTracking: true,
     verifyClient: async ({ req }, done) => {
       try {
-        console.log('Verifying WebSocket client connection');
+        // Always allow Vite HMR connections
+        if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
+          done(true);
+          return;
+        }
+
+        // For application WebSocket connections, verify authentication
         const cookies = parseCookie(req.headers.cookie || '');
         const sessionId = cookies['connect.sid'];
 
@@ -37,7 +43,6 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        console.log('Session cookie found, verifying session');
         // Clean session ID and verify
         const cleanSessionId = decodeURIComponent(sessionId).split('s:')[1]?.split('.')[0];
         if (!cleanSessionId) {
@@ -46,6 +51,7 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
+        // Verify session in database
         const session = await db.query.sessions.findFirst({
           where: eq(sessions.sid, cleanSessionId),
         });
@@ -66,8 +72,6 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        console.log('WebSocket client authenticated successfully');
-        // Add user data to request for later use
         (req as any).userId = sessionData.passport.user;
         done(true);
       } catch (error) {
@@ -77,48 +81,49 @@ export function setupWebSocketServer(server: Server) {
     }
   });
 
+  // Track channel subscriptions
   const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
-  // Periodic cleanup of dead connections
+  // Heartbeat check every 15 seconds
   const interval = setInterval(() => {
-    let activeConnections = 0;
-    let deadConnections = 0;
-
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
-        console.log('Terminating dead connection for user:', ws.userId);
-        deadConnections++;
+        console.log('Terminating inactive connection for user:', ws.userId);
         return ws.terminate();
       }
       ws.isAlive = false;
       ws.ping();
-      activeConnections++;
     });
-
-    console.log(`WebSocket health check - Active: ${activeConnections}, Terminated: ${deadConnections}`);
-  }, 30000);
+  }, 15000);
 
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
-    console.log('New WebSocket connection established');
+    // Skip processing for Vite HMR connections
+    if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+      return;
+    }
 
-    // Set up the authenticated connection
     ws.userId = (request as any).userId;
     ws.isAlive = true;
     console.log('WebSocket connected for user:', ws.userId);
 
-    // Handle pong messages to keep connection alive
+    // Send initial connection confirmation
+    ws.send(JSON.stringify({ 
+      type: 'connected',
+      userId: ws.userId
+    }));
+
+    // Handle heartbeat responses
     ws.on('pong', () => {
       ws.isAlive = true;
     });
 
-    // Handle messages
+    // Handle incoming messages
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
-        console.log('Received message:', message);
 
+        // Handle ping messages immediately
         if (message.type === 'ping') {
-          console.log('Received ping, sending pong response');
           ws.send(JSON.stringify({ type: 'pong' }));
           return;
         }
@@ -142,35 +147,30 @@ export function setupWebSocketServer(server: Server) {
           }
 
           case 'message': {
-            if (!message.channelId || !message.content || !ws.userId) {
-              console.log('Invalid message data:', { 
-                channelId: message.channelId, 
-                content: !!message.content, 
-                userId: ws.userId 
-              });
-              break;
-            }
+            if (!message.channelId || !message.content || !ws.userId) break;
 
             try {
               const [newMessage] = await db.insert(messages).values({
-                channel_id: message.channelId,
-                user_id: ws.userId,
+                channel_id: parseInt(message.channelId),
+                user_id: parseInt(ws.userId),
                 content: message.content,
-                parent_id: message.parentId || null,
+                parent_id: message.parentId ? parseInt(message.parentId) : null,
               }).returning();
 
+              // Handle attachments
               if (message.attachments?.length) {
-                for (const attachmentId of message.attachments) {
-                  await db.insert(file_attachments).values({
+                await Promise.all(message.attachments.map(attachmentId =>
+                  db.insert(file_attachments).values({
                     message_id: newMessage.id,
                     file_url: `/uploads/${attachmentId}`,
                     file_name: attachmentId,
                     file_type: 'application/octet-stream',
                     file_size: 0,
-                  });
-                }
+                  })
+                ));
               }
 
+              // Get message with author details
               const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),
                 with: {
@@ -213,6 +213,7 @@ export function setupWebSocketServer(server: Server) {
       }
     });
 
+    // Handle connection closure
     ws.on('close', () => {
       ws.isAlive = false;
       console.log('WebSocket closed for user:', ws.userId);
@@ -221,22 +222,19 @@ export function setupWebSocketServer(server: Server) {
       });
     });
 
+    // Handle errors
     ws.on('error', (error) => {
       console.error('WebSocket error for user:', ws.userId, error);
     });
-
-    // Send initial connection success message
-    ws.send(JSON.stringify({ 
-      type: 'connected',
-      userId: ws.userId
-    }));
   });
 
+  // Clean up on server shutdown
   wss.on('close', () => {
     clearInterval(interval);
   });
 
-  const broadcastToChannel = (channelId: string, message: any, excludeWs?: WebSocket) => {
+  // Utility function to broadcast messages to channel subscribers
+  function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
     const subscribers = channelSubscriptions.get(channelId);
     if (!subscribers) return;
 
@@ -246,7 +244,7 @@ export function setupWebSocketServer(server: Server) {
         client.send(data);
       }
     });
-  };
+  }
 
   return wss;
 }

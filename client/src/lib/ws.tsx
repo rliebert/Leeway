@@ -24,6 +24,7 @@ const WSContext = createContext<WSContextType>({
   messages: [],
   send: () => {},
   connected: false,
+  error: null,
   subscribe: () => {},
   unsubscribe: () => {},
 });
@@ -33,12 +34,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const maxRetries = 5;
-  const [retryCount, setRetryCount] = useState(0);
+  const [messageQueue] = useState<WSMessage[]>([]);
   const { toast } = useToast();
   const { user } = useUser();
 
   useEffect(() => {
+    let heartbeatInterval: NodeJS.Timeout | undefined;
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
@@ -51,19 +52,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Get the current window location
-        const currentLocation = window.location;
+        // Get the current location
+        const loc = window.location;
 
-        // Determine WebSocket protocol based on page protocol
-        const wsProtocol = currentLocation.protocol === 'https:' ? 'wss:' : 'ws:';
+        // Determine WebSocket protocol and host
+        const wsProtocol = loc.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = loc.host;
+        const wsPath = '/ws';
 
-        // Use the same host as the page
-        const wsHost = currentLocation.host;
-
-        // Construct the WebSocket URL with explicit protocol and host
-        const wsUrl = window.location.protocol === 'https:' 
-          ? `wss://${window.location.host}/ws`
-          : `ws://${window.location.host}/ws`;
+        // Construct WebSocket URL
+        const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
 
         console.log(`Attempting WebSocket connection to: ${wsUrl}`);
 
@@ -75,14 +73,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         const ws = new WebSocket(wsUrl);
         let connectionTimeout: NodeJS.Timeout;
-        let heartbeatInterval: NodeJS.Timeout | undefined;
-        const messageQueue: WSMessage[] = [];
 
         // Set connection timeout
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
             console.log('WebSocket connection timeout, closing socket');
             ws.close(1000, "Connection timeout");
+            setError("Connection timeout");
           }
         }, 10000);
 
@@ -102,8 +99,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
             const msg = messageQueue.shift();
             if (msg) ws.send(JSON.stringify(msg));
           }
-          clearTimeout(connectionTimeout);
+
           setConnected(true);
+          setError(null);
           reconnectAttempts = 0;
           setSocket(ws);
 
@@ -114,6 +112,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         ws.onclose = (event) => {
           console.log(`WebSocket closed - Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`);
           clearTimeout(connectionTimeout);
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
           setConnected(false);
           setSocket(null);
 
@@ -129,7 +128,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Implement more stable reconnection logic
+          // Implement exponential backoff for reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
             const delay = Math.min(initialDelay * Math.pow(1.5, reconnectAttempts), 15000);
             console.log(`Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
@@ -142,6 +141,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }, delay);
           } else {
             console.log('Max reconnection attempts reached');
+            setError("Connection lost. Please refresh the page.");
             toast({
               variant: "destructive",
               description: "Unable to connect to chat server. Please refresh the page.",
@@ -152,6 +152,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         ws.onerror = (error) => {
           console.error('WebSocket error occurred:', error);
+          setError("Connection error occurred");
         };
 
         ws.onmessage = (event) => {
@@ -179,11 +180,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
           } catch (error) {
             console.error('Error processing WebSocket message:', error);
+            setError("Error processing message");
           }
         };
 
       } catch (error) {
         console.error('Error creating WebSocket connection:', error);
+        setError("Failed to create connection");
       }
     };
 
@@ -193,14 +196,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
       clearTimeout(reconnectTimeout);
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
-        heartbeatInterval = undefined;
       }
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close(1000, "Component unmounting");
         setSocket(null);
       }
     };
-  }, [toast, user, socket]);
+  }, [toast, user, messageQueue]);
 
   const send = (data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -237,7 +239,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <WSContext.Provider value={{ messages, send, connected, subscribe, unsubscribe }}>
+    <WSContext.Provider value={{ messages, send, connected, error, subscribe, unsubscribe }}>
       {children}
     </WSContext.Provider>
   );
