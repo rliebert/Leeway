@@ -107,14 +107,13 @@ export function setupWebSocketServer(server: Server) {
           case 'message': {
             if (!message.channelId || !message.content || !ws.userId) break;
 
-            const [newMessage] = await db.insert(messages)
-              .values({
-                channel_id: message.channelId,
-                user_id: ws.userId,
-                content: message.content,
-                parent_id: message.parentId,
-              })
-              .returning();
+            // Insert new message into database
+            const [newMessage] = await db.insert(messages).values({
+              channel_id: message.channelId,
+              user_id: ws.userId,
+              content: message.content,
+              parent_id: message.parentId,
+            }).returning();
 
             if (newMessage) {
               // Fetch full message with author details
