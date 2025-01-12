@@ -1,59 +1,38 @@
 import session from "express-session";
 import pgSession from "connect-pg-simple";
-import { neon, neonConfig } from '@neondatabase/serverless';
+import pg from 'pg';
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set for session management");
 }
 
-// Configure Neon client for session store
-neonConfig.webSocketConstructor = undefined; // Disable WebSocket for HTTP-only mode
-neonConfig.pipelineConnect = false; // Disable pipelining for more stable connections
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
-
-// Create session store connection with retry logic
-async function createSessionConnection() {
-  let lastError;
-  for (let i = 0; i < MAX_RETRIES; i++) {
-    try {
-      const sql = neon(process.env.DATABASE_URL!);
-      // Test the connection
-      await sql`SELECT 1`;
-      console.log(`Session store connection established successfully after ${i + 1} attempts`);
-      return sql;
-    } catch (error) {
-      lastError = error;
-      console.warn(`Session store connection attempt ${i + 1} failed:`, error);
-      if (i < MAX_RETRIES - 1) {
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-      }
-    }
-  }
-  throw new Error(`Failed to establish session store connection after ${MAX_RETRIES} attempts: ${lastError}`);
-}
-
-let sql = neon(process.env.DATABASE_URL);
 const PostgresStore = pgSession(session);
 
 // Initialize session store and return middleware
 export async function initializeSessionStore() {
-  sql = await createSessionConnection();
+  // Create a dedicated pool for session management
+  const pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+  });
+
+  // Test the connection
+  try {
+    await pool.query('SELECT NOW()');
+    console.log('Session store database connection successful');
+  } catch (error) {
+    console.error('Failed to connect to session store database:', error);
+    throw error;
+  }
+
   const store = new PostgresStore({
-    conObject: {
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === "production",
-    },
+    pool,
     createTableIfMissing: true,
+    tableName: 'session', // Explicitly name the session table
     pruneSessionInterval: 60, // Cleanup expired sessions every minute
-    errorLog: (error: Error) => {
-      console.error("Session store error:", {
-        error: error.message,
-        timestamp: new Date().toISOString(),
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined
-      });
-    },
   });
 
   // Return the session middleware
@@ -68,25 +47,31 @@ export async function initializeSessionStore() {
       secure: process.env.NODE_ENV === "production",
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "lax" as const,
+      sameSite: "lax",
     },
   });
 }
 
-// Enhanced health check for session store with detailed diagnostics
+// Health check for session store
 export async function checkSessionStore() {
+  const pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  });
+
   try {
     const startTime = Date.now();
-    const result = await sql`SELECT NOW() as time, version() as version`;
+    const result = await pool.query('SELECT NOW() as time, version() as version');
     const duration = Date.now() - startTime;
 
     console.log("Session store health check:", {
       status: "connected",
       responseTime: `${duration}ms`,
-      timestamp: result[0].time,
-      version: result[0].version
+      timestamp: result.rows[0].time,
+      version: result.rows[0].version
     });
 
+    await pool.end();
     return true;
   } catch (error) {
     console.error("Session store health check failed:", {
@@ -97,15 +82,23 @@ export async function checkSessionStore() {
   }
 }
 
-// Graceful shutdown handling with cleanup
+// Cleanup function for graceful shutdown
 async function cleanup() {
   console.log('Cleaning up session store connections...');
   try {
-    // Close any remaining sessions
-    await sql`SELECT pg_terminate_backend(pg_stat_activity.pid)
-    FROM pg_stat_activity 
-    WHERE pg_stat_activity.datname = current_database()
-    AND pid <> pg_backend_pid()`;
+    const pool = new pg.Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    });
+
+    // Close any remaining connections
+    await pool.query(`
+      SELECT pg_terminate_backend(pid) 
+      FROM pg_stat_activity 
+      WHERE datname = current_database()
+      AND pid <> pg_backend_pid()`
+    );
+    await pool.end();
     console.log('Session store connections closed successfully');
   } catch (error) {
     console.error('Error during session store cleanup:', error);

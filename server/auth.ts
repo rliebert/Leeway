@@ -29,7 +29,7 @@ const crypto = {
   },
 };
 
-// Validation schemas
+// Validation schemas that match frontend expectations
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -175,7 +175,7 @@ export function setupAuth(app: Express) {
       return res.status(400).send(errorMessage);
     }
 
-    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
+    passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
       if (err) {
         return next(err);
       }

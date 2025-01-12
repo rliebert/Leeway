@@ -18,13 +18,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import leewayLogo from "@/assets/leeway-logo3.png";
 
-const authSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email address").optional(),
+// Login schema matches backend expectations
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+// Registration schema matches backend expectations
+const registrationSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+type LoginData = z.infer<typeof loginSchema>;
+type RegisterData = z.infer<typeof registrationSchema>;
 
 export default function AuthForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -32,26 +40,40 @@ export default function AuthForm() {
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
 
-  const form = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  const loginForm = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
     defaultValues: {
       username: "",
       password: "",
-      email: "",
     },
   });
 
-  const onSubmit = async (data: AuthFormData) => {
+  const registerForm = useForm<RegisterData>({
+    resolver: zodResolver(registrationSchema),
+    defaultValues: {
+      username: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginData | RegisterData) => {
     setIsLoading(true);
     try {
-      const result = await (isLogin ? login(data) : register(data));
+      // Type assertion here is safe because we know which form is active
+      const result = isLogin 
+        ? await login(data as LoginData)
+        : await register(data as RegisterData);
+
       if (!result.ok) {
         throw new Error(result.message);
       }
+
       toast({
         description: isLogin ? "Logged in successfully" : "Registration successful",
       });
     } catch (error) {
+      console.error("Auth error:", error);
       toast({
         variant: "destructive",
         description: error instanceof Error ? error.message : "Authentication failed",
@@ -76,10 +98,10 @@ export default function AuthForm() {
             <TabsTrigger value="register">Register</TabsTrigger>
           </TabsList>
           <TabsContent value="login">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Form {...loginForm}>
+              <form onSubmit={loginForm.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={loginForm.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
@@ -92,7 +114,7 @@ export default function AuthForm() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={loginForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
@@ -111,10 +133,10 @@ export default function AuthForm() {
             </Form>
           </TabsContent>
           <TabsContent value="register">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Form {...registerForm}>
+              <form onSubmit={registerForm.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
-                  control={form.control}
+                  control={registerForm.control}
                   name="username"
                   render={({ field }) => (
                     <FormItem>
@@ -127,7 +149,7 @@ export default function AuthForm() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={registerForm.control}
                   name="email"
                   render={({ field }) => (
                     <FormItem>
@@ -140,7 +162,7 @@ export default function AuthForm() {
                   )}
                 />
                 <FormField
-                  control={form.control}
+                  control={registerForm.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
