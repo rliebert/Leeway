@@ -7,6 +7,7 @@ interface WSContextType {
   messages: Message[];
   send: (data: WSMessage) => void;
   connected: boolean;
+  error: string | null;
   subscribe: (channelId: string) => void;
   unsubscribe: (channelId: string) => void;
 }
@@ -31,6 +32,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const maxRetries = 5;
+  const [retryCount, setRetryCount] = useState(0);
   const { toast } = useToast();
   const { user } = useUser();
 
