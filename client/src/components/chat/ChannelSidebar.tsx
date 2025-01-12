@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +12,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 interface Props {
   selectedChannel: string;
@@ -24,6 +31,8 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [isCreateSectionOpen, setIsCreateSectionOpen] = useState(false);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -40,6 +49,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     }
     createChannelMutation.mutate(channelFormData);
     setChannelFormData({ name: "" });
+    setIsCreateChannelOpen(false);
   };
 
   const createChannelMutation = useMutation({
@@ -85,10 +95,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={handleCreateChannel}>
+              <DropdownMenuItem onClick={() => setIsCreateChannelOpen(true)}>
                 Create New Channel
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsCreateSectionOpen(true)}>
                 Create New Section
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -121,6 +131,20 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           </div>
         </ScrollArea>
       )}
+      <Dialog open={isCreateChannelOpen} onClose={() => setIsCreateChannelOpen(false)}>
+        <DialogHeader>
+          <DialogTitle>Create New Channel</DialogTitle>
+        </DialogHeader>
+        <DialogContent>
+          <Label htmlFor="name">Name</Label>
+          <Input id="name" type="text" value={channelFormData.name} onChange={(e) => setChannelFormData({...channelFormData, name: e.target.value})} />
+          <Button onClick={handleCreateChannel}>Create</Button>
+        </DialogContent>
+      </Dialog>
+      {/* Add Create Section Dialog here -  This is placeholder,  you need to implement this part based on your existing create section form.*/}
+      <Dialog open={isCreateSectionOpen} onClose={() => setIsCreateSectionOpen(false)}>
+          {/* Add your Create Section Form Here */}
+      </Dialog>
     </div>
   );
 }
