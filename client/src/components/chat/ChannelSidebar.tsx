@@ -174,7 +174,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
         <div
-          className="flex items-center justify-between px-3 h-8 group"
+          className="flex items-center justify-between px-3 h-10 group"
         >
           <div className="flex items-center flex-1">
             <Button 
