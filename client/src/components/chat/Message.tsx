@@ -117,16 +117,23 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         if (response.ok) {
                           toast({ description: "Message deleted" });
                           // Update both cache and WS messages
+                          // Update WebSocket state first
+                          setMessages(prevMessages => prevMessages.filter(msg => msg.id !== message.id));
+                          
+                          // Update query cache
                           queryClient.setQueryData(
                             [`/api/channels/${message.channel_id}/messages`],
-                            (oldData: any) => oldData?.filter((msg: MessageType) => msg.id !== message.id) ?? []
+                            (oldData: any) => {
+                              if (!oldData) return [];
+                              return oldData.filter((msg: MessageType) => msg.id !== message.id);
+                            }
                           );
-                          // Clear any replies
+                          
+                          // Remove any replies
                           queryClient.removeQueries({ 
-                            queryKey: [`/api/messages/${message.id}/replies`]
+                            queryKey: [`/api/messages/${message.id}/replies`],
+                            exact: true
                           });
-                          // Signal deletion to parent components
-                          setMessages(prevMessages => prevMessages.filter(msg => msg.id !== message.id));
                         } else {
                           toast({ 
                             variant: "destructive",
