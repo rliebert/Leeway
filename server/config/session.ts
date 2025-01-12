@@ -1,6 +1,7 @@
 import session from "express-session";
 import pgSession from "connect-pg-simple";
-import { Pool } from "pg";
+import pkg from 'pg';
+const { Pool } = pkg;
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set for session management");
@@ -16,12 +17,16 @@ export async function initializeSessionStore() {
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     max: 20, // Maximum number of clients in the pool
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established
+    connectionTimeoutMillis: 5000, // Increased timeout to 5 seconds
+    maxUses: 7500, // Maximum number of times to use a client before destroying it
+    allowExitOnIdle: true // Allow the pool to exit if all clients are idle
   });
 
   // Test the connection
   try {
-    await pool.query('SELECT NOW()');
+    const client = await pool.connect();
+    await client.query('SELECT NOW()');
+    client.release();
     console.log('Session store database connection successful');
   } catch (error) {
     console.error('Failed to connect to session store database:', error);
@@ -33,6 +38,7 @@ export async function initializeSessionStore() {
     createTableIfMissing: true,
     tableName: 'session', // Explicitly name the session table
     pruneSessionInterval: 60, // Cleanup expired sessions every minute
+    errorLog: console.error.bind(console),
   });
 
   // Return the session middleware
@@ -57,6 +63,7 @@ export async function checkSessionStore() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 5000,
   });
 
   try {

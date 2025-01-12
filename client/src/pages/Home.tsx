@@ -18,7 +18,6 @@ import ChatInput from "@/components/chat/ChatInput";
 import UserProfile from "@/components/UserProfile";
 import type { Channel, Message } from "@db/schema";
 import { useDebouncedCallback } from "use-debounce";
-import { DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface SearchResult extends Message {
   user?: {
@@ -36,7 +35,6 @@ interface HomeProps {
 
 export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
-  const [selectedDM, setSelectedDM] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
@@ -67,13 +65,6 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   const handleSelectChannel = (channelId: string) => {
     setLocalSelectedChannel(channelId);
     onSelectChannel(channelId);
-    setSelectedDM(null);
-  };
-
-  const handleSelectDM = (dmId: string) => {
-    setSelectedDM(dmId);
-    setLocalSelectedChannel(null);
-    onSelectChannel('');
   };
 
   // Initialize selected channel if none is selected
@@ -100,10 +91,10 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
     <div className="flex flex-col h-screen bg-background">
       <div className="w-full border-b">
         <div className="flex items-center">
-          <div className="w-64 p-4">
+          <div className="w-64 p-4 bg-sidebar">
             <div className="flex items-center gap-2">
               <img src={leewayLogo} alt="Leeway Logo" className="w-6 h-6" />
-              <h1 className="font-bold text-xl">Leeway</h1>
+              <h1 className="font-bold text-xl text-sidebar-foreground">Leeway</h1>
             </div>
           </div>
           <div className="flex-1 p-4">
@@ -124,48 +115,33 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
         <div className="w-64 flex flex-col border-r bg-sidebar">
           <ChannelSidebar 
             selectedChannel={localSelectedChannel || ''} 
-            selectedDM={selectedDM}
-            onSelectChannel={handleSelectChannel} 
-            onSelectDM={handleSelectDM}
+            onSelectChannel={handleSelectChannel}
           />
           <UserProfile />
         </div>
         <div className="flex-1 flex flex-col">
-          {selectedDM ? (
-            <div>DM View - Not implemented yet</div>
-          ) : (
-            <>
-              <div className="border-b px-6 py-3">
-                <div className="flex items-center gap-2">
-                  <Hash className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
-                </div>
-                {currentChannel?.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
-                )}
-              </div>
-              <ScrollArea className="flex-1">
-                <MessageList 
-                  channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
-                />
-              </ScrollArea>
-              <div className="px-4 py-3 border-t">
-                <ChatInput 
-                  channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
-                />
-              </div>
-            </>
-          )}
+          <div className="border-b px-6 py-3">
+            <div className="flex items-center gap-2">
+              <Hash className="h-5 w-5 text-muted-foreground" />
+              <h2 className="font-semibold text-lg">{currentChannel?.name}</h2>
+            </div>
+            {currentChannel?.description && (
+              <p className="text-sm text-muted-foreground mt-1">{currentChannel.description}</p>
+            )}
+          </div>
+          <ScrollArea className="flex-1">
+            <MessageList 
+              channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
+            />
+          </ScrollArea>
+          <div className="px-4 py-3 border-t">
+            <ChatInput 
+              channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0} 
+            />
+          </div>
         </div>
       </div>
-      <CommandDialog 
-        open={open} 
-        onOpenChange={setOpen}
-      >
-        <DialogTitle className="sr-only">Search Messages</DialogTitle>
-        <DialogDescription className="sr-only">
-          Search for messages across all channels
-        </DialogDescription>
+      <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput 
           placeholder="Search messages..." 
           onValueChange={handleSearch}
