@@ -178,8 +178,14 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           onClick={() => setIsExpanded(!isExpanded)}
         >
           <div className="flex items-center flex-1">
-            <ChevronRight className={`h-4 w-4 mr-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-            <span className="text-sm font-medium">Channels</span>
+            <ChevronRight 
+              className={`h-4 w-4 mr-2 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+            />
+            <span className="text-lg font-semibold">Channels</span>
             {showHeaderMenu && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -266,7 +272,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-3 py-2">
+        <div className={`px-3 py-2 ${isExpanded ? '' : 'hidden'}`}>
           {/* Uncategorized channels */}
           <div className="ml-2">
             {channelsBySection?.uncategorized?.map((channel) => (
