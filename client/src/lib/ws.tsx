@@ -73,17 +73,33 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         const ws = new WebSocket(wsUrl);
         let connectionTimeout: NodeJS.Timeout;
+        let heartbeatInterval: NodeJS.Timeout;
+        const messageQueue: WSMessage[] = [];
 
-        // Set connection timeout with longer duration
+        // Set connection timeout
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
             console.log('WebSocket connection timeout, closing socket');
             ws.close(1000, "Connection timeout");
           }
-        }, 15000);
+        }, 10000);
 
         ws.onopen = () => {
           console.log('WebSocket connection established successfully');
+          clearTimeout(connectionTimeout);
+          
+          // Set up heartbeat
+          heartbeatInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping' }));
+            }
+          }, 15000);
+
+          // Send any queued messages
+          while (messageQueue.length > 0) {
+            const msg = messageQueue.shift();
+            if (msg) ws.send(JSON.stringify(msg));
+          }
           clearTimeout(connectionTimeout);
           setConnected(true);
           reconnectAttempts = 0;
@@ -173,6 +189,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(reconnectTimeout);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (socket) {
         socket.close(1000, "Component unmounting");
       }
@@ -181,7 +198,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const send = (data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      console.warn('WebSocket is not connected, message not sent:', data);
+      console.log('Connection not ready, queueing message');
+      messageQueue.push(data);
       return;
     }
 
@@ -189,9 +207,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
       socket.send(JSON.stringify(data));
     } catch (error) {
       console.error('Error sending WebSocket message:', error);
+      messageQueue.push(data);
       toast({
         variant: "destructive",
-        description: "Failed to send message. Please try again.",
+        description: "Message will be sent when connection is restored.",
         duration: 3000,
       });
     }
