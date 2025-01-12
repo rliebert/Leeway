@@ -236,6 +236,30 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Message search endpoint
+  // Delete message endpoint
+  app.delete("/api/messages/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+      const message = await db.query.messages.findFirst({
+        where: eq(messages.id, id)
+      });
+
+      if (!message) {
+        return res.status(404).json({ error: "Message not found" });
+      }
+
+      if (message.user_id !== (req.user as User).id) {
+        return res.status(403).json({ error: "Not authorized to delete this message" });
+      }
+
+      await db.delete(messages).where(eq(messages.id, id));
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      res.status(500).json({ error: "Failed to delete message" });
+    }
+  });
+
   app.get("/api/messages/search", requireAuth, async (req, res) => {
     const { q } = req.query;
     if (!q || typeof q !== 'string') {

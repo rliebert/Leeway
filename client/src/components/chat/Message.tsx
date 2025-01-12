@@ -6,7 +6,8 @@ import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
-import { useUser } from "@/hooks/use-user"; // Added import for useUser hook
+import { useUser } from "@/hooks/use-user";
+import { useToast } from "@/hooks/use-toast"; // Added import for useUser hook
 
 
 interface FileAttachment {
@@ -115,7 +116,15 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          queryClient.invalidateQueries({ queryKey: [`/api/channels/${message.channel_id}/messages`] });
+                          queryClient.invalidateQueries({ 
+                            queryKey: [`/api/channels/${message.channel_id}/messages`],
+                            exact: true 
+                          });
+                        } else {
+                          toast({ 
+                            variant: "destructive",
+                            description: "Failed to delete message"
+                          });
                         }
                       }
                     }}
