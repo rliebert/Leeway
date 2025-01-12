@@ -8,13 +8,14 @@ import { ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 
 interface MessageListProps {
-  channelId: number;
+  channelId: string;  // Changed to string for UUID
 }
 
 export default function MessageList({ channelId }: MessageListProps) {
   const { messages: wsMessages } = useWS();
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
+    enabled: !!channelId && channelId !== "0", // Only fetch if we have a valid channelId
   });
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -25,11 +26,11 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   // Filter out thread replies and combine messages
   const allMessages = [
-    ...(initialMessages?.filter(msg => !msg.parentMessageId) || []),
+    ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(
       wsMsg => 
-        wsMsg.channelId === channelId && 
-        !wsMsg.parentMessageId && // Only show top-level messages
+        wsMsg.channel_id === channelId && 
+        !wsMsg.parent_id && // Only show top-level messages
         !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
     ),
   ];
@@ -68,7 +69,7 @@ export default function MessageList({ channelId }: MessageListProps) {
   // Auto scroll when current user sends a message
   useEffect(() => {
     const lastMessage = allMessages[allMessages.length - 1];
-    if (lastMessage?.userId === user?.id) {
+    if (lastMessage?.user_id === user?.id) {
       scrollToBottom();
     } else if (lastMessage && !showScrollButton) {
       // If messages are already at bottom, scroll to new messages from others too
@@ -78,6 +79,14 @@ export default function MessageList({ channelId }: MessageListProps) {
       setUnreadCount(prev => prev + 1);
     }
   }, [allMessages.length, user?.id]);
+
+  if (!channelId || channelId === "0") {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Select a channel to view messages
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex-1">

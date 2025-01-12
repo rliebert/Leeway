@@ -34,8 +34,7 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        {/* Loader2 component is kept from original code */}
-        <div className="h-8 w-8 animate-spin text-primary"></div> {/* Placeholder for Loader2 */}
+        <div className="h-8 w-8 animate-spin text-primary"></div>
       </div>
     );
   }
@@ -76,19 +75,15 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
             <div className="flex items-center gap-2">
               <Hash className="h-5 w-5 text-muted-foreground" />
               <h2 className="font-semibold text-lg">
-                {channels?.find((c) => c.id.toString() === localSelectedChannel)?.name}
+                {channels?.find((c) => c.id === localSelectedChannel)?.name}
               </h2>
             </div>
           </div>
           <ScrollArea className="flex-1">
-            <MessageList
-              channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0}
-            />
+            <MessageList channelId={localSelectedChannel || ""} />
           </ScrollArea>
           <div className="px-4 py-3 border-t">
-            <ChatInput
-              channelId={localSelectedChannel ? parseInt(localSelectedChannel, 10) : 0}
-            />
+            <ChatInput channelId={localSelectedChannel || ""} />
           </div>
         </div>
       </div>
