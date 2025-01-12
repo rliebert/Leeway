@@ -239,6 +239,15 @@ export function setupWebSocketServer(server: Server) {
             }, ws);
             break;
           }
+
+          case 'message_deleted': {
+            if (!message.channelId || !message.messageId) break;
+            broadcastToChannel(message.channelId, {
+              type: 'message_deleted',
+              messageId: message.messageId
+            });
+            break;
+          }
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);

@@ -116,7 +116,13 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          // The WebSocket broadcast will handle the UI update
+                          // Send WebSocket event for deletion
+                          const { send } = useWS();
+                          send({
+                            type: 'message_deleted',
+                            channelId: message.channel_id,
+                            messageId: message.id
+                          });
                         } else {
                           toast({ 
                             variant: "destructive",
