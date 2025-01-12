@@ -20,7 +20,7 @@ interface ThreadModalProps {
   parentMessage: Message & {
     author?: { username: string; avatar_url?: string | null };
     attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
-    channel_id: string; // Make channel_id required
+    channel_id: string;
   };
 }
 
@@ -76,8 +76,8 @@ export default function ThreadModal({
       <DialogContent className="max-w-2xl h-[80vh]">
         <DialogHeader>
           <DialogTitle>Thread</DialogTitle>
-          <DialogDescription className="sr-only">
-            Reply to message thread
+          <DialogDescription>
+            Message thread started by {parentMessage.author?.username}
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col h-full">

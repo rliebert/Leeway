@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -174,6 +175,11 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               <DialogTitle>
                 {editingChannel ? 'Edit Channel' : 'Create New Channel'}
               </DialogTitle>
+              <DialogDescription>
+                {editingChannel 
+                  ? 'Edit the channel details below.' 
+                  : 'Create a new channel for team communication.'}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
