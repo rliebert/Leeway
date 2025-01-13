@@ -63,9 +63,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       try {
         const loc = window.location;
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
-        const wsHost = loc.host;
-        const wsPath = "/ws";
-        const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
+        const wsUrl = `${wsProtocol}//${loc.host}/ws`;
 
         console.log(`Attempting WebSocket connection to: ${wsUrl}`);
 
@@ -75,11 +73,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
         }
 
         const ws = new WebSocket(wsUrl);
-
-        ws.addEventListener("error", (error) => {
-          console.error("WebSocket Error:", error);
-          setError("Connection error. Please check console for details.");
-        });
 
         let connectionTimeout: NodeJS.Timeout;
         connectionTimeout = setTimeout(() => {
@@ -91,7 +84,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         }, 10000);
 
         ws.onopen = () => {
-          console.log("WebSocket connection established successfully");
+          console.log("WebSocket connection established");
           clearTimeout(connectionTimeout);
 
           heartbeatInterval = setInterval(() => {
@@ -114,16 +107,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
         };
 
         ws.onclose = (event) => {
-          console.log(
-            `WebSocket closed - Code: ${event.code}, Reason: ${event.reason}, Clean: ${event.wasClean}`,
-          );
+          console.log(`WebSocket closed with code: ${event.code}`);
           clearTimeout(connectionTimeout);
           if (heartbeatInterval) clearInterval(heartbeatInterval);
           setConnected(false);
           setSocket(null);
 
           if (event.code === 1000 || event.code === 1001) {
-            console.log("Clean WebSocket closure, not attempting reconnect");
+            console.log("Clean WebSocket closure");
             return;
           }
 
@@ -135,10 +126,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
           if (reconnectAttempts < maxReconnectAttempts) {
             const delay = Math.min(
               initialDelay * Math.pow(1.5, reconnectAttempts),
-              15000,
+              15000
             );
             console.log(
-              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`,
+              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
             );
 
             reconnectTimeout = setTimeout(() => {
@@ -152,81 +143,129 @@ export function WSProvider({ children }: { children: ReactNode }) {
             setError("Connection lost. Please refresh the page.");
             toast({
               variant: "destructive",
-              description:
-                "Unable to connect to chat server. Please refresh the page.",
+              description: "Unable to connect to chat server. Please refresh the page.",
               duration: 5000,
             });
           }
         };
 
         ws.onerror = (error) => {
-          console.error("WebSocket error occurred:", error);
+          console.error("WebSocket error:", error);
           setError("Connection error occurred");
         };
 
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log("WebSocket message received:", data);
+            console.log('WebSocket message received:', data);
 
             if (data.type === "pong" || data.type === "connected") {
               return;
             }
 
-            const normalizeMessageAttachments = (message: any) => ({
-              ...message,
-              attachments: Array.isArray(message.attachments)
-                ? message.attachments.map(attachment => ({
-                    ...attachment,
-                    url: attachment.file_url || attachment.url,
-                    originalName: attachment.file_name || attachment.originalName,
-                    mimetype: attachment.file_type || attachment.mimetype,
-                    file_size: attachment.file_size || 0
-                  }))
-                : []
-            });
+            const normalizeMessage = (message: any) => {
+              if (!message) {
+                console.warn('Attempted to normalize undefined message');
+                return null;
+              }
 
-            if (data.type === "message" && data.message) {
-              const messageWithAttachments = normalizeMessageAttachments(data.message);
-              setMessages((prev) => {
-                const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
-                if (existingMsgIndex > -1) {
-                  const newMessages = [...prev];
-                  newMessages[existingMsgIndex] = messageWithAttachments;
-                  return newMessages;
+              console.log('Original message:', message);
+              // Ensure consistent field names and types between initial load and updates
+              const normalized = {
+                ...message,
+                id: message.id?.toString(),
+                channel_id: message.channel_id?.toString(),
+                user_id: message.user_id?.toString(),
+                content: message.content || '',
+                created_at: message.created_at || new Date().toISOString(),
+                updated_at: message.updated_at || message.created_at || new Date().toISOString(),
+                parent_id: message.parent_id?.toString() || null,
+                author: message.author || null,
+                attachments: Array.isArray(message.attachments)
+                  ? message.attachments.map((attachment: any) => ({
+                      id: attachment.id?.toString(),
+                      url: attachment.file_url || attachment.url || '',
+                      originalName: attachment.file_name || attachment.originalName || '',
+                      mimetype: attachment.file_type || attachment.mimetype || '',
+                      file_size: Number(attachment.file_size) || 0,
+                    }))
+                  : []
+              };
+
+              console.log('Normalized message:', normalized);
+              return normalized;
+            };
+
+            const updateMessageInState = (messageData: any) => {
+              const normalizedMessage = normalizeMessage(messageData);
+              if (!normalizedMessage) {
+                console.warn('Failed to normalize message:', messageData);
+                return;
+              }
+
+              console.log('Updating message state with:', normalizedMessage);
+
+              setMessages((prevMessages) => {
+                // Find existing message by ID (ensure string comparison)
+                const existingIndex = prevMessages.findIndex(
+                  (msg) => msg.id?.toString() === normalizedMessage.id?.toString()
+                );
+                console.log('Existing message index:', existingIndex);
+
+                if (existingIndex > -1) {
+                  // Update existing message while preserving fields
+                  const updatedMessages = [...prevMessages];
+                  const existingMessage = prevMessages[existingIndex];
+
+                  updatedMessages[existingIndex] = {
+                    ...existingMessage,  // Keep existing fields
+                    ...normalizedMessage, // Apply updates
+                    // Ensure critical fields are present and normalized
+                    id: normalizedMessage.id,
+                    content: normalizedMessage.content,
+                    updated_at: new Date().toISOString(),
+                    author: normalizedMessage.author || existingMessage.author,
+                    attachments: normalizedMessage.attachments || existingMessage.attachments
+                  };
+
+                  console.log('Updated message:', updatedMessages[existingIndex]);
+                  return updatedMessages;
                 }
-                return [...prev, messageWithAttachments];
+
+                // Add new message
+                return [...prevMessages, normalizedMessage];
               });
-            }
+            };
 
-            if (data.type === "message_deleted") {
-              console.log('Handling message deletion:', data);
-              setMessages(prevMessages => 
-                prevMessages.filter(msg => 
-                  msg.id !== data.messageId && msg.parent_id !== data.messageId
-                )
-              );
-            }
-
-            if (data.type === "message_edited" && data.message) {
-              console.log('Handling message edit:', data);
-
-              const editedMessage = normalizeMessageAttachments(data.message);
-              console.log('Normalized edited message:', editedMessage);
-
-              setMessages(prev => {
-                const existingMsgIndex = prev.findIndex(msg => msg.id === editedMessage.id);
-                if (existingMsgIndex > -1) {
-                  const newMessages = [...prev];
-                  newMessages[existingMsgIndex] = editedMessage;
-                  return newMessages;
+            switch (data.type) {
+              case "message":
+                if (data.message) {
+                  console.log('Processing new message:', data.message);
+                  updateMessageInState(data.message);
                 }
-                return prev;
-              });
+                break;
+
+              case "message_edited":
+                if (data.message) {
+                  console.log('Processing edited message:', data.message);
+                  updateMessageInState(data.message);
+                }
+                break;
+
+              case "message_deleted":
+                console.log('Processing message deletion:', data);
+                setMessages((prevMessages) =>
+                  prevMessages.filter(
+                    (msg) => 
+                      msg.id?.toString() !== data.messageId?.toString() && 
+                      msg.parent_id?.toString() !== data.messageId?.toString()
+                  )
+                );
+                break;
             }
           } catch (error) {
-            console.error("Error processing WebSocket message:", error);
-            setError("Error processing message");
+            console.error('Error processing WebSocket message:', error);
+            setError('Error processing message');
           }
         };
       } catch (error) {
@@ -270,9 +309,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      console.log('Sending WebSocket message:', data);
       socket.send(JSON.stringify(data));
     } catch (error) {
-      console.error("Error sending WebSocket message:", error);
+      console.error("Error sending message:", error);
       messageQueue.push(data);
       toast({
         variant: "destructive",

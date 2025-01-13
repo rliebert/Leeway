@@ -33,13 +33,13 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const queryClient = useQueryClient();
-  const { messages: wsMessages } = useWS();
+  const { messages: wsMessages, send } = useWS();
   const { user } = useUser();
   const { toast } = useToast();
-  const ws = useWS();
 
   // Update local state when message content changes from WebSocket
   useEffect(() => {
+    console.log('Message content updated:', message.content);
     setEditContent(message.content);
   }, [message.content]);
 
@@ -86,13 +86,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     return new Date(date).toLocaleTimeString();
   };
 
-  useEffect(() => {
-    const newReplies = wsMessages.filter(msg => msg.parent_id === message.id);
-    if (newReplies.length > 0) {
-      queryClient.invalidateQueries({ queryKey: [`/api/messages/${message.id}/replies`] });
-    }
-  }, [wsMessages, message.id, queryClient]);
-
   const handleDeleteMessage = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to delete this message?')) {
@@ -103,12 +96,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
         if (response.ok) {
           toast({ description: "Message deleted" });
-          ws.send({
+          send({
             type: 'message_deleted',
             channelId: message.channel_id || '',
             messageId: message.id
           });
-          ws.setMessages(prev => prev.filter(msg => msg.id !== message.id));
         } else {
           throw new Error('Failed to delete message');
         }
@@ -129,28 +121,18 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
+      console.log('Sending edit message:', {
+        messageId: message.id,
+        content: editContent.trim()
+      });
+
       // First send the WebSocket event
-      ws.send({
+      send({
         type: "message_edited",
         channelId: message.channel_id || '',
         messageId: message.id,
         content: editContent.trim()
       });
-
-      // Then update local state optimistically
-      const updatedMessage = {
-        ...message,
-        content: editContent.trim(),
-        updated_at: new Date().toISOString()
-      };
-
-      ws.setMessages(prev => 
-        prev.map(msg => 
-          msg.id === message.id 
-            ? updatedMessage
-            : msg
-        )
-      );
 
       setIsEditing(false);
       toast({ description: "Message updated" });
@@ -276,7 +258,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       >
                         <img
                           src={normalizeFileUrl(file)}
-                          alt={file.originalName}
+                          alt={file.originalName || file.file_name}
                           className="rounded-md max-h-48 object-cover"
                         />
                       </a>
@@ -295,7 +277,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
                       >
                         <FileIcon className="h-4 w-4" />
-                        {file.originalName}
+                        {file.originalName || file.file_name}
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     ))}
@@ -353,7 +335,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                                 >
                                   <img
                                     src={normalizeFileUrl(file)}
-                                    alt={file.originalName}
+                                    alt={file.originalName || file.file_name}
                                     className="rounded-md max-h-48 object-cover"
                                   />
                                 </a>
@@ -372,7 +354,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                                   className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
                                 >
                                   <FileIcon className="h-4 w-4" />
-                                  {file.originalName}
+                                  {file.originalName || file.file_name}
                                   <ExternalLink className="h-3 w-3" />
                                 </a>
                               ))}
@@ -390,7 +372,10 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       <ThreadModal
         open={showThread}
         onOpenChange={setShowThread}
-        parentMessage={message}
+        parentMessage={{
+          ...message,
+          channel_id: message.channel_id || '',
+        }}
       />
     </>
   );

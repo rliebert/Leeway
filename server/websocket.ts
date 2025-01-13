@@ -92,12 +92,35 @@ export function setupWebSocketServer(server: Server) {
     });
   }, 15000);
 
+  const normalizeMessageForClient = (msg: any) => {
+    console.log('Normalizing message:', msg);
+    const normalized = {
+      id: msg.id?.toString(),
+      channel_id: msg.channel_id?.toString(),
+      user_id: msg.user_id?.toString(),
+      content: msg.content || '',
+      created_at: msg.created_at || new Date().toISOString(),
+      updated_at: msg.updated_at || msg.created_at || new Date().toISOString(),
+      parent_id: msg.parent_id?.toString() || null,
+      author: msg.author,
+      attachments: msg.attachments?.map((attachment: any) => ({
+        id: attachment.id?.toString(),
+        url: attachment.file_url || attachment.url || '',
+        originalName: attachment.file_name || attachment.originalName || '',
+        mimetype: attachment.file_type || attachment.mimetype || '',
+        file_size: Number(attachment.file_size) || 0
+      })) || []
+    };
+    console.log('Normalized result:', normalized);
+    return normalized;
+  };
+
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
     if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
       return;
     }
 
-    ws.userId = (request as any).userId;
+    ws.userId = (request as any).userId?.toString();
     ws.isAlive = true;
     console.log('WebSocket connected for user:', ws.userId);
 
@@ -129,6 +152,7 @@ export function setupWebSocketServer(server: Server) {
             console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
 
             try {
+              console.log('Fetching existing messages for channel:', message.channelId);
               const existingMessages = await db.query.messages.findMany({
                 where: eq(messages.channel_id, message.channelId),
                 with: {
@@ -138,10 +162,13 @@ export function setupWebSocketServer(server: Server) {
                 orderBy: [asc(messages.created_at)],
               });
 
+              console.log('Found messages:', existingMessages.length);
               existingMessages.forEach(msg => {
+                console.log('Processing message for initial load:', msg.id);
+                const normalizedMessage = normalizeMessageForClient(msg);
                 ws.send(JSON.stringify({
                   type: 'message',
-                  message: msg
+                  message: normalizedMessage
                 }));
               });
             } catch (error) {
@@ -190,9 +217,12 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
+                const normalizedMessage = normalizeMessageForClient(messageWithAuthor);
+                console.log('Broadcasting new message:', normalizedMessage);
+
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: messageWithAuthor
+                  message: normalizedMessage
                 });
               }
             } catch (error) {
@@ -205,22 +235,15 @@ export function setupWebSocketServer(server: Server) {
             break;
           }
 
-          case 'typing': {
-            if (!message.channelId || !ws.userId) break;
-            broadcastToChannel(message.channelId, {
-              type: 'typing',
-              userId: ws.userId
-            }, ws);
-            break;
-          }
-
           case 'message_edited': {
             if (!message.channelId || !message.messageId || !message.content || !ws.userId) break;
 
             try {
-              console.log('WebSocket: Processing message edit:', message);
+              console.log('Processing message edit:', {
+                messageId: message.messageId,
+                content: message.content
+              });
 
-              // First update the message in database
               await db
                 .update(messages)
                 .set({
@@ -229,8 +252,7 @@ export function setupWebSocketServer(server: Server) {
                 })
                 .where(eq(messages.id, message.messageId));
 
-              // Then fetch the complete updated message with author and attachments
-              const messageWithAuthor = await db.query.messages.findFirst({
+              const updatedMessage = await db.query.messages.findFirst({
                 where: eq(messages.id, message.messageId),
                 with: {
                   author: true,
@@ -238,12 +260,14 @@ export function setupWebSocketServer(server: Server) {
                 }
               });
 
-              if (messageWithAuthor) {
-                console.log('WebSocket: Broadcasting edited message:', messageWithAuthor);
-                // Broadcast the complete message object to all clients
+              if (updatedMessage) {
+                console.log('Message before normalization:', updatedMessage);
+                const normalizedMessage = normalizeMessageForClient(updatedMessage);
+                console.log('Broadcasting normalized edited message:', normalizedMessage);
+
                 broadcastToChannel(message.channelId, {
                   type: 'message_edited',
-                  message: messageWithAuthor
+                  message: normalizedMessage
                 });
               }
             } catch (error) {
@@ -258,11 +282,21 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) break;
-            broadcastToChannel(message.channelId, {
-              type: 'message_deleted',
-              messageId: message.messageId,
-              channelId: message.channelId
-            });
+
+            try {
+              await db.delete(messages).where(eq(messages.id, message.messageId));
+              broadcastToChannel(message.channelId, {
+                type: 'message_deleted',
+                messageId: message.messageId,
+                channelId: message.channelId
+              });
+            } catch (error) {
+              console.error('Error handling message deletion:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to delete message'
+              }));
+            }
             break;
           }
         }
