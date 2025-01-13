@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
+import { ObjectStorage } from '@replit/object-storage';
 
 interface UploadResult {
   url: string;
@@ -7,14 +8,16 @@ interface UploadResult {
 }
 
 export class ObjectStorageService {
+  private storage: ObjectStorage;
   private bucketId: string;
 
   constructor() {
-    const bucketId = process.env.REPLIT_BUCKET_ID;
+    const bucketId = process.env.defaultBucketID;
     if (!bucketId) {
-      throw new Error('Object Storage configuration error: Missing REPLIT_BUCKET_ID environment variable');
+      throw new Error('Object Storage configuration error: Missing defaultBucketID environment variable');
     }
     this.bucketId = bucketId;
+    this.storage = new ObjectStorage();
   }
 
   private generateUniqueFileName(originalName: string): string {
@@ -27,23 +30,16 @@ export class ObjectStorageService {
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
       const objectKey = this.generateUniqueFileName(originalFilename);
-      const uploadUrl = `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
 
-      const response = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: buffer,
-        headers: {
-          'Content-Type': this.getContentType(originalFilename),
-          'X-Replit-Bucket': this.bucketId
+      await this.storage.put(
+        objectKey,
+        buffer,
+        {
+          'Content-Type': this.getContentType(originalFilename)
         }
-      });
+      );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Upload failed: ${response.status} - ${errorText}`);
-      }
-
-      const resultUrl = `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
+      const resultUrl = this.getPublicUrl(objectKey);
       console.log(`File uploaded successfully: ${resultUrl}`);
 
       return {
@@ -79,7 +75,7 @@ export class ObjectStorageService {
   }
 
   getPublicUrl(objectKey: string): string {
-    return `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
+    return this.storage.getPublicUrl(objectKey);
   }
 }
 
