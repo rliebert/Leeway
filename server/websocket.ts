@@ -181,20 +181,28 @@ export function setupWebSocketServer(server: Server) {
               }).returning();
 
               // Create file attachments if any
+              const attachmentRecords = [];
               if (message.attachments && message.attachments.length > 0) {
                 await Promise.all(message.attachments.map(async (attachment) => {
-                  await db.insert(file_attachments).values({
+                  const [record] = await db.insert(file_attachments).values({
                     message_id: newMessage.id,
                     file_url: attachment.url,
                     file_name: attachment.originalName,
                     file_type: attachment.mimetype,
                     file_size: attachment.size,
-                  });
+                  }).returning();
+                  attachmentRecords.push(record);
                 }));
               }
 
               // Get message with author and attachments
-              const messageWithAuthor = await db.query.messages.findFirst({
+              const messageWithAuthor = {
+                ...newMessage,
+                author: await db.query.users.findFirst({
+                  where: eq(users.id, ws.userId)
+                }),
+                attachments: attachmentRecords
+              };
                 where: eq(messages.id, newMessage.id),
                 with: {
                   author: true,

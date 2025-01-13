@@ -197,10 +197,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 ...data.message,
                 attachments: data.message.attachments?.map((attachment: any) => ({
                   ...attachment,
+                  id: attachment.id,
                   url: attachment.file_url || `/uploads/${attachment.file_name}`,
-                  file_url: attachment.file_url || `/uploads/${attachment.file_name}`
+                  file_url: attachment.file_url || `/uploads/${attachment.file_name}`,
+                  originalName: attachment.file_name,
+                  mimetype: attachment.file_type,
+                  file_size: attachment.file_size
                 }))
               };
+
+              console.log('Processing message with attachments:', messageWithAttachments);
 
               setMessages((prev) => {
                 if (prev.some((msg) => msg.id === messageWithAttachments.id)) {
