@@ -13,19 +13,18 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited' | 'debug_mode';
   channelId?: string;
   content?: string;
   parentId?: string;
   messageId?: string;
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
+  enabled?: boolean;  // For debug_mode type
 }
 
 export function setupWebSocketServer(server: Server) {
-  // Enable debug logging for development
-  if (process.env.NODE_ENV !== 'production') {
-    debug.enable();
-  }
+  // Start with debug logging disabled
+  debug.disable();
 
   const wss = new WebSocketServer({
     server,
@@ -146,6 +145,17 @@ export function setupWebSocketServer(server: Server) {
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
+
+        // Handle debug mode toggle messages
+        if (message.type === 'debug_mode') {
+          if (message.enabled) {
+            debug.enable();
+          } else {
+            debug.disable();
+          }
+          return;
+        }
+
         debug.startGroup(`Processing message type: ${message.type}`);
         debug.debug('Received message:', message);
 

@@ -23,12 +23,13 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted" | "message_edited";
+  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted" | "message_edited" | "debug_mode";
   channelId?: string;
   content?: string;
   parentId?: string;
   messageId?: string;
   attachments?: any[];
+  enabled?: boolean;
 }
 
 const WSContext = createContext<WSContextType>({
@@ -363,6 +364,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
       debugLogger.debug("Debug mode being disabled...");
       debugLogger.disable();
       setDebugEnabled(false);
+      // Sync with server
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'debug_mode', enabled: false }));
+      }
       toast({
         description: "Debug logging disabled - Console logs will no longer show detailed information",
         duration: 3000,
@@ -370,6 +375,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
     } else {
       debugLogger.enable();
       setDebugEnabled(true);
+      // Sync with server
+      if (socket?.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'debug_mode', enabled: true }));
+      }
       debugLogger.debug("Debug mode enabled!");
       debugLogger.info("You can now see detailed logs in the browser console");
       debugLogger.debug("WebSocket state:", { connected, error, messageQueue: messageQueue.length });

@@ -46,6 +46,7 @@ class ServerDebugLogger {
   }
 
   private log(level: LogLevel, message: string, data?: any) {
+    // Only log if debug mode is enabled
     if (!this.enabled) return;
 
     const formattedMessage = this.formatMessage(level, message);
