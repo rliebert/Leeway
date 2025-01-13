@@ -16,13 +16,13 @@ export class ObjectStorageService {
       // Initialize the client
       this.client = new Client();
 
-      // Get the bucket ID from .replit config or environment variable
+      // Get the bucket ID from environment variable
       const bucketId = process.env.REPLIT_OBJECT_STORE_BUCKET_ID;
       if (!bucketId) {
         throw new Error('Object Storage bucket ID not configured');
       }
 
-      // Construct the bucket URL using the provided format
+      // Use the replit.dev domain format for the bucket URL
       this.bucketUrl = `https://${bucketId}.replit.dev`;
       console.log('Object Storage service initialized with bucket URL:', this.bucketUrl);
     } catch (error) {
@@ -38,15 +38,11 @@ export class ObjectStorageService {
     return `${timestamp}-${uuid}${ext}`;
   }
 
-  private validateUploadResult(result: UploadResult): void {
-    if (!result.url || !result.objectKey) {
-      throw new Error('Invalid upload result: missing URL or objectKey');
-    }
-    // Validate URL format
+  private validateUrl(url: string): void {
     try {
-      new URL(result.url);
-    } catch {
-      throw new Error(`Invalid URL format: ${result.url}`);
+      new URL(url);
+    } catch (error) {
+      throw new Error(`Invalid URL format: ${url}`);
     }
   }
 
@@ -61,22 +57,20 @@ export class ObjectStorageService {
         throw new Error(`Upload failed: ${error}`);
       }
 
-      // Download the file to verify upload
+      // Verify the upload by attempting to download
       const { ok: verifyOk, error: verifyError } = await this.client.downloadAsBytes(objectKey);
       if (!verifyOk) {
         throw new Error(`Failed to verify upload: ${verifyError}`);
       }
 
-      console.log(`File uploaded and verified successfully: ${objectKey}`);
-
-      // Construct the URL with proper encoding
-      const fileUrl = `${this.bucketUrl}/${encodeURIComponent(objectKey)}`;
+      // Construct and validate the URL
+      const fileUrl = new URL(objectKey, this.bucketUrl).toString();
       console.log('Generated file URL:', fileUrl);
 
-      const result = { url: fileUrl, objectKey };
-      this.validateUploadResult(result);
-
-      return result;
+      return {
+        url: fileUrl,
+        objectKey,
+      };
     } catch (error) {
       console.error('Object Storage upload error:', error);
       throw error;
