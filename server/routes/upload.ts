@@ -18,6 +18,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
     'text/plain',
     // Media
     'audio/mpeg', 'video/mp4',
+    // Archives
     'application/zip', 'application/x-zip-compressed'
   ];
 
@@ -62,7 +63,6 @@ export function registerUploadRoutes(app: Express) {
     async (req, res) => {
       try {
         const files = req.files as Express.Multer.File[];
-
         if (!files || files.length === 0) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
@@ -76,7 +76,7 @@ export function registerUploadRoutes(app: Express) {
           }))
         );
 
-        // Return file info
+        // Return file info with improved details
         const fileInfo = uploadResults.map((result, index) => ({
           url: result.url,
           objectKey: result.objectKey,
@@ -85,7 +85,7 @@ export function registerUploadRoutes(app: Express) {
           size: files[index].size,
         }));
 
-        // Store file attachments in database if needed
+        // Store file attachments in database if message_id is provided
         if (req.body.message_id) {
           await db.insert(file_attachments).values(
             fileInfo.map(file => ({

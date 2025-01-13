@@ -14,7 +14,7 @@ export class ObjectStorageService {
   constructor() {
     const bucketId = process.env.REPLIT_BUCKET_ID;
     if (!bucketId) {
-      throw new Error('Object Storage configuration error: Missing bucket ID');
+      throw new Error('Object Storage configuration error: Missing REPLIT_BUCKET_ID environment variable');
     }
     this.bucketId = bucketId;
     this.baseUploadUrl = `https://cdn.replit.com/_next/static/storage/entries/${this.bucketId}`;
@@ -37,7 +37,7 @@ export class ObjectStorageService {
         method: 'PUT',
         body: buffer,
         headers: {
-          'Content-Type': 'application/octet-stream',
+          'Content-Type': this.getContentType(originalFilename),
           'X-Replit-Bucket': this.bucketId,
           'Cache-Control': 'max-age=3600'
         }
@@ -48,14 +48,35 @@ export class ObjectStorageService {
         throw new Error(`Upload failed: ${response.status} - ${errorText}`);
       }
 
+      const resultUrl = `${this.baseAccessUrl}/${objectKey}`;
+      console.log(`File uploaded successfully: ${resultUrl}`);
+
       return {
-        url: `${this.baseAccessUrl}/${objectKey}`,
+        url: resultUrl,
         objectKey
       };
     } catch (error) {
       console.error('Object Storage upload error:', error);
       throw error;
     }
+  }
+
+  private getContentType(filename: string): string {
+    const ext = path.extname(filename).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.pdf': 'application/pdf',
+      '.doc': 'application/msword',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.txt': 'text/plain',
+      '.mp3': 'audio/mpeg',
+      '.mp4': 'video/mp4',
+      '.zip': 'application/zip'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
   }
 
   async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
