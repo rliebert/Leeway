@@ -221,22 +221,17 @@ export function setupWebSocketServer(server: Server) {
               console.log('WebSocket: Processing message edit:', message);
 
               // First update the message in database
-              const [updatedMessage] = await db
+              await db
                 .update(messages)
                 .set({
                   content: message.content,
-                  updated_at: new Date() // Add updated timestamp
+                  updated_at: new Date()
                 })
-                .where(eq(messages.id, message.messageId))
-                .returning();
+                .where(eq(messages.id, message.messageId));
 
-              if (!updatedMessage) {
-                throw new Error('Message not found');
-              }
-
-              // Get full message data with author and attachments
+              // Then fetch the complete updated message with author and attachments
               const messageWithAuthor = await db.query.messages.findFirst({
-                where: eq(messages.id, updatedMessage.id),
+                where: eq(messages.id, message.messageId),
                 with: {
                   author: true,
                   attachments: true,
@@ -245,10 +240,10 @@ export function setupWebSocketServer(server: Server) {
 
               if (messageWithAuthor) {
                 console.log('WebSocket: Broadcasting edited message:', messageWithAuthor);
-                // Broadcast to all clients in channel
+                // Broadcast the complete message object to all clients
                 broadcastToChannel(message.channelId, {
                   type: 'message_edited',
-                  message: messageWithAuthor // Send complete message object
+                  message: messageWithAuthor
                 });
               }
             } catch (error) {

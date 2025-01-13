@@ -38,6 +38,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { toast } = useToast();
   const ws = useWS();
 
+  // Update local state when message content changes from WebSocket
+  useEffect(() => {
+    setEditContent(message.content);
+  }, [message.content]);
+
   const { data: replies = [] } = useQuery<(MessageType & {
     author?: { username: string; avatar_url?: string | null };
     attachments?: FileAttachment[];
@@ -46,7 +51,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     enabled: true,
   });
 
-  // Combine initial replies with new WebSocket messages
   const allReplies = [
     ...replies,
     ...wsMessages.filter(
@@ -62,21 +66,17 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   const replyCount = allReplies.length;
 
-  // Helper function to normalize file URLs
   const normalizeFileUrl = (attachment: FileAttachment): string => {
-    // If the URL is already absolute, return it as is
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
       return attachment.file_url || attachment.url;
     }
 
     const baseUrl = window.location.origin;
-    // Clean and normalize the URL
     let fileUrl = attachment.file_url || attachment.url;
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
   };
 
-  // Helper function to check if file is an image
   const isImageFile = (mimetype?: string): boolean => {
     return mimetype ? mimetype.startsWith('image/') : false;
   };
@@ -103,14 +103,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
         if (response.ok) {
           toast({ description: "Message deleted" });
-          // Send WebSocket event for deletion
           ws.send({
             type: 'message_deleted',
             channelId: message.channel_id || '',
             messageId: message.id
           });
-
-          // Optimistically remove the message from the UI
           ws.setMessages(prev => prev.filter(msg => msg.id !== message.id));
         } else {
           throw new Error('Failed to delete message');
@@ -132,7 +129,15 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
-      // Step 1: Optimistically update local state immediately
+      // First send the WebSocket event
+      ws.send({
+        type: "message_edited",
+        channelId: message.channel_id || '',
+        messageId: message.id,
+        content: editContent.trim()
+      });
+
+      // Then update local state optimistically
       const updatedMessage = {
         ...message,
         content: editContent.trim(),
@@ -147,31 +152,16 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         )
       );
 
-      // Step 2: Send WebSocket event for edit
-      ws.send({
-        type: "message_edited",
-        channelId: message.channel_id || '',
-        messageId: message.id,
-        content: editContent.trim()
-      });
-
       setIsEditing(false);
       toast({ description: "Message updated" });
 
     } catch (error) {
       console.error('Error editing message:', error);
-      // Step 3: Revert the optimistic update on error
-      ws.setMessages(prev => 
-        prev.map(msg => 
-          msg.id === message.id 
-            ? message // Revert to original message
-            : msg
-        )
-      );
       toast({ 
         variant: "destructive",
         description: "Failed to update message"
       });
+      setIsEditing(false);
     }
   };
 

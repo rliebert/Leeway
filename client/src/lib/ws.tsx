@@ -169,24 +169,25 @@ export function WSProvider({ children }: { children: ReactNode }) {
             const data = JSON.parse(event.data);
             console.log("WebSocket message received:", data);
 
-            if (data.type === "pong") {
-              console.log("Received pong response, connection confirmed");
+            if (data.type === "pong" || data.type === "connected") {
               return;
             }
 
-            if (data.type === "connected") {
-              console.log("Connection confirmed with userId:", data.userId);
-              return;
-            }
+            const normalizeMessageAttachments = (message: any) => ({
+              ...message,
+              attachments: Array.isArray(message.attachments)
+                ? message.attachments.map(attachment => ({
+                    ...attachment,
+                    url: attachment.file_url || attachment.url,
+                    originalName: attachment.file_name || attachment.originalName,
+                    mimetype: attachment.file_type || attachment.mimetype,
+                    file_size: attachment.file_size || 0
+                  }))
+                : []
+            });
 
             if (data.type === "message" && data.message) {
-              const messageWithAttachments = {
-                ...data.message,
-                attachments: Array.isArray(data.message.attachments)
-                  ? data.message.attachments
-                  : [],
-              };
-
+              const messageWithAttachments = normalizeMessageAttachments(data.message);
               setMessages((prev) => {
                 const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
                 if (existingMsgIndex > -1) {
@@ -207,23 +208,21 @@ export function WSProvider({ children }: { children: ReactNode }) {
               );
             }
 
-            if (data.type === "message_edited") {
+            if (data.type === "message_edited" && data.message) {
               console.log('Handling message edit:', data);
-              const editedMessage = {
-                ...data.message,
-                attachments: Array.isArray(data.message.attachments)
-                  ? data.message.attachments
-                  : []
-              };
 
-              setMessages(prevMessages =>
-                prevMessages.map(msg =>
-                  msg.id === editedMessage.id
-                    ? editedMessage
-                    : msg
-                )
-              );
-              console.log('Updated messages after edit');
+              const editedMessage = normalizeMessageAttachments(data.message);
+              console.log('Normalized edited message:', editedMessage);
+
+              setMessages(prev => {
+                const existingMsgIndex = prev.findIndex(msg => msg.id === editedMessage.id);
+                if (existingMsgIndex > -1) {
+                  const newMessages = [...prev];
+                  newMessages[existingMsgIndex] = editedMessage;
+                  return newMessages;
+                }
+                return prev;
+              });
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
