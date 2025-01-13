@@ -69,39 +69,61 @@ export function registerUploadRoutes(app: Express) {
 
         console.log(`Processing ${files.length} files for upload`);
 
-        const uploadedFiles = await Promise.all(
-          files.map(async (file) => {
-            const result = await objectStorage.uploadFile(file.buffer, file.originalname);
-            // Verify the upload was successful by attempting to download
-            const { ok, error } = await objectStorage.client.downloadAsBytes(result.objectKey);
-            if (!ok) {
-              throw new Error(`Failed to verify upload: ${error}`);
-            }
-            return {
-              url: result.url,
-              objectKey: result.objectKey,
-              originalName: file.originalname,
-              mimetype: file.mimetype,
-              size: file.size,
-            };
-          })
+        // Map original file info before upload
+        const fileInfo = files.map(file => ({
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          buffer: file.buffer
+        }));
+
+        // Upload files to object storage
+        const uploadedFiles = await objectStorage.uploadMultipleFiles(
+          fileInfo.map(file => ({
+            buffer: file.buffer,
+            originalname: file.originalname
+          }))
         );
+
+        // Combine uploaded files with original file info and validate URLs
+        const combinedFiles = uploadedFiles.map((uploaded, index) => {
+          if (!uploaded.url || !uploaded.objectKey) {
+            throw new Error(`Invalid upload result for file ${fileInfo[index].originalname}`);
+          }
+
+          // Verify URL format
+          try {
+            new URL(uploaded.url);
+          } catch {
+            throw new Error(`Invalid URL format: ${uploaded.url}`);
+          }
+
+          return {
+            url: uploaded.url,
+            objectKey: uploaded.objectKey,
+            mimetype: fileInfo[index].mimetype,
+            size: fileInfo[index].size,
+            originalName: fileInfo[index].originalname
+          };
+        });
 
         // Store file attachments in database if message_id is provided
         if (req.body.message_id) {
-          await db.insert(file_attachments).values(
-            uploadedFiles.map(file => ({
+          const attachments = await db.insert(file_attachments).values(
+            combinedFiles.map(file => ({
               message_id: req.body.message_id,
               file_url: file.url,
               file_name: file.originalName,
               file_type: file.mimetype,
-              file_size: file.size,
+              file_size: file.size
             }))
-          );
+          ).returning();
+
+          console.log('Created attachment records:', attachments);
         }
 
-        console.log('Upload completed successfully:', uploadedFiles);
-        res.json(uploadedFiles);
+        console.log('Upload completed successfully:', combinedFiles);
+        res.json(combinedFiles);
       } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ 

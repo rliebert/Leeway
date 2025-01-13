@@ -19,25 +19,28 @@ async function testObjectStorage() {
     console.log('File URL:', result.url);
     console.log('Object Key:', result.objectKey);
 
-    // Verify file download
-    const { ok, value: downloadedData, error } = await objectStorage.client.downloadAsBytes(uploadedObjectKey);
-    if (!ok) {
-      throw new Error(`Failed to download test file: ${error}`);
+    // Verify the uploaded file
+    const isVerified = await objectStorage.verifyFile(result.objectKey);
+    if (!isVerified) {
+      throw new Error('Failed to verify uploaded file');
     }
 
-    console.log('Successfully verified file download');
-    console.log('Downloaded content:', downloadedData.toString());
-
-    // Clean up test object
-    const { ok: deleteOk, error: deleteError } = await objectStorage.client.delete(uploadedObjectKey);
-    if (!deleteOk) {
-      throw new Error(`Failed to delete test file: ${deleteError}`);
-    }
-    console.log('Test file cleaned up successfully');
+    console.log('Successfully verified file upload');
+    console.log('Test completed successfully');
 
   } catch (error) {
     console.error('Object Storage test failed:', error);
     throw error;
+  } finally {
+    // Clean up test file
+    if (uploadedObjectKey) {
+      try {
+        await objectStorage.deleteFile(uploadedObjectKey);
+        console.log('Test file cleaned up successfully');
+      } catch (error) {
+        console.error('Failed to clean up test file:', error);
+      }
+    }
   }
 }
 
