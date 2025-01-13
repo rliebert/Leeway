@@ -132,16 +132,22 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
-      // Optimistically update the UI immediately
+      // Step 1: Optimistically update local state immediately
+      const updatedMessage = {
+        ...message,
+        content: editContent.trim(),
+        updated_at: new Date().toISOString()
+      };
+
       ws.setMessages(prev => 
         prev.map(msg => 
           msg.id === message.id 
-            ? { ...msg, content: editContent.trim() } 
+            ? updatedMessage
             : msg
         )
       );
 
-      // Send WebSocket event for edit
+      // Step 2: Send WebSocket event for edit
       ws.send({
         type: "message_edited",
         channelId: message.channel_id || '',
@@ -151,13 +157,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
       setIsEditing(false);
       toast({ description: "Message updated" });
+
     } catch (error) {
       console.error('Error editing message:', error);
-      // Revert the optimistic update on error
+      // Step 3: Revert the optimistic update on error
       ws.setMessages(prev => 
         prev.map(msg => 
           msg.id === message.id 
-            ? { ...msg, content: message.content } 
+            ? message // Revert to original message
             : msg
         )
       );

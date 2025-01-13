@@ -188,7 +188,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
               };
 
               setMessages((prev) => {
-                // Find and replace existing message or add new one
                 const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
                 if (existingMsgIndex > -1) {
                   const newMessages = [...prev];
@@ -201,33 +200,30 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
             if (data.type === "message_deleted") {
               console.log('Handling message deletion:', data);
-              // Immediately remove the message from the state
-              setMessages(prevMessages => {
-                // Remove both the message and its replies
-                return prevMessages.filter(msg => 
+              setMessages(prevMessages => 
+                prevMessages.filter(msg => 
                   msg.id !== data.messageId && msg.parent_id !== data.messageId
-                );
-              });
+                )
+              );
             }
 
             if (data.type === "message_edited") {
               console.log('Handling message edit:', data);
-              // Update both the message content and any other properties that might have changed
-              setMessages(prevMessages => 
-                prevMessages.map(msg => 
-                  msg.id === data.messageId
-                    ? {
-                        ...msg,
-                        content: data.content,
-                        ...(data.message && {
-                          author: data.message.author,
-                          attachments: data.message.attachments,
-                          updated_at: data.message.updated_at
-                        })
-                      }
+              const editedMessage = {
+                ...data.message,
+                attachments: Array.isArray(data.message.attachments)
+                  ? data.message.attachments
+                  : []
+              };
+
+              setMessages(prevMessages =>
+                prevMessages.map(msg =>
+                  msg.id === editedMessage.id
+                    ? editedMessage
                     : msg
                 )
               );
+              console.log('Updated messages after edit');
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);

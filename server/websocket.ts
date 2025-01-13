@@ -21,10 +21,10 @@ interface WSMessage {
 }
 
 export function setupWebSocketServer(server: Server) {
-  const wss = new WebSocketServer({ 
+  const wss = new WebSocketServer({
     server,
     path: '/ws',
-    perMessageDeflate: false, 
+    perMessageDeflate: false,
     clientTracking: true,
     handleProtocols: () => 'chat',
     verifyClient: async ({ req }, done) => {
@@ -60,8 +60,8 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        const sessionData = typeof session.sess === 'string' 
-          ? JSON.parse(session.sess) 
+        const sessionData = typeof session.sess === 'string'
+          ? JSON.parse(session.sess)
           : session.sess;
 
         if (!sessionData?.passport?.user) {
@@ -101,7 +101,7 @@ export function setupWebSocketServer(server: Server) {
     ws.isAlive = true;
     console.log('WebSocket connected for user:', ws.userId);
 
-    ws.send(JSON.stringify({ 
+    ws.send(JSON.stringify({
       type: 'connected',
       userId: ws.userId
     }));
@@ -174,7 +174,7 @@ export function setupWebSocketServer(server: Server) {
                   file_url: attachment.url,
                   file_name: attachment.originalName,
                   file_type: attachment.mimetype,
-                  file_size: attachment.size || 0, 
+                  file_size: attachment.size || 0,
                 }));
 
                 await db.insert(file_attachments).values(attachmentRecords);
@@ -218,9 +218,15 @@ export function setupWebSocketServer(server: Server) {
             if (!message.channelId || !message.messageId || !message.content || !ws.userId) break;
 
             try {
+              console.log('WebSocket: Processing message edit:', message);
+
+              // First update the message in database
               const [updatedMessage] = await db
                 .update(messages)
-                .set({ content: message.content })
+                .set({
+                  content: message.content,
+                  updated_at: new Date() // Add updated timestamp
+                })
                 .where(eq(messages.id, message.messageId))
                 .returning();
 
@@ -228,6 +234,7 @@ export function setupWebSocketServer(server: Server) {
                 throw new Error('Message not found');
               }
 
+              // Get full message data with author and attachments
               const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, updatedMessage.id),
                 with: {
@@ -237,11 +244,11 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
+                console.log('WebSocket: Broadcasting edited message:', messageWithAuthor);
+                // Broadcast to all clients in channel
                 broadcastToChannel(message.channelId, {
                   type: 'message_edited',
-                  messageId: message.messageId,
-                  content: message.content,
-                  message: messageWithAuthor
+                  message: messageWithAuthor // Send complete message object
                 });
               }
             } catch (error) {
