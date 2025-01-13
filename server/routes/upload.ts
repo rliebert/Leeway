@@ -15,21 +15,23 @@ const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
     if (!bucket) throw new Error('Object Storage bucket not configured');
 
     const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
-    const response = await fetch(`https://objectstorage.replit.com/${bucket}/${objectKey}`, {
+    const response = await fetch(`https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`, {
       method: 'PUT',
       body: buffer,
       headers: { 
         'Content-Type': 'application/octet-stream',
-        'X-Replit-Bucket': bucket
+        'X-Replit-Bucket': bucket,
+        'Cache-Control': 'max-age=3600'
       }
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Upload response:', response.status, errorText);
       throw new Error(`Object Storage upload failed: ${errorText}`);
     }
 
-    return `https://objectstorage.replit.com/${bucket}/${objectKey}`;
+    return `https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`;
   } catch (error) {
     console.error('Object Storage upload error:', error);
     throw error;
