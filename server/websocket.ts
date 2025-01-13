@@ -184,7 +184,7 @@ export function setupWebSocketServer(server: Server) {
               if (message.attachments && message.attachments.length > 0) {
                 const attachmentRecords = message.attachments.map((attachment) => ({
                   message_id: newMessage.id,
-                  file_url: attachment.path,
+                  file_url: attachment.path.split('/').pop() || '',
                   file_name: attachment.originalName,
                   file_type: attachment.mimetype,
                   file_size: attachment.size || 0, // Ensure file_size is never null
