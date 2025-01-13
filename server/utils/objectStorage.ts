@@ -30,12 +30,20 @@ export class ObjectStorageService {
   }
 
   private generateUniqueFileName(originalName: string): string {
-    const ext = path.extname(originalName).toLowerCase();
+    const ext = path.extname(originalName);
     const timestamp = Date.now();
     const uuid = randomUUID();
     const fileName = `${timestamp}-${uuid}${ext}`;
     console.log('Generated unique filename:', fileName, 'from original:', originalName);
     return fileName;
+  }
+
+  private validateUrl(url: string): void {
+    try {
+      new URL(url);
+    } catch (error) {
+      throw new Error(`Invalid URL format: ${url}`);
+    }
   }
 
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
@@ -54,7 +62,6 @@ export class ObjectStorageService {
       }
       console.log('Upload successful');
 
-      // Verify the uploaded file
       console.log('Verifying uploaded file...');
       const { ok: verifyOk, error: verifyError } = await this.client.downloadAsBytes(objectKey);
       if (!verifyOk) {
@@ -68,12 +75,19 @@ export class ObjectStorageService {
 
       return {
         url: fileUrl,
-        objectKey
+        objectKey,
       };
     } catch (error) {
       console.error('Object Storage upload error:', error);
       throw error;
     }
+  }
+
+  async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
+    console.log(`Starting batch upload of ${files.length} files`);
+    const results = await Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
+    console.log('Batch upload completed');
+    return results;
   }
 
   async verifyFile(objectKey: string): Promise<boolean> {
