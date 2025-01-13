@@ -182,12 +182,13 @@ export function setupWebSocketServer(server: Server) {
 
               // Create file attachments if any
               if (message.attachments && message.attachments.length > 0) {
+                const objectStorageUrl = "https://objectstorage.replit.com";
                 const attachmentRecords = message.attachments.map((attachment) => ({
                   message_id: newMessage.id,
-                  file_url: attachment.url,
+                  file_url: `${objectStorageUrl}/${process.env.REPLIT_BUCKET_ID}/${attachment.path}`,
                   file_name: attachment.originalName,
                   file_type: attachment.mimetype,
-                  file_size: attachment.size || 0, // Ensure file_size is never null
+                  file_size: attachment.size || 0,
                 }));
 
                 await db.insert(file_attachments).values(attachmentRecords);

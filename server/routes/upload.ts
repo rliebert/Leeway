@@ -7,22 +7,21 @@ import { db } from "@db";
 import { file_attachments } from "@db/schema";
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads');
-    // Create uploads directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename while preserving extension
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${uniqueSuffix}${ext}`);
-  }
-});
+const storage = multer.memoryStorage();
+
+const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
+  const bucket = process.env.REPLIT_BUCKET_ID;
+  if (!bucket) throw new Error('Object Storage bucket not configured');
+
+  const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
+  await fetch(`https://objectstorage.replit.com/${bucket}/${objectKey}`, {
+    method: 'PUT',
+    body: buffer,
+    headers: { 'Content-Type': 'application/octet-stream' }
+  });
+
+  return `https://objectstorage.replit.com/${bucket}/${objectKey}`;
+};
 
 // File size and type validation
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
@@ -55,8 +54,8 @@ const upload = multer({
 });
 
 export function registerUploadRoutes(app: Express) {
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  // Serve uploaded files -  No longer needed as files are served from CDN
+  // app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
   // Handle file uploads for messages
   app.post('/api/upload', 
@@ -86,13 +85,17 @@ export function registerUploadRoutes(app: Express) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        // Return file info without creating attachment records yet
-        const fileInfo = files.map(file => ({
-          url: `/uploads/${file.filename}`,
-          originalName: file.originalname,
-          mimetype: file.mimetype,
-          size: file.size,
-          path: file.filename
+        const fileUrls = await Promise.all(files.map(async file => {
+          const objectKey = await uploadToObjectStorage(file.buffer, file.originalname);
+          return objectKey;
+        }));
+
+        // Return file info
+        const fileInfo = fileUrls.map((url, index) => ({
+          url: url,
+          originalName: files[index].originalname,
+          mimetype: files[index].mimetype,
+          size: files[index].size,
         }));
 
         res.json(fileInfo);
