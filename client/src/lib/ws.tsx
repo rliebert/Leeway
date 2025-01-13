@@ -212,6 +212,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
                   msg.parent_id !== data.messageId
                 )
               );
+              // Force immediate re-render
+              setTimeout(() => setMessages(prev => [...prev]), 0);
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
