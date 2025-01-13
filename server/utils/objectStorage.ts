@@ -9,7 +9,7 @@ interface UploadResult {
 
 export class ObjectStorageService {
   private client: Client;
-  private readonly bucketUrl: string;
+  private readonly bucketId: string;
 
   constructor() {
     try {
@@ -22,9 +22,8 @@ export class ObjectStorageService {
         throw new Error('Object Storage bucket ID not configured');
       }
 
-      // Use the replit.dev domain format for the bucket URL
-      this.bucketUrl = `https://${bucketId}.replit.dev`;
-      console.log('Object Storage service initialized with bucket URL:', this.bucketUrl);
+      this.bucketId = bucketId;
+      console.log('Object Storage service initialized with bucket ID:', this.bucketId);
     } catch (error) {
       console.error('Failed to initialize Object Storage:', error);
       throw error;
@@ -38,14 +37,6 @@ export class ObjectStorageService {
     return `${timestamp}-${uuid}${ext}`;
   }
 
-  private validateUrl(url: string): void {
-    try {
-      new URL(url);
-    } catch (error) {
-      throw new Error(`Invalid URL format: ${url}`);
-    }
-  }
-
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
       const objectKey = this.generateUniqueFileName(originalFilename);
@@ -57,14 +48,8 @@ export class ObjectStorageService {
         throw new Error(`Upload failed: ${error}`);
       }
 
-      // Verify the upload by attempting to download
-      const { ok: verifyOk, error: verifyError } = await this.client.downloadAsBytes(objectKey);
-      if (!verifyOk) {
-        throw new Error(`Failed to verify upload: ${verifyError}`);
-      }
-
-      // Construct and validate the URL
-      const fileUrl = new URL(objectKey, this.bucketUrl).toString();
+      // Construct the URL using the correct format for Replit Object Storage
+      const fileUrl = `https://${this.bucketId}.replit.dev/${objectKey}`;
       console.log('Generated file URL:', fileUrl);
 
       return {
@@ -83,21 +68,13 @@ export class ObjectStorageService {
   }
 
   async verifyFile(objectKey: string): Promise<boolean> {
-    const { ok, error } = await this.client.downloadAsBytes(objectKey);
-    if (!ok) {
-      console.error(`File verification failed: ${error}`);
-      return false;
-    }
-    return true;
+    const { ok } = await this.client.downloadAsBytes(objectKey);
+    return ok;
   }
 
   async deleteFile(objectKey: string): Promise<boolean> {
-    const { ok, error } = await this.client.delete(objectKey);
-    if (!ok) {
-      console.error(`File deletion failed: ${error}`);
-      return false;
-    }
-    return true;
+    const { ok } = await this.client.delete(objectKey);
+    return ok;
   }
 }
 

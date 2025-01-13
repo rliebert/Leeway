@@ -19,14 +19,13 @@ async function testObjectStorage() {
     console.log('File URL:', result.url);
     console.log('Object Key:', result.objectKey);
 
-    // Verify the uploaded file
+    // Test file verification
     const isVerified = await objectStorage.verifyFile(result.objectKey);
+    console.log('File verification:', isVerified ? 'Successful' : 'Failed');
+
     if (!isVerified) {
       throw new Error('Failed to verify uploaded file');
     }
-
-    console.log('Successfully verified file upload');
-    console.log('Test completed successfully');
 
   } catch (error) {
     console.error('Object Storage test failed:', error);
@@ -45,4 +44,6 @@ async function testObjectStorage() {
 }
 
 // Run the test
-testObjectStorage().catch(console.error);
+testObjectStorage()
+  .then(() => console.log('Test completed successfully'))
+  .catch(console.error);

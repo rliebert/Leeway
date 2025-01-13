@@ -67,63 +67,69 @@ export function registerUploadRoutes(app: Express) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        console.log(`Processing ${files.length} files for upload...`);
+        console.log(`Processing ${files.length} files for upload`);
 
-        // Process each file individually
-        const fileAttachments = await Promise.all(
+        // Upload files and gather metadata
+        const uploadResults = await Promise.all(
           files.map(async (file) => {
-            console.log(`Uploading file ${file.originalname} (${file.size} bytes)...`);
+            try {
+              // Upload to object storage
+              const { url, objectKey } = await objectStorage.uploadFile(file.buffer, file.originalname);
 
-            // Upload to object storage
-            const uploadResult = await objectStorage.uploadFile(file.buffer, file.originalname);
+              // Validate and log the upload result
+              console.log('Upload successful:', {
+                url,
+                objectKey,
+                fileName: file.originalname,
+                fileType: file.mimetype,
+                fileSize: file.size
+              });
 
-            // Log upload result for debugging
-            console.log('Upload result:', {
-              originalName: file.originalname,
-              size: file.size,
-              mimeType: file.mimetype,
-              uploadedUrl: uploadResult.url,
-              objectKey: uploadResult.objectKey
-            });
-
-            return {
-              url: uploadResult.url,        // Use the URL directly from object storage
-              objectKey: uploadResult.objectKey,
-              name: file.originalname,
-              type: file.mimetype,
-              size: file.size              // Use the actual file size
-            };
+              return {
+                url,
+                objectKey,
+                fileName: file.originalname,
+                fileType: file.mimetype,
+                fileSize: file.size
+              };
+            } catch (error) {
+              console.error(`Error processing file ${file.originalname}:`, error);
+              throw error;
+            }
           })
         );
 
-        // Store file attachments in database if message_id is provided
+        // Create database records if message_id is provided
         if (req.body.message_id) {
-          console.log('Creating database records for attachments...');
+          console.log('Creating attachment records for message:', req.body.message_id);
 
-          // Prepare attachment records
-          const attachmentRecords = fileAttachments.map(file => ({
+          const attachmentRecords = uploadResults.map(file => ({
             message_id: req.body.message_id,
-            file_url: file.url,            // Use the correct URL from object storage
-            file_name: file.name,
-            file_type: file.type,
-            file_size: file.size           // Use the actual file size
+            file_url: file.url,
+            file_name: file.fileName,
+            file_type: file.fileType,
+            file_size: file.fileSize
           }));
 
-          // Log the records we're about to insert
-          console.log('Attachment records to insert:', attachmentRecords);
+          console.log('Creating attachment records:', attachmentRecords);
 
-          // Insert the records
-          const attachments = await db.insert(file_attachments)
+          const savedAttachments = await db.insert(file_attachments)
             .values(attachmentRecords)
             .returning();
 
-          console.log('Successfully created attachment records:', attachments);
+          console.log('Created attachment records:', savedAttachments);
         }
 
-        // Return the file information to the client
-        res.json(fileAttachments);
+        // Return simplified response to client
+        res.json(uploadResults.map(file => ({
+          url: file.url,
+          name: file.fileName,
+          type: file.fileType,
+          size: file.fileSize
+        })));
+
       } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Upload processing error:', error);
         res.status(500).json({ 
           error: 'Upload failed',
           details: error instanceof Error ? error.message : 'Unknown error'
