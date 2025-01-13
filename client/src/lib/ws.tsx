@@ -198,32 +198,34 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 attachments: Array.isArray(data.message.attachments) 
                   ? data.message.attachments.map((attachment: any) => ({
                       ...attachment,
-                      url: attachment.file_url || `/uploads/${attachment.file_name}`,
-                      file_url: attachment.file_url || `/uploads/${attachment.file_name}`,
-                      mimetype: attachment.file_type || attachment.mimetype
+                      originalName: attachment.file_name,
+                      url: `/uploads/${attachment.file_name}`,
+                      file_url: `/uploads/${attachment.file_name}`,
+                      mimetype: attachment.file_type || attachment.mimetype || attachment.type
                     }))
                   : []
               };
 
               setMessages((prev) => {
-                if (prev.some((msg) => msg.id === messageWithAttachments.id)) {
-                  return prev;
+                const existingMsg = prev.find(msg => msg.id === messageWithAttachments.id);
+                if (existingMsg) {
+                  return prev.map(msg => 
+                    msg.id === messageWithAttachments.id ? messageWithAttachments : msg
+                  );
                 }
                 return [...prev, messageWithAttachments];
               });
+</old_str>
             }
 
-            if (data.type === "message_deleted" && data.messageId) {
-              console.log('Handling message deletion:', data.messageId);
-              setMessages((prev) => {
-                // Include channel check to ensure we only filter messages from current channel
-                const updated = prev.filter((msg) => 
+            if (data.type === "message_deleted") {
+              console.log('Handling message deletion:', data);
+              setMessages((prev) => 
+                prev.filter((msg) => 
                   msg.id !== data.messageId && 
-                  msg.parent_id !== data.messageId // Also remove any replies
-                );
-                console.log('Updated messages after deletion:', updated);
-                return updated;
-              });
+                  msg.parent_id !== data.messageId
+                )
+              );
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
