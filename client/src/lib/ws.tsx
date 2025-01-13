@@ -195,32 +195,26 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message" && data.message) {
               const messageWithAttachments = {
                 ...data.message,
-                attachments: Array.isArray(data.message.attachments) 
-                  ? data.message.attachments.map((attachment: any) => ({
-                      id: attachment.id,
-                      url: `/uploads/${attachment.file_name}`,
-                      file_url: `/uploads/${attachment.file_name}`,
-                      originalName: attachment.file_name,
-                      mimetype: attachment.file_type,
-                      file_size: attachment.file_size,
-                      path: attachment.file_name
-                    }))
-                  : []
+                attachments: data.message.attachments?.map((attachment: any) => ({
+                  ...attachment,
+                  url: attachment.file_url || `/uploads/${attachment.file_name}`,
+                  file_url: attachment.file_url || `/uploads/${attachment.file_name}`
+                }))
               };
 
-              console.log('Processing message with attachments:', messageWithAttachments);
-
               setMessages((prev) => {
-                const filtered = prev.filter(msg => msg.id !== messageWithAttachments.id);
-                return [...filtered, messageWithAttachments];
+                if (prev.some((msg) => msg.id === messageWithAttachments.id)) {
+                  return prev;
+                }
+                return [...prev, messageWithAttachments];
               });
             }
 
             if (data.type === "message_deleted" && data.messageId) {
               console.log('Handling message deletion:', data.messageId);
-              setMessages(prev => {
-                const updated = prev.filter(msg => msg.id !== data.messageId);
-                console.log('Messages after deletion:', updated);
+              setMessages((prev) => {
+                const updated = prev.filter((msg) => msg.id !== data.messageId);
+                console.log('Updated messages after deletion:', updated);
                 return updated;
               });
             }

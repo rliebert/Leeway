@@ -181,28 +181,26 @@ export function setupWebSocketServer(server: Server) {
               }).returning();
 
               // Create file attachments if any
-              const attachmentRecords = [];
               if (message.attachments && message.attachments.length > 0) {
                 await Promise.all(message.attachments.map(async (attachment) => {
-                  const [record] = await db.insert(file_attachments).values({
+                  await db.insert(file_attachments).values({
                     message_id: newMessage.id,
                     file_url: attachment.url,
                     file_name: attachment.originalName,
                     file_type: attachment.mimetype,
                     file_size: attachment.size,
-                  }).returning();
-                  attachmentRecords.push(record);
+                  });
                 }));
               }
 
               // Get message with author and attachments
-              const messageWithAuthor = {
-                ...newMessage,
-                author: await db.query.users.findFirst({
-                  where: eq(users.id, ws.userId)
-                }),
-                attachments: attachmentRecords
-              };
+              const messageWithAuthor = await db.query.messages.findFirst({
+                where: eq(messages.id, newMessage.id),
+                with: {
+                  author: true,
+                  attachments: true,
+                }
+              });
 
               if (messageWithAuthor) {
                 broadcastToChannel(message.channelId, {
@@ -231,32 +229,12 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) break;
-            
-            try {
-              // Delete from database first
-              await db.delete(messages)
-                .where(eq(messages.id, message.messageId));
-
-              // Delete associated attachments
-              await db.delete(file_attachments)
-                .where(eq(file_attachments.message_id, message.messageId));
-
-              // Broadcast deletion with channel context
-              const deleteEvent = {
-                type: 'message_deleted',
-                messageId: message.messageId,
-                channelId: message.channelId
-              };
-              
-              ws.send(JSON.stringify(deleteEvent));
-              broadcastToChannel(message.channelId, deleteEvent, ws);
-            } catch (error) {
-              console.error('Error deleting message:', error);
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Failed to delete message'
-              }));
-            }
+            // Broadcast deletion event immediately to all subscribers
+            broadcastToChannel(message.channelId, {
+              type: 'message_deleted',
+              messageId: message.messageId,
+              channelId: message.channelId
+            });
             break;
           }
         }
