@@ -21,12 +21,13 @@ const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
 
     console.log(`Attempting to upload file to Object Storage: ${objectKey}`);
 
-    const response = await fetch(`https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`, {
-      method: 'POST',
+    const response = await fetch(`https://cdn.replit.com/_next/static/storage/entries/${bucket}/${objectKey}`, {
+      method: 'PUT',
       body: buffer,
       headers: { 
         'Content-Type': 'application/octet-stream',
-        'X-Replit-Bucket-ID': bucket
+        'X-Replit-Bucket': bucket,
+        'Cache-Control': 'max-age=3600'
       }
     });
 
