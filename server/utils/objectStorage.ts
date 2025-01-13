@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import { ObjectStorage } from '@replit/object-storage';
+import * as ObjectStorage from '@replit/object-storage';
 
 interface UploadResult {
   url: string;
@@ -8,16 +8,25 @@ interface UploadResult {
 }
 
 export class ObjectStorageService {
-  private storage: ObjectStorage;
+  private storage: any;
   private bucketId: string;
 
   constructor() {
-    const bucketId = process.env.defaultBucketID;
-    if (!bucketId) {
-      throw new Error('Object Storage configuration error: Missing defaultBucketID environment variable');
+    try {
+      this.storage = new ObjectStorage.Client();
+
+      // Get bucket ID from Replit's environment
+      const bucketId = process.env.REPLIT_OBJECT_STORE_BUCKET_ID || process.env.defaultBucketID;
+      if (!bucketId) {
+        throw new Error('Object Storage configuration error: Missing bucket ID. Please make sure Object Storage is enabled in your Repl.');
+      }
+
+      this.bucketId = bucketId;
+      console.log('Object Storage initialized with bucket ID:', this.bucketId);
+    } catch (error) {
+      console.error('Failed to initialize Object Storage:', error);
+      throw error;
     }
-    this.bucketId = bucketId;
-    this.storage = new ObjectStorage();
   }
 
   private generateUniqueFileName(originalName: string): string {
@@ -30,6 +39,7 @@ export class ObjectStorageService {
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
       const objectKey = this.generateUniqueFileName(originalFilename);
+      console.log('Attempting to upload file:', objectKey, 'to bucket:', this.bucketId);
 
       await this.storage.put(
         objectKey,
@@ -39,7 +49,7 @@ export class ObjectStorageService {
         }
       );
 
-      const resultUrl = this.getPublicUrl(objectKey);
+      const resultUrl = this.storage.getPublicUrl(objectKey);
       console.log(`File uploaded successfully: ${resultUrl}`);
 
       return {
@@ -71,6 +81,7 @@ export class ObjectStorageService {
   }
 
   async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
+    console.log(`Attempting to upload ${files.length} files to bucket:`, this.bucketId);
     return Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
   }
 
