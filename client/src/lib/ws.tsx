@@ -183,22 +183,25 @@ export function WSProvider({ children }: { children: ReactNode }) {
               const messageWithAttachments = {
                 ...data.message,
                 attachments: Array.isArray(data.message.attachments) 
-                  ? data.message.attachments.map((attachment: any) => ({
-                      ...attachment,
-                      originalName: attachment.file_name,
-                      url: `/uploads/${attachment.file_name}`,
-                      file_url: `/uploads/${attachment.file_name}`,
-                      mimetype: attachment.file_type || attachment.mimetype || attachment.type
-                    }))
+                  ? data.message.attachments.map((attachment: any) => {
+                      const fileName = attachment.file_name || attachment.originalName;
+                      return {
+                        ...attachment,
+                        originalName: fileName,
+                        url: window.location.origin + `/uploads/${fileName}`,
+                        file_url: window.location.origin + `/uploads/${fileName}`,
+                        mimetype: attachment.file_type || attachment.mimetype || attachment.type
+                      };
+                    })
                   : []
               };
 
               setMessages((prev) => {
-                const existingMsg = prev.find(msg => msg.id === messageWithAttachments.id);
-                if (existingMsg) {
-                  return prev.map(msg => 
-                    msg.id === messageWithAttachments.id ? messageWithAttachments : msg
-                  );
+                const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
+                if (existingMsgIndex > -1) {
+                  const newMessages = [...prev];
+                  newMessages[existingMsgIndex] = messageWithAttachments;
+                  return newMessages;
                 }
                 return [...prev, messageWithAttachments];
               });
@@ -206,14 +209,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
             if (data.type === "message_deleted") {
               console.log('Handling message deletion:', data);
-              setMessages((prev) => 
-                prev.filter((msg) => 
+              setMessages(prev => {
+                const filtered = prev.filter(msg => 
                   msg.id !== data.messageId && 
                   msg.parent_id !== data.messageId
-                )
-              );
-              // Force immediate re-render
-              setTimeout(() => setMessages(prev => [...prev]), 0);
+                );
+                console.log('Messages after deletion:', filtered);
+                return filtered;
+              });
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
