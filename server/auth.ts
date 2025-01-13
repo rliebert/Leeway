@@ -5,7 +5,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, type User } from "@db/schema";
+import { users } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -13,7 +13,7 @@ import { z } from "zod";
 declare module "express-session" {
   interface SessionData {
     passport: {
-      user: string;  // UUID string
+      user: string;
     };
   }
 }
@@ -26,19 +26,17 @@ declare global {
 
 const scryptAsync = promisify(scrypt);
 
-// Create and export the MemoryStore instance to share with WebSocket server
+// Create and export the MemoryStore instance
 const MemoryStore = createMemoryStore(session);
 export const sessionStore = new MemoryStore({
   checkPeriod: 86400000, // prune expired entries every 24h
-  noDisposeOnSet: true, // prevent session disposal on set
-  touchAfter: 24 * 3600 // time period in seconds to force session updates
 });
 
-// Cache for deserialized users to prevent frequent database queries
+// User cache to reduce database queries
 const userCache = new Map<string, Express.User>();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Crypto utilities for password hashing
+// Crypto utilities
 const crypto = {
   hash: async (password: string) => {
     const salt = randomBytes(16).toString("hex");
@@ -57,42 +55,37 @@ const crypto = {
   },
 };
 
-// Validation schemas
+// Validation schema
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
-const registrationSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email().optional(),
-});
-
 export function setupAuth(app: Express) {
+  // Session configuration
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || "leeway-secret-key",
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      secure: app.get("env") === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: "lax",
-    },
     store: sessionStore,
     name: 'connect.sid',
-    rolling: true
+    cookie: {
+      httpOnly: true,
+      secure: false, // Must be false for WebSocket to work in development
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      path: '/',
+      sameSite: 'lax'
+    }
   };
 
+  // Setup session middleware
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Serialize/deserialize user
+  // Passport configuration
   passport.serializeUser((user: Express.User, done) => {
-    if (!user.id) {
-      return done(new Error('User has no ID'));
-    }
+    console.log('Serializing user:', user.id);
     done(null, user.id);
   });
 
@@ -104,12 +97,13 @@ export function setupAuth(app: Express) {
         return done(null, cachedUser);
       }
 
-      // Cache miss - load from database
+      console.log('Cache miss, deserializing user from database:', id);
       const user = await db.query.users.findFirst({
         where: eq(users.id, id),
       });
 
       if (!user) {
+        console.log('User not found during deserialization:', id);
         return done(null, false);
       }
 
@@ -119,6 +113,7 @@ export function setupAuth(app: Express) {
 
       done(null, user);
     } catch (err) {
+      console.error('Error deserializing user:', err);
       done(err);
     }
   });
@@ -146,102 +141,55 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Authentication routes
+  // Auth routes
   app.post("/api/login", (req, res, next) => {
     const result = loginSchema.safeParse(req.body);
     if (!result.success) {
-      const errorMessage = result.error.issues.map(i => i.message).join(", ");
-      return res.status(400).send(errorMessage);
+      return res.status(400).send(result.error.issues.map(i => i.message).join(", "));
     }
 
     passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
-      if (err) {
-        return next(err);
-      }
+      if (err) return next(err);
+      if (!user) return res.status(401).send(info.message ?? "Authentication failed");
 
-      if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
-      }
+      req.logIn(user, (err) => {
+        if (err) return next(err);
 
-      req.login(user, (err) => {
-        if (err) {
-          return next(err);
-        }
-
-        return res.json({
-          message: "Login successful",
-          user: { id: user.id, username: user.username },
+        // Save session explicitly to ensure it's stored before responding
+        req.session.save((err) => {
+          if (err) return next(err);
+          res.json({ id: user.id, username: user.username });
         });
       });
     })(req, res, next);
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const result = registrationSchema.safeParse(req.body);
-      if (!result.success) {
-        const errorMessage = result.error.issues.map(i => i.message).join(", ");
-        return res.status(400).send(errorMessage);
-      }
-
-      const { username, password, email } = result.data;
-
-      // Check if user already exists
-      const existingUser = await db.query.users.findFirst({
-        where: eq(users.username, username),
-      });
-
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
-      }
-
-      // Hash the password
-      const hashedPassword = await crypto.hash(password);
-
-      // Create the new user
-      const [newUser] = await db.insert(users)
-        .values({
-          username,
-          password: hashedPassword,
-          email,
-        })
-        .returning();
-
-      // Log the user in after registration
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({
-          message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username },
-        });
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  app.post("/api/logout", (req, res) => {
+  app.post("/api/logout", (req, res, next) => {
     if (!req.user) {
       return res.status(401).send("Not logged in");
     }
 
-    const userId = req.user.id;
-    userCache.delete(userId);
+    // Clear user from cache
+    if (req.user.id) {
+      userCache.delete(req.user.id);
+    }
 
     req.logout((err) => {
-      if (err) {
-        return res.status(500).send("Logout failed");
-      }
-      res.json({ message: "Logout successful" });
+      if (err) return next(err);
+      req.session.destroy((err) => {
+        if (err) return next(err);
+        res.clearCookie('connect.sid', { path: '/' });
+        res.json({ message: "Logged out successfully" });
+      });
     });
   });
 
   app.get("/api/user", (req, res) => {
-    if (req.isAuthenticated()) {
-      return res.json(req.user);
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
     }
-    res.status(401).send("Not logged in");
+    res.json(req.user);
   });
+
+  console.log("Auth setup completed");
 }

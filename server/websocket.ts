@@ -1,7 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, channels, users, sections, file_attachments } from "@db/schema";
+import { messages, users, file_attachments } from "@db/schema";
 import { eq } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
@@ -17,7 +17,6 @@ interface WSMessage {
   channelId?: string;
   content?: string;
   parentId?: string;
-  messageId?: string;
   attachments?: {
     url: string;
     objectKey: string;
@@ -34,37 +33,43 @@ export function setupWebSocketServer(server: Server) {
     perMessageDeflate: false,
     clientTracking: true,
     handleProtocols: (protocols) => {
-      if (protocols.includes('vite-hmr')) return 'vite-hmr';
-      return protocols[0];
+      if (!protocols) return '';
+      if (Array.isArray(protocols) && protocols.includes('vite-hmr')) return 'vite-hmr';
+      return Array.isArray(protocols) ? protocols[0] : protocols;
     },
     verifyClient: async ({ req }, done) => {
       try {
         // Skip auth for Vite HMR
         if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
+          console.log('Accepting Vite HMR connection');
           done(true);
           return;
         }
 
-        if (!req.headers.cookie) {
-          done(false, 401, 'No cookie');
-          return;
-        }
-
-        const cookies = parseCookie(req.headers.cookie);
+        const cookies = req.headers.cookie ? parseCookie(req.headers.cookie) : {};
         const sessionId = cookies['connect.sid'];
 
         if (!sessionId) {
+          console.log('WebSocket connection rejected: No session cookie');
           done(false, 401, 'No session cookie');
           return;
         }
 
-        // Clean and parse session ID
-        const cleanSessionId = sessionId.replace(/^s:/, '').split('.')[0];
+        // Handle both signed and unsigned session IDs
+        const cleanSessionId = decodeURIComponent(sessionId).split('.')[0].replace('s:', '');
+        console.log('Processing WebSocket connection for session:', cleanSessionId);
 
-        // Get session data from memory store
+        // Verify session and get user
         sessionStore.get(cleanSessionId, async (err, session) => {
-          if (err || !session?.passport?.user) {
-            done(false, 401, 'Invalid session');
+          if (err) {
+            console.error('Session store error:', err);
+            done(false, 500, 'Session store error');
+            return;
+          }
+
+          if (!session?.passport?.user) {
+            console.log('WebSocket connection rejected: No user in session');
+            done(false, 401, 'No user in session');
             return;
           }
 
@@ -74,11 +79,14 @@ export function setupWebSocketServer(server: Server) {
             });
 
             if (!user) {
+              console.log('WebSocket connection rejected: User not found');
               done(false, 401, 'User not found');
               return;
             }
 
+            // Store user ID in request for later use
             (req as any).userId = user.id;
+            console.log('WebSocket connection authorized for user:', user.id);
             done(true);
           } catch (error) {
             console.error('Database error during WebSocket verification:', error);
@@ -94,9 +102,11 @@ export function setupWebSocketServer(server: Server) {
 
   const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
+  // Keep alive mechanism
   const interval = setInterval(() => {
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
+        console.log('Terminating inactive WebSocket connection');
         return ws.terminate();
       }
       ws.isAlive = false;
@@ -105,13 +115,15 @@ export function setupWebSocketServer(server: Server) {
   }, 30000);
 
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
-    // Skip handling for Vite HMR connections
     if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+      console.log('Vite HMR WebSocket connected');
       return;
     }
 
     ws.userId = (request as any).userId;
     ws.isAlive = true;
+
+    console.log('WebSocket connected for user:', ws.userId);
 
     ws.on('pong', () => {
       ws.isAlive = true;
@@ -128,12 +140,9 @@ export function setupWebSocketServer(server: Server) {
 
         switch (message.type) {
           case 'message': {
-            if (!message.channelId || !message.content || !ws.userId) {
-              break;
-            }
+            if (!message.channelId || !message.content || !ws.userId) break;
 
             try {
-              // Create the message
               const [newMessage] = await db.insert(messages)
                 .values({
                   channel_id: message.channelId,
@@ -143,7 +152,6 @@ export function setupWebSocketServer(server: Server) {
                 })
                 .returning();
 
-              // Handle attachments if present
               if (message.attachments?.length) {
                 await Promise.all(message.attachments.map(attachment =>
                   db.insert(file_attachments)
@@ -157,7 +165,6 @@ export function setupWebSocketServer(server: Server) {
                 ));
               }
 
-              // Fetch complete message with attachments
               const completeMessage = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),
                 with: {
@@ -174,6 +181,7 @@ export function setupWebSocketServer(server: Server) {
                 type: 'message',
                 message: completeMessage
               });
+
             } catch (error) {
               console.error('Error handling message:', error);
               ws.send(JSON.stringify({
@@ -186,33 +194,18 @@ export function setupWebSocketServer(server: Server) {
 
           case 'subscribe': {
             if (!message.channelId) break;
+            console.log(`User ${ws.userId} subscribing to channel ${message.channelId}`);
+
             if (!channelSubscriptions.has(message.channelId)) {
               channelSubscriptions.set(message.channelId, new Set());
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
-
-            // Send recent messages
-            const existingMessages = await db.query.messages.findMany({
-              where: eq(messages.channel_id, message.channelId),
-              with: {
-                author: true,
-                attachments: true,
-              },
-              orderBy: [messages.created_at],
-              limit: 50,
-            });
-
-            existingMessages.forEach(msg => {
-              ws.send(JSON.stringify({
-                type: 'message',
-                message: msg
-              }));
-            });
             break;
           }
 
           case 'unsubscribe': {
             if (!message.channelId) break;
+            console.log(`User ${ws.userId} unsubscribing from channel ${message.channelId}`);
             channelSubscriptions.get(message.channelId)?.delete(ws);
             break;
           }
@@ -228,10 +221,15 @@ export function setupWebSocketServer(server: Server) {
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          error: 'Failed to process message'
+        }));
       }
     });
 
     ws.on('close', () => {
+      console.log('WebSocket disconnected for user:', ws.userId);
       ws.isAlive = false;
       channelSubscriptions.forEach(subscribers => {
         subscribers.delete(ws);
@@ -239,7 +237,7 @@ export function setupWebSocketServer(server: Server) {
     });
 
     ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      console.error('WebSocket error for user:', ws.userId, error);
     });
   });
 
