@@ -210,10 +210,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message_deleted") {
               console.log('Handling message deletion:', data);
               setMessages(prev => {
-                const filtered = prev.filter(msg => 
-                  msg.id !== data.messageId && 
-                  msg.parent_id !== data.messageId
-                );
+                // Create a new array with filtered messages
+                const filtered = prev.filter(msg => {
+                  const isNotDeleted = msg.id !== data.messageId;
+                  const isNotReply = msg.parent_id !== data.messageId;
+                  return isNotDeleted && isNotReply;
+                });
                 console.log('Messages after deletion:', filtered);
                 return filtered;
               });
