@@ -231,7 +231,10 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) break;
-            // Broadcast deletion event immediately to all subscribers
+            // Delete from database first
+            await db.delete(messages)
+              .where(eq(messages.id, message.messageId));
+            // Then broadcast deletion
             broadcastToChannel(message.channelId, {
               type: 'message_deleted',
               messageId: message.messageId,

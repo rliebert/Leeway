@@ -196,23 +196,23 @@ export function WSProvider({ children }: { children: ReactNode }) {
               const messageWithAttachments = {
                 ...data.message,
                 attachments: data.message.attachments?.map((attachment: any) => ({
-                  ...attachment,
                   id: attachment.id,
                   url: attachment.file_url || `/uploads/${attachment.file_name}`,
                   file_url: attachment.file_url || `/uploads/${attachment.file_name}`,
                   originalName: attachment.file_name,
                   mimetype: attachment.file_type,
-                  file_size: attachment.file_size
-                }))
+                  file_size: attachment.file_size,
+                  path: attachment.file_name
+                })) || []
               };
 
               console.log('Processing message with attachments:', messageWithAttachments);
 
               setMessages((prev) => {
-                if (prev.some((msg) => msg.id === messageWithAttachments.id)) {
-                  return prev;
-                }
-                return [...prev, messageWithAttachments];
+                // Remove existing message if present
+                const filtered = prev.filter(msg => msg.id !== messageWithAttachments.id);
+                // Add new/updated message
+                return [...filtered, messageWithAttachments];
               });
             }
 
