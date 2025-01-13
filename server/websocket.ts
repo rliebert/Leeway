@@ -237,12 +237,19 @@ export function setupWebSocketServer(server: Server) {
               await db.delete(messages)
                 .where(eq(messages.id, message.messageId));
 
-              // Broadcast deletion immediately
-              broadcastToChannel(message.channelId, {
+              // Delete associated attachments
+              await db.delete(file_attachments)
+                .where(eq(file_attachments.message_id, message.messageId));
+
+              // Broadcast deletion with channel context
+              const deleteEvent = {
                 type: 'message_deleted',
                 messageId: message.messageId,
                 channelId: message.channelId
-              });
+              };
+              
+              ws.send(JSON.stringify(deleteEvent));
+              broadcastToChannel(message.channelId, deleteEvent, ws);
             } catch (error) {
               console.error('Error deleting message:', error);
               ws.send(JSON.stringify({

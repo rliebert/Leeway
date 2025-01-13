@@ -195,30 +195,34 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message" && data.message) {
               const messageWithAttachments = {
                 ...data.message,
-                attachments: data.message.attachments?.map((attachment: any) => ({
-                  id: attachment.id,
-                  url: `/uploads/${attachment.file_name}`,
-                  file_url: `/uploads/${attachment.file_name}`,
-                  originalName: attachment.file_name,
-                  mimetype: attachment.file_type,
-                  file_size: attachment.file_size,
-                  path: attachment.file_name
-                }))
+                attachments: Array.isArray(data.message.attachments) 
+                  ? data.message.attachments.map((attachment: any) => ({
+                      id: attachment.id,
+                      url: `/uploads/${attachment.file_name}`,
+                      file_url: `/uploads/${attachment.file_name}`,
+                      originalName: attachment.file_name,
+                      mimetype: attachment.file_type,
+                      file_size: attachment.file_size,
+                      path: attachment.file_name
+                    }))
+                  : []
               };
 
               console.log('Processing message with attachments:', messageWithAttachments);
 
               setMessages((prev) => {
                 const filtered = prev.filter(msg => msg.id !== messageWithAttachments.id);
-                return [...filtered, messageWithAttachments].sort((a, b) => 
-                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                );
+                return [...filtered, messageWithAttachments];
               });
             }
 
-            if (data.type === "message_deleted") {
+            if (data.type === "message_deleted" && data.messageId) {
               console.log('Handling message deletion:', data.messageId);
-              setMessages(prev => prev.filter(msg => msg.id !== data.messageId));
+              setMessages(prev => {
+                const updated = prev.filter(msg => msg.id !== data.messageId);
+                console.log('Messages after deletion:', updated);
+                return updated;
+              });
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);
