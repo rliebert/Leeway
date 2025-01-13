@@ -12,6 +12,16 @@ import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
 
+// Create and export the MemoryStore instance to share with WebSocket server
+const MemoryStore = createMemoryStore(session);
+export const sessionStore = new MemoryStore({
+  checkPeriod: 86400000, // prune expired entries every 24h
+});
+
+// Cache for deserialized users to prevent frequent database queries
+const userCache = new Map<number, Express.User>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Crypto utilities for password hashing
 const crypto = {
   hash: async (password: string) => {
@@ -31,7 +41,7 @@ const crypto = {
   },
 };
 
-// Validation schemas that match frontend expectations
+// Validation schemas
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -40,11 +50,9 @@ const loginSchema = z.object({
 const registrationSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email address"),
 });
 
 export function setupAuth(app: Express) {
-  const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || "leeway-secret-key",
     resave: false,
@@ -52,10 +60,9 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: app.get("env") === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: "lax",
     },
-    store: new MemoryStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
-    }),
+    store: sessionStore,
   };
 
   app.use(session(sessionSettings));
@@ -63,27 +70,50 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   // Serialize/deserialize user
-  passport.serializeUser((user: any, done) => {
+  passport.serializeUser((user: Express.User, done) => {
+    console.log('Serializing user:', user.id);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, id),
-      });
+      // Check cache first
+      const cachedUser = userCache.get(id);
+      if (cachedUser) {
+        return done(null, cachedUser);
+      }
+
+      console.log('Cache miss, deserializing user from database:', id);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id))
+        .limit(1);
+
+      if (!user) {
+        console.error('User not found:', id);
+        return done(null, false);
+      }
+
+      // Cache the user
+      userCache.set(id, user);
+      setTimeout(() => userCache.delete(id), CACHE_TTL);
+
       done(null, user);
     } catch (err) {
-      done(err, null);
+      console.error('Error deserializing user:', err);
+      done(err);
     }
   });
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const user = await db.query.users.findFirst({
-          where: eq(users.username, username),
-        });
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, username))
+          .limit(1);
 
         if (!user) {
           return done(null, false, { message: "Incorrect username." });
@@ -93,6 +123,10 @@ export function setupAuth(app: Express) {
         if (!isMatch) {
           return done(null, false, { message: "Incorrect password." });
         }
+
+        // Cache the user on successful login
+        userCache.set(user.id, user);
+        setTimeout(() => userCache.delete(user.id), CACHE_TTL);
 
         return done(null, user);
       } catch (err) {
@@ -110,12 +144,14 @@ export function setupAuth(app: Express) {
         return res.status(400).send(errorMessage);
       }
 
-      const { username, password, email } = result.data;
+      const { username, password } = result.data;
 
       // Check if user already exists
-      const existingUser = await db.query.users.findFirst({
-        where: eq(users.username, username),
-      });
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
 
       if (existingUser) {
         return res.status(400).send("Username already exists");
@@ -130,21 +166,22 @@ export function setupAuth(app: Express) {
         .values({
           username,
           password: hashedPassword,
-          email,
         })
         .returning();
 
-      // Log the user in after registration
-      await new Promise<void>((resolve, reject) => {
-        req.login(newUser, (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
+      // Cache the new user
+      userCache.set(newUser.id, newUser);
+      setTimeout(() => userCache.delete(newUser.id), CACHE_TTL);
 
-      return res.json({
-        message: "Registration successful",
-        user: newUser,
+      // Log the user in after registration
+      req.login(newUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        return res.json({
+          message: "Registration successful",
+          user: { id: newUser.id, username: newUser.username },
+        });
       });
     } catch (error) {
       next(error);
@@ -173,6 +210,7 @@ export function setupAuth(app: Express) {
           return next(err);
         }
 
+        console.log('User logged in successfully:', user.id);
         return res.json({
           message: "Login successful",
           user,
@@ -183,10 +221,22 @@ export function setupAuth(app: Express) {
 
   // Logout endpoint
   app.post("/api/logout", (req, res) => {
+    if (!req.user) {
+      return res.status(401).send("Not logged in");
+    }
+
+    const userId = req.user.id;
+    console.log('User logging out:', userId);
+
+    // Remove from cache on logout
+    userCache.delete(userId);
+
     req.logout((err) => {
       if (err) {
+        console.error('Logout error:', err);
         return res.status(500).send("Logout failed");
       }
+      console.log('User logged out successfully:', userId);
       res.json({ message: "Logout successful" });
     });
   });
@@ -194,8 +244,10 @@ export function setupAuth(app: Express) {
   // Get current user endpoint
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
+      console.log('Current user:', req.user?.id);
       return res.json(req.user);
     }
+    console.log('No authenticated user');
     res.status(401).send("Not logged in");
   });
 }

@@ -106,25 +106,21 @@ export function registerUploadRoutes(app: Express) {
         if (req.body.message_id) {
           console.log('Creating database records for attachments with message_id:', req.body.message_id);
 
-          try {
-            const attachmentRecords = fileAttachments.map(file => ({
-              message_id: req.body.message_id,
-              file_url: file.url,
-              file_name: file.name,
-              file_type: file.type,
-              file_size: file.size
-            }));
+          const attachmentRecords = fileAttachments.map(file => ({
+            message_id: req.body.message_id,
+            file_url: file.url,
+            file_name: file.name,
+            file_type: file.type,
+            file_size: file.size
+          }));
 
-            console.log('Creating attachment records:', attachmentRecords);
-            const attachments = await db.insert(file_attachments)
-              .values(attachmentRecords)
-              .returning();
+          console.log('Creating attachment records:', attachmentRecords);
 
-            console.log('Created attachment records:', attachments);
-          } catch (error) {
-            console.error('Failed to create attachment records:', error);
-            throw error;
-          }
+          const attachments = await db.insert(file_attachments)
+            .values(attachmentRecords)
+            .returning();
+
+          console.log('Created attachment records:', attachments);
         }
 
         // Return the file information to the client

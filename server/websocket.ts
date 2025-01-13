@@ -5,18 +5,11 @@ import { messages, channels, users, sections, file_attachments } from "@db/schem
 import { eq, and, or, desc, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
+import { sessionStore } from "./auth";
 
 interface AuthenticatedWebSocket extends WebSocket {
-  userId?: string;
+  userId?: number;
   isAlive: boolean;
-}
-
-interface MessageAttachment {
-  message_id: string;
-  file_url: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
 }
 
 interface WSMessage {
@@ -40,15 +33,26 @@ export function setupWebSocketServer(server: Server) {
     path: '/ws',
     perMessageDeflate: false,
     clientTracking: true,
-    handleProtocols: () => 'chat',
+    handleProtocols: (protocols: string[]) => {
+      if (protocols.includes('chat')) return 'chat';
+      if (protocols.includes('vite-hmr')) return false;
+      return false;
+    },
     verifyClient: async ({ req }, done) => {
       try {
+        // Skip auth for Vite HMR
         if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
           done(true);
           return;
         }
 
-        const cookies = parseCookie(req.headers.cookie || '');
+        if (!req.headers.cookie) {
+          console.error('WebSocket connection rejected: No cookie header');
+          done(false, 401, 'No cookie');
+          return;
+        }
+
+        const cookies = parseCookie(req.headers.cookie);
         const sessionId = cookies['connect.sid'];
 
         if (!sessionId) {
@@ -57,23 +61,34 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        const cleanSessionId = decodeURIComponent(sessionId).split('s:')[1]?.split('.')[0];
-        if (!cleanSessionId) {
-          console.error('WebSocket connection rejected: Invalid session format');
-          done(false, 401, 'Invalid session format');
-          return;
-        }
+        // Clean and parse session ID
+        const cleanSessionId = sessionId.replace(/^s:/, '').split('.')[0];
 
-        // Use MemoryStore session validation (since we removed DB sessions)
-        const user = req.session?.passport?.user;
-        if (!user) {
-          console.error('WebSocket connection rejected: No user in session');
-          done(false, 401, 'Authentication failed');
-          return;
-        }
+        // Get session data from memory store
+        await new Promise<void>((resolve) => {
+          sessionStore.get(cleanSessionId, (err, session) => {
+            if (err) {
+              console.error('Session store error:', err);
+              done(false, 500, 'Session store error');
+              resolve();
+              return;
+            }
 
-        (req as any).userId = user;
-        done(true);
+            if (!session?.passport?.user) {
+              console.error('WebSocket connection rejected: Invalid session data');
+              done(false, 401, 'Invalid session');
+              resolve();
+              return;
+            }
+
+            const userId = session.passport.user;
+            console.log('WebSocket session verified for user:', userId);
+            (req as any).userId = userId;
+            done(true);
+            resolve();
+          });
+        });
+
       } catch (error) {
         console.error('WebSocket authentication error:', error);
         done(false, 500, 'Internal server error');
@@ -95,6 +110,7 @@ export function setupWebSocketServer(server: Server) {
   }, 15000);
 
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
+    // Skip handling for Vite HMR connections
     if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
       return;
     }
@@ -103,11 +119,6 @@ export function setupWebSocketServer(server: Server) {
     ws.isAlive = true;
     console.log('WebSocket connected for user:', ws.userId);
 
-    ws.send(JSON.stringify({
-      type: 'connected',
-      userId: ws.userId
-    }));
-
     ws.on('pong', () => {
       ws.isAlive = true;
     });
@@ -115,6 +126,7 @@ export function setupWebSocketServer(server: Server) {
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
+        console.log('Received WebSocket message:', message.type);
 
         if (message.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
@@ -122,49 +134,14 @@ export function setupWebSocketServer(server: Server) {
         }
 
         switch (message.type) {
-          case 'subscribe': {
-            if (!message.channelId) break;
-            if (!channelSubscriptions.has(message.channelId)) {
-              channelSubscriptions.set(message.channelId, new Set());
-            }
-            channelSubscriptions.get(message.channelId)?.add(ws);
-            console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
-
-            try {
-              const existingMessages = await db.query.messages.findMany({
-                where: eq(messages.channel_id, message.channelId),
-                with: {
-                  author: true,
-                  attachments: true,
-                },
-                orderBy: [asc(messages.created_at)],
-                limit: 50,
-              });
-
-              existingMessages.forEach(msg => {
-                ws.send(JSON.stringify({
-                  type: 'message',
-                  message: msg
-                }));
-              });
-            } catch (error) {
-              console.error('Error fetching message history:', error);
-            }
-            break;
-          }
-
-          case 'unsubscribe': {
-            if (!message.channelId) break;
-            channelSubscriptions.get(message.channelId)?.delete(ws);
-            console.log(`User ${ws.userId} unsubscribed from channel ${message.channelId}`);
-            break;
-          }
-
           case 'message': {
-            if (!message.channelId || !message.content || !ws.userId) break;
+            if (!message.channelId || !message.content || !ws.userId) {
+              console.error('Invalid message data:', { channelId: message.channelId, hasContent: !!message.content, userId: ws.userId });
+              break;
+            }
 
             try {
-              console.log('Processing message with attachments:', message.attachments?.length || 0);
+              console.log('Processing message with attachments:', message.attachments?.length || 0, 'attachments');
 
               // Step 1: Create message first
               const [newMessage] = await db.insert(messages).values({
@@ -180,28 +157,20 @@ export function setupWebSocketServer(server: Server) {
               if (message.attachments?.length) {
                 console.log('Creating attachments for message:', newMessage.id);
 
-                const attachmentRecords = message.attachments
-                  .filter(attachment => {
-                    if (!attachment.url || !attachment.name || !attachment.type || attachment.size <= 0) {
-                      console.error('Invalid attachment data:', attachment);
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map(attachment => ({
-                    message_id: newMessage.id,
-                    file_url: attachment.url,
-                    file_name: attachment.name,
-                    file_type: attachment.type,
-                    file_size: attachment.size
-                  }));
+                for (const attachment of message.attachments) {
+                  try {
+                    const [createdAttachment] = await db.insert(file_attachments).values({
+                      message_id: newMessage.id,
+                      file_url: attachment.url,
+                      file_name: attachment.name,
+                      file_type: attachment.type,
+                      file_size: attachment.size
+                    }).returning();
 
-                if (attachmentRecords.length > 0) {
-                  console.log('Creating attachment records:', attachmentRecords);
-                  const createdAttachments = await db.insert(file_attachments)
-                    .values(attachmentRecords)
-                    .returning();
-                  console.log('Created attachments:', createdAttachments);
+                    console.log('Created attachment:', createdAttachment);
+                  } catch (err) {
+                    console.error('Failed to create attachment:', err);
+                  }
                 }
               }
 
@@ -218,7 +187,6 @@ export function setupWebSocketServer(server: Server) {
                 throw new Error('Failed to retrieve complete message');
               }
 
-              // Step 4: Broadcast message
               console.log('Broadcasting message:', {
                 id: completeMessage.id,
                 content: completeMessage.content,
@@ -238,6 +206,44 @@ export function setupWebSocketServer(server: Server) {
                 details: error instanceof Error ? error.message : 'Unknown error'
               }));
             }
+            break;
+          }
+
+          case 'subscribe': {
+            if (!message.channelId) break;
+            if (!channelSubscriptions.has(message.channelId)) {
+              channelSubscriptions.set(message.channelId, new Set());
+            }
+            channelSubscriptions.get(message.channelId)?.add(ws);
+            console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
+
+            try {
+              const existingMessages = await db.query.messages.findMany({
+                where: eq(messages.channel_id, message.channelId),
+                with: {
+                  author: true,
+                  attachments: true,
+                },
+                orderBy: [desc(messages.created_at)],
+                limit: 50,
+              });
+
+              existingMessages.forEach(msg => {
+                ws.send(JSON.stringify({
+                  type: 'message',
+                  message: msg
+                }));
+              });
+            } catch (error) {
+              console.error('Error fetching message history:', error);
+            }
+            break;
+          }
+
+          case 'unsubscribe': {
+            if (!message.channelId) break;
+            channelSubscriptions.get(message.channelId)?.delete(ws);
+            console.log(`User ${ws.userId} unsubscribed from channel ${message.channelId}`);
             break;
           }
 
