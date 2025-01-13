@@ -10,17 +10,30 @@ import { file_attachments } from "@db/schema";
 const storage = multer.memoryStorage();
 
 const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
-  const bucket = process.env.REPLIT_BUCKET_ID;
-  if (!bucket) throw new Error('Object Storage bucket not configured');
+  try {
+    const bucket = process.env.REPLIT_BUCKET_ID;
+    if (!bucket) throw new Error('Object Storage bucket not configured');
 
-  const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
-  await fetch(`https://objectstorage.replit.com/${bucket}/${objectKey}`, {
-    method: 'PUT',
-    body: buffer,
-    headers: { 'Content-Type': 'application/octet-stream' }
-  });
+    const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
+    const response = await fetch(`https://objectstorage.replit.com/${bucket}/${objectKey}`, {
+      method: 'PUT',
+      body: buffer,
+      headers: { 
+        'Content-Type': 'application/octet-stream',
+        'X-Replit-Bucket': bucket
+      }
+    });
 
-  return `https://objectstorage.replit.com/${bucket}/${objectKey}`;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Object Storage upload failed: ${errorText}`);
+    }
+
+    return `https://objectstorage.replit.com/${bucket}/${objectKey}`;
+  } catch (error) {
+    console.error('Object Storage upload error:', error);
+    throw error;
+  }
 };
 
 // File size and type validation
