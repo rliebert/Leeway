@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -21,11 +20,17 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping";
+  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted";
   channelId?: string;
   content?: string;
   parentId?: string;
-  attachments?: string[];
+  messageId?: string;
+  attachments?: {
+    url: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+  }[];
 }
 
 const WSContext = createContext<WSContextType>({
@@ -182,23 +187,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message" && data.message) {
               const messageWithAttachments = {
                 ...data.message,
-                attachments: Array.isArray(data.message.attachments) 
-                  ? data.message.attachments.map((attachment: any) => {
-                      const fileName = attachment.file_name || attachment.originalName;
-                      const baseUrl = window.location.origin;
-                      const fileUrl = attachment.file_url.startsWith('/') 
-                        ? `${baseUrl}${attachment.file_url}`
-                        : `${baseUrl}/uploads/${attachment.file_url}`;
-                      return {
-                        ...attachment,
-                        originalName: fileName,
-                        url: fileUrl,
-                        file_url: fileUrl,
-                        path: fileUrl,
-                        mimetype: attachment.file_type || attachment.mimetype || attachment.type
-                      };
-                    })
-                  : []
+                attachments: Array.isArray(data.message.attachments)
+                  ? data.message.attachments.map((attachment: any) => ({
+                      url: attachment.file_url || attachment.url,  // Handle both formats
+                      originalName: attachment.file_name || attachment.originalName,
+                      mimetype: attachment.file_type || attachment.mimetype,
+                      size: attachment.file_size || attachment.size,
+                    }))
+                  : [],
               };
 
               setMessages((prev) => {

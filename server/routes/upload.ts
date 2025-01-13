@@ -76,11 +76,11 @@ export function registerUploadRoutes(app: Express) {
               // Upload to object storage
               const { url, objectKey } = await objectStorage.uploadFile(file.buffer, file.originalname);
 
-              // Validate and log the upload result
+              // Log upload details
               console.log('Upload successful:', {
                 url,
                 objectKey,
-                fileName: file.originalname,
+                originalName: file.originalname,
                 fileType: file.mimetype,
                 fileSize: file.size
               });
@@ -88,7 +88,7 @@ export function registerUploadRoutes(app: Express) {
               return {
                 url,
                 objectKey,
-                fileName: file.originalname,
+                originalName: file.originalname,
                 fileType: file.mimetype,
                 fileSize: file.size
               };
@@ -106,7 +106,7 @@ export function registerUploadRoutes(app: Express) {
           const attachmentRecords = uploadResults.map(file => ({
             message_id: req.body.message_id,
             file_url: file.url,
-            file_name: file.fileName,
+            file_name: file.originalName,
             file_type: file.fileType,
             file_size: file.fileSize
           }));
@@ -120,13 +120,8 @@ export function registerUploadRoutes(app: Express) {
           console.log('Created attachment records:', savedAttachments);
         }
 
-        // Return simplified response to client
-        res.json(uploadResults.map(file => ({
-          url: file.url,
-          name: file.fileName,
-          type: file.fileType,
-          size: file.fileSize
-        })));
+        // Return the upload results with consistent property names
+        res.json(uploadResults);
 
       } catch (error) {
         console.error('Upload processing error:', error);

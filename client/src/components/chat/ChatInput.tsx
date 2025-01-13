@@ -67,7 +67,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
 
       // Send message through WebSocket
       console.log('ChatInput: Sending message with attachments:', attachments);
-      
+
       send({
         type: "message",
         channelId: channelId.toString(),
@@ -75,10 +75,9 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         parentId: parentMessageId,
         attachments: attachments.map((attachment: any) => ({
           url: attachment.url,
-          originalName: attachment.originalName,
-          mimetype: attachment.mimetype,
-          file_size: attachment.size,
-          path: attachment.path
+          originalName: attachment.originalName || attachment.name,  // Handle both formats
+          mimetype: attachment.fileType || attachment.type,  // Handle both formats
+          size: attachment.fileSize || attachment.size  // Handle both formats
         })),
       });
 
@@ -100,12 +99,12 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
     const end = textarea.selectionEnd;
     const currentValue = form.getValues("message") || "";
 
-    const newValue = 
-      currentValue.substring(0, start) + 
-      emojiData.emoji + 
+    const newValue =
+      currentValue.substring(0, start) +
+      emojiData.emoji +
       currentValue.substring(end);
 
-    form.setValue("message", newValue, { 
+    form.setValue("message", newValue, {
       shouldValidate: true,
       shouldDirty: true,
       shouldTouch: true,
@@ -152,9 +151,9 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
                 <Smile className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent 
-              className="w-full p-0" 
-              side="top" 
+            <PopoverContent
+              className="w-full p-0"
+              side="top"
               align="start"
             >
               <EmojiPicker

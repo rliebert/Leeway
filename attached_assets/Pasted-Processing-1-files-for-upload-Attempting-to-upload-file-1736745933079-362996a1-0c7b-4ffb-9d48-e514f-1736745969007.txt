@@ -1,0 +1,84 @@
+Processing 1 files for upload
+Attempting to upload file: 1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg
+Generated file URL: https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg
+Upload successful: {
+  url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+  objectKey: '1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+  originalName: '7860356.jpg',
+  fileType: 'image/jpeg',
+  fileSize: 254106
+}
+5:25:33 AM [express] POST /api/upload 200 in 891ms :: [{"url":"https://replit-objstore-b3c162de-10d0…
+Received WebSocket message: {
+  type: 'message',
+  channelId: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  content: '... oh, my attachments are back 💀',
+  attachments: [
+    {
+      url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+      originalName: '7860356.jpg',
+      mimetype: 'image/jpeg',
+      size: 254106
+    }
+  ]
+}
+Creating new message with content: ... oh, my attachments are back 💀
+Processing attachments: [
+  {
+    url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+    originalName: '7860356.jpg',
+    mimetype: 'image/jpeg',
+    size: 254106
+  }
+]
+Creating attachment record: {
+  url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+  originalName: '7860356.jpg',
+  mimetype: 'image/jpeg',
+  size: 254106
+}
+Created attachment records: [
+  {
+    id: '2d890683-f17e-402c-ab28-2297c46ceb01',
+    message_id: '436b3634-c464-4d91-89d7-8bff578ae8a4',
+    file_url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+    file_name: '7860356.jpg',
+    file_type: 'image/jpeg',
+    file_size: 254106,
+    created_at: 2025-01-13T05:25:33.901Z
+  }
+]
+Broadcasting message with attachments: {
+  id: '436b3634-c464-4d91-89d7-8bff578ae8a4',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T05:25:33.837Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '2d890683-f17e-402c-ab28-2297c46ceb01',
+      message_id: '436b3634-c464-4d91-89d7-8bff578ae8a4',
+      file_url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736745933079-362996a1-0c7b-4ffb-9d48-e514f16aeaac.jpg',
+      file_name: '7860356.jpg',
+      file_type: 'image/jpeg',
+      file_size: 254106,
+      created_at: 2025-01-13T05:25:33.901Z
+    }
+  ]
+}
