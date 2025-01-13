@@ -20,7 +20,7 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted";
+  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted" | "message_edited";
   channelId?: string;
   content?: string;
   parentId?: string;
@@ -208,6 +208,26 @@ export function WSProvider({ children }: { children: ReactNode }) {
                   msg.id !== data.messageId && msg.parent_id !== data.messageId
                 );
               });
+            }
+
+            if (data.type === "message_edited") {
+              console.log('Handling message edit:', data);
+              // Update both the message content and any other properties that might have changed
+              setMessages(prevMessages => 
+                prevMessages.map(msg => 
+                  msg.id === data.messageId
+                    ? {
+                        ...msg,
+                        content: data.content,
+                        ...(data.message && {
+                          author: data.message.author,
+                          attachments: data.message.attachments,
+                          updated_at: data.message.updated_at
+                        })
+                      }
+                    : msg
+                )
+              );
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);

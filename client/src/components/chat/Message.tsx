@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2 } from "lucide-react";
+import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Pencil, Check, X } from "lucide-react";
 import type { Message as MessageType } from "@db/schema";
 import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
@@ -8,6 +8,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 interface FileAttachment {
   id: string;
@@ -29,6 +30,8 @@ interface MessageProps {
 const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
   const queryClient = useQueryClient();
   const { messages: wsMessages } = useWS();
   const { user } = useUser();
@@ -122,6 +125,49 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
   };
 
+  const handleEditMessage = async () => {
+    if (editContent.trim() === message.content) {
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      // Optimistically update the UI immediately
+      ws.setMessages(prev => 
+        prev.map(msg => 
+          msg.id === message.id 
+            ? { ...msg, content: editContent.trim() } 
+            : msg
+        )
+      );
+
+      // Send WebSocket event for edit
+      ws.send({
+        type: "message_edited",
+        channelId: message.channel_id || '',
+        messageId: message.id,
+        content: editContent.trim()
+      });
+
+      setIsEditing(false);
+      toast({ description: "Message updated" });
+    } catch (error) {
+      console.error('Error editing message:', error);
+      // Revert the optimistic update on error
+      ws.setMessages(prev => 
+        prev.map(msg => 
+          msg.id === message.id 
+            ? { ...msg, content: message.content } 
+            : msg
+        )
+      );
+      toast({ 
+        variant: "destructive",
+        description: "Failed to update message"
+      });
+    }
+  };
+
   return (
     <>
       <div 
@@ -153,18 +199,70 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   {replyCount > 0 ? `${replyCount}` : 'Reply'}
                 </Button>
                 {message.user_id === user?.id && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
-                    onClick={handleDeleteMessage}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
+                      onClick={handleDeleteMessage}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
-            <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
+            {isEditing ? (
+              <div className="mt-1 space-y-2">
+                <Textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="min-h-[60px] text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleEditMessage();
+                    }
+                    if (e.key === "Escape") {
+                      setIsEditing(false);
+                      setEditContent(message.content);
+                    }
+                  }}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7"
+                    onClick={handleEditMessage}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditContent(message.content);
+                    }}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
+            )}
 
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-2">
