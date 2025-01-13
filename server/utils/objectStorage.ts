@@ -8,21 +8,13 @@ interface UploadResult {
 }
 
 export class ObjectStorageService {
-  private storage: Client;
-  private bucketId: string;
+  private client: Client;
 
   constructor() {
     try {
-      this.storage = new Client();
-
-      // Hard-code the bucket ID from .replit file for testing
-      const bucketId = "replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9";
-      if (!bucketId) {
-        throw new Error('Object Storage configuration error: Missing bucket ID. Please make sure Object Storage is enabled in your Repl.');
-      }
-
-      this.bucketId = bucketId;
-      console.log('Object Storage initialized with bucket ID:', this.bucketId);
+      // Initialize the client
+      this.client = new Client();
+      console.log('Object Storage service initialized');
     } catch (error) {
       console.error('Failed to initialize Object Storage:', error);
       throw error;
@@ -41,16 +33,31 @@ export class ObjectStorageService {
       const objectKey = this.generateUniqueFileName(originalFilename);
       console.log('Attempting to upload file:', objectKey);
 
-      await this.storage.createObject(
-        objectKey,
-        buffer
-      );
+      // Upload the file using uploadFromBytes
+      const { ok, error } = await this.client.uploadFromBytes(objectKey, buffer);
+      if (!ok) {
+        throw new Error(`Upload failed: ${error}`);
+      }
 
-      const publicUrl = this.storage.getPublicUrl(objectKey);
-      console.log(`File uploaded successfully: ${publicUrl}`);
+      // Download the file to verify upload
+      const { ok: verifyOk, error: verifyError } = await this.client.downloadAsBytes(objectKey);
+      if (!verifyOk) {
+        throw new Error(`Failed to verify upload: ${verifyError}`);
+      }
+
+      // Get a direct URL for the file
+      const { ok: urlOk, value: url, error: urlError } = await this.client.createPresignedUrl(objectKey, {
+        expires: 365 * 24 * 60 * 60 // 1 year expiry
+      });
+
+      if (!urlOk || !url) {
+        throw new Error(`Failed to generate URL: ${urlError}`);
+      }
+
+      console.log(`File uploaded and verified successfully: ${objectKey}`);
 
       return {
-        url: publicUrl,
+        url,
         objectKey
       };
     } catch (error) {
@@ -64,8 +71,16 @@ export class ObjectStorageService {
     return Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
   }
 
-  getPublicUrl(objectKey: string): string {
-    return this.storage.getPublicUrl(objectKey);
+  async getFileUrl(objectKey: string): Promise<string> {
+    const { ok, value: url, error } = await this.client.createPresignedUrl(objectKey, {
+      expires: 365 * 24 * 60 * 60 // 1 year expiry
+    });
+
+    if (!ok || !url) {
+      throw new Error(`Failed to generate URL: ${error}`);
+    }
+
+    return url;
   }
 }
 
