@@ -1,11 +1,28 @@
 import { type Express } from "express";
 import multer from "multer";
-import { objectStorage } from "../utils/objectStorage";
+import path from "path";
+import fs from "fs";
+import express from "express";
 import { db } from "@db";
 import { file_attachments } from "@db/schema";
 
 // Configure multer for file uploads
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads');
+    // Create uploads directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename while preserving extension
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `${uniqueSuffix}${ext}`);
+  }
+});
 
 // File size and type validation
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
@@ -18,15 +35,12 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
     'text/plain',
     // Media
     'audio/mpeg', 'video/mp4',
-    // Archives
     'application/zip', 'application/x-zip-compressed'
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
-    console.log(`File type accepted: ${file.mimetype}`);
     cb(null, true);
   } else {
-    console.log(`File type rejected: ${file.mimetype}`);
     cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
   }
 };
@@ -41,6 +55,10 @@ const upload = multer({
 });
 
 export function registerUploadRoutes(app: Express) {
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Handle file uploads for messages
   app.post('/api/upload', 
     (req, res, next) => {
       if (!req.isAuthenticated()) {
@@ -52,8 +70,8 @@ export function registerUploadRoutes(app: Express) {
       upload.array('files', 5)(req, res, (err) => {
         if (err) {
           console.error('Upload middleware error:', err);
-          return res.status(400).json({ 
-            error: 'File upload failed',
+          return res.status(500).json({ 
+            error: err.message || 'File upload failed',
             details: err instanceof Error ? err.message : 'Unknown error'
           });
         }
@@ -63,68 +81,23 @@ export function registerUploadRoutes(app: Express) {
     async (req, res) => {
       try {
         const files = req.files as Express.Multer.File[];
+
         if (!files || files.length === 0) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
-        console.log(`Processing ${files.length} files for upload`);
+        // Return file info without creating attachment records yet
+        const fileInfo = files.map(file => ({
+          url: `/uploads/${file.filename}`,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          path: file.filename
+        }));
 
-        // Upload files and gather metadata
-        const uploadResults = await Promise.all(
-          files.map(async (file) => {
-            try {
-              // Upload to object storage
-              const { url, objectKey } = await objectStorage.uploadFile(file.buffer, file.originalname);
-
-              // Log upload details
-              console.log('Upload successful:', {
-                url,
-                objectKey,
-                originalName: file.originalname,
-                fileType: file.mimetype,
-                fileSize: file.size
-              });
-
-              return {
-                url,
-                objectKey,
-                originalName: file.originalname,
-                fileType: file.mimetype,
-                fileSize: file.size
-              };
-            } catch (error) {
-              console.error(`Error processing file ${file.originalname}:`, error);
-              throw error;
-            }
-          })
-        );
-
-        // Create database records if message_id is provided
-        if (req.body.message_id) {
-          console.log('Creating attachment records for message:', req.body.message_id);
-
-          const attachmentRecords = uploadResults.map(file => ({
-            message_id: req.body.message_id,
-            file_url: file.url,
-            file_name: file.originalName,
-            file_type: file.fileType,
-            file_size: file.fileSize
-          }));
-
-          console.log('Creating attachment records:', attachmentRecords);
-
-          const savedAttachments = await db.insert(file_attachments)
-            .values(attachmentRecords)
-            .returning();
-
-          console.log('Created attachment records:', savedAttachments);
-        }
-
-        // Return the upload results with consistent property names
-        res.json(uploadResults);
-
+        res.json(fileInfo);
       } catch (error) {
-        console.error('Upload processing error:', error);
+        console.error('Upload error:', error);
         res.status(500).json({ 
           error: 'Upload failed',
           details: error instanceof Error ? error.message : 'Unknown error'

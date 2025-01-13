@@ -11,32 +11,3 @@ channel = "stable-24_05"
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[objectStorage]
-defaultBucketID = "replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[workflows.workflow.metadata]
-agentRequireRestartOnSave = false
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "tsx server/utils/test-object-storage.ts"

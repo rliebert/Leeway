@@ -7,6 +7,45 @@ import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
+import type { User, Message, Channel, Section } from "@db/schema";
+import multer from "multer";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = uuidv4();
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Allow images and common document types
+    const allowedMimes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -19,11 +58,30 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware first
   setupAuth(app);
-
-  // Register upload routes before other routes
+  app.use("/api/dm", requireAuth, dmRoutes);
   registerUploadRoutes(app);
 
-  app.use("/api/dm", requireAuth, dmRoutes);
+  // File upload endpoint
+  app.post("/api/upload", requireAuth, upload.array('files', 10), async (req, res) => {
+    try {
+      if (!req.files || !Array.isArray(req.files)) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const files = req.files.map(file => ({
+        id: uuidv4(),
+        url: `/uploads/${file.filename}`,
+        originalName: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size
+      }));
+
+      res.json(files);
+    } catch (error) {
+      console.error('File upload error:', error);
+      res.status(500).json({ error: "File upload failed" });
+    }
+  });
 
   // Section management endpoints
   app.post("/api/sections", requireAuth, async (req, res) => {
@@ -177,6 +235,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Message search endpoint
   // Delete message endpoint
   app.delete("/api/messages/:id", requireAuth, async (req, res) => {
     const { id } = req.params;
@@ -242,7 +301,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch replies" });
     }
   });
-  app.get("/api/users", async (req, res) => {
+    app.get("/api/users", async (req, res) => {
     if (!req.user) {
       return res.status(401).send("Not authenticated");
     }

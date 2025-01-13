@@ -20,17 +20,11 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted";
+  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping";
   channelId?: string;
   content?: string;
   parentId?: string;
-  messageId?: string;
-  attachments?: {
-    url: string;
-    originalName: string;
-    mimetype: string;
-    size: number;
-  }[];
+  attachments?: string[];
 }
 
 const WSContext = createContext<WSContextType>({
@@ -188,12 +182,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
               const messageWithAttachments = {
                 ...data.message,
                 attachments: Array.isArray(data.message.attachments)
-                  ? data.message.attachments.map((attachment: any) => ({
-                      url: attachment.file_url || attachment.url,  // Handle both formats
-                      originalName: attachment.file_name || attachment.originalName,
-                      mimetype: attachment.file_type || attachment.mimetype,
-                      size: attachment.file_size || attachment.size,
-                    }))
+                  ? data.message.attachments.map((attachment: any) => {
+                      const fileName = attachment.file_name || attachment.originalName;
+                      const baseUrl = window.location.origin;
+                      // Ensure we have a clean file URL path
+                      const fileUrl = attachment.file_url || attachment.url;
+                      const cleanFileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
+                      return {
+                        ...attachment,
+                        originalName: fileName,
+                        url: `${baseUrl}/uploads/${cleanFileUrl}`,
+                        file_url: `${baseUrl}/uploads/${cleanFileUrl}`,
+                        mimetype: attachment.file_type || attachment.mimetype || attachment.type
+                      };
+                    })
                   : [],
               };
 
