@@ -185,11 +185,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 attachments: Array.isArray(data.message.attachments) 
                   ? data.message.attachments.map((attachment: any) => {
                       const fileName = attachment.file_name || attachment.originalName;
+                      const baseUrl = window.location.origin;
                       return {
                         ...attachment,
                         originalName: fileName,
-                        url: `/uploads/${fileName}`,
-                        file_url: `/uploads/${fileName}`,
+                        url: `${baseUrl}/uploads/${fileName}`,
+                        file_url: `${baseUrl}/uploads/${fileName}`,
                         mimetype: attachment.file_type || attachment.mimetype || attachment.type
                       };
                     })
