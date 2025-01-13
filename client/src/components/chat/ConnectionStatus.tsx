@@ -39,16 +39,21 @@ export default function ConnectionStatus() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant="ghost"
+              variant={isDebugEnabled ? "secondary" : "ghost"}
               size="sm"
-              className={`h-8 w-8 p-0 ${isDebugEnabled ? 'text-amber-500' : ''}`}
+              className={`h-8 w-8 p-0 transition-colors ${
+                isDebugEnabled ? 'text-amber-500 debug-mode-active hover:bg-amber-500/20' : ''
+              }`}
               onClick={toggleDebug}
             >
               <Bug className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {isDebugEnabled ? 'Disable Debug Logs' : 'Enable Debug Logs'}
+            <div className="flex items-center gap-2">
+              <Bug className="h-3 w-3" />
+              {isDebugEnabled ? 'Click to Disable Debug Mode' : 'Click to Enable Debug Mode'}
+            </div>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

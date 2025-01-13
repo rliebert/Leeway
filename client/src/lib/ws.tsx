@@ -19,7 +19,7 @@ interface WSContextType {
   subscribe: (channelId: string) => void;
   unsubscribe: (channelId: string) => void;
   toggleDebug: () => void;
-  isDebugEnabled: () => boolean;
+  isDebugEnabled: boolean;
 }
 
 interface WSMessage {
@@ -40,7 +40,7 @@ const WSContext = createContext<WSContextType>({
   subscribe: () => {},
   unsubscribe: () => {},
   toggleDebug: () => {},
-  isDebugEnabled: () => false,
+  isDebugEnabled: false,
 });
 
 export function WSProvider({ children }: { children: ReactNode }) {
@@ -49,8 +49,21 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [messageQueue] = useState<WSMessage[]>([]);
+  const [debugEnabled, setDebugEnabled] = useState(() => {
+    // Check if debug mode was enabled in last session
+    return localStorage.getItem('debug_mode') === 'true';
+  });
   const { toast } = useToast();
   const { user } = useUser();
+
+  // Initialize debug logger based on saved state
+  useEffect(() => {
+    if (debugEnabled) {
+      debugLogger.enable();
+    } else {
+      debugLogger.disable();
+    }
+  }, [debugEnabled]);
 
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | undefined;
@@ -77,7 +90,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
           socket.close();
         }
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(wsUrl, ["chat"]);
 
         let connectionTimeout: NodeJS.Timeout;
         connectionTimeout = setTimeout(() => {
@@ -111,6 +124,54 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
           ws.send(JSON.stringify({ type: "ping" }));
           debugLogger.endGroup();
+        };
+
+        ws.onclose = (event) => {
+          debugLogger.info(`WebSocket closed with code: ${event.code}`);
+          clearTimeout(connectionTimeout);
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          setConnected(false);
+          setSocket(null);
+
+          if (event.code === 1000 || event.code === 1001) {
+            debugLogger.info("Clean WebSocket closure");
+            return;
+          }
+
+          if (!user) {
+            debugLogger.info("User not logged in, skipping reconnection");
+            return;
+          }
+
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(
+              initialDelay * Math.pow(1.5, reconnectAttempts),
+              15000
+            );
+            debugLogger.info(
+              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
+            );
+
+            reconnectTimeout = setTimeout(() => {
+              if (!connected) {
+                reconnectAttempts++;
+                connect();
+              }
+            }, delay);
+          } else {
+            debugLogger.error("Max reconnection attempts reached");
+            setError("Connection lost. Please refresh the page.");
+            toast({
+              variant: "destructive",
+              description: "Unable to connect to chat server. Please refresh the page.",
+              duration: 5000,
+            });
+          }
+        };
+
+        ws.onerror = (error) => {
+          debugLogger.error("WebSocket error:", error);
+          setError("Connection error occurred");
         };
 
         ws.onmessage = (event) => {
@@ -226,61 +287,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
             setError('Error processing message');
           }
         };
-
-        ws.onclose = (event) => {
-          debugLogger.info(`WebSocket closed with code: ${event.code}`);
-          clearTimeout(connectionTimeout);
-          if (heartbeatInterval) clearInterval(heartbeatInterval);
-          setConnected(false);
-          setSocket(null);
-
-          if (event.code === 1000 || event.code === 1001) {
-            debugLogger.info("Clean WebSocket closure");
-            return;
-          }
-
-          if (!user) {
-            debugLogger.info("User not logged in, skipping reconnection");
-            return;
-          }
-
-          if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(
-              initialDelay * Math.pow(1.5, reconnectAttempts),
-              15000
-            );
-            debugLogger.info(
-              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
-            );
-
-            reconnectTimeout = setTimeout(() => {
-              if (!connected) {
-                reconnectAttempts++;
-                connect();
-              }
-            }, delay);
-          } else {
-            debugLogger.error("Max reconnection attempts reached");
-            setError("Connection lost. Please refresh the page.");
-            toast({
-              variant: "destructive",
-              description: "Unable to connect to chat server. Please refresh the page.",
-              duration: 5000,
-            });
-          }
-        };
-
-        ws.onerror = (error) => {
-          debugLogger.error("WebSocket error:", error);
-          setError("Connection error occurred");
-        };
       } catch (error) {
         debugLogger.error("Error creating WebSocket connection:", error);
         setError("Failed to create connection");
       }
     };
 
-    debugLogger.enable();
+    // Start with debug enabled state from localStorage
     connect();
 
     return () => {
@@ -346,15 +359,25 @@ export function WSProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleDebug = () => {
-    if (debugLogger.isEnabled()) {
+    if (debugEnabled) {
+      debugLogger.debug("Debug mode being disabled...");
       debugLogger.disable();
+      setDebugEnabled(false);
+      toast({
+        description: "Debug logging disabled - Console logs will no longer show detailed information",
+        duration: 3000,
+      });
     } else {
       debugLogger.enable();
+      setDebugEnabled(true);
+      debugLogger.debug("Debug mode enabled!");
+      debugLogger.info("You can now see detailed logs in the browser console");
+      debugLogger.debug("WebSocket state:", { connected, error, messageQueue: messageQueue.length });
+      toast({
+        description: "Debug logging enabled - Check browser console (F12) for detailed logs",
+        duration: 3000,
+      });
     }
-  };
-
-  const isDebugEnabled = () => {
-    return debugLogger.isEnabled();
   };
 
   return (
@@ -368,7 +391,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         subscribe,
         unsubscribe,
         toggleDebug,
-        isDebugEnabled,
+        isDebugEnabled: debugEnabled,
       }}
     >
       {children}

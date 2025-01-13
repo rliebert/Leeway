@@ -1,3 +1,5 @@
+import { toast } from "@/components/ui/use-toast";
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 class DebugLogger {
@@ -5,7 +7,10 @@ class DebugLogger {
   private enabled: boolean = false;
   private groupLevel: number = 0;
 
-  private constructor() {}
+  private constructor() {
+    // Initialize based on localStorage
+    this.enabled = localStorage.getItem('debug_mode') === 'true';
+  }
 
   static getInstance(): DebugLogger {
     if (!DebugLogger.instance) {
@@ -16,12 +21,14 @@ class DebugLogger {
 
   enable() {
     this.enabled = true;
+    localStorage.setItem('debug_mode', 'true');
     this.log('debug', 'Debug logging enabled');
   }
 
   disable() {
     this.log('debug', 'Debug logging disabled');
     this.enabled = false;
+    localStorage.setItem('debug_mode', 'false');
   }
 
   isEnabled(): boolean {

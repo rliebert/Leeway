@@ -27,3 +27,19 @@
 .highlight-message {
   animation: highlight-pulse 2s ease-in-out forwards;
 }
+
+@keyframes debug-pulse {
+  0% {
+    background-color: theme('colors.amber.500 / 0.1');
+  }
+  50% {
+    background-color: theme('colors.amber.500 / 0.2');
+  }
+  100% {
+    background-color: theme('colors.amber.500 / 0.1');
+  }
+}
+
+.debug-mode-active {
+  animation: debug-pulse 2s ease-in-out infinite;
+}
