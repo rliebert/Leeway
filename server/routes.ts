@@ -7,7 +7,6 @@ import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
-import type { User, Message, Channel, Section } from "@db/schema";
 
 // Authentication middleware
 const requireAuth = (req: any, res: any, next: any) => {
@@ -20,8 +19,11 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware first
   setupAuth(app);
-  app.use("/api/dm", requireAuth, dmRoutes);
+
+  // Register upload routes before other routes
   registerUploadRoutes(app);
+
+  app.use("/api/dm", requireAuth, dmRoutes);
 
   // Section management endpoints
   app.post("/api/sections", requireAuth, async (req, res) => {
@@ -240,7 +242,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch replies" });
     }
   });
-    app.get("/api/users", async (req, res) => {
+  app.get("/api/users", async (req, res) => {
     if (!req.user) {
       return res.status(401).send("Not authenticated");
     }

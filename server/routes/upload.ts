@@ -69,26 +69,28 @@ export function registerUploadRoutes(app: Express) {
 
         console.log(`Processing ${files.length} files for upload`);
 
-        const uploadResults = await objectStorage.uploadMultipleFiles(
-          files.map(file => ({
-            buffer: file.buffer,
-            originalname: file.originalname
-          }))
+        const uploadedFiles = await Promise.all(
+          files.map(async (file) => {
+            const result = await objectStorage.uploadFile(file.buffer, file.originalname);
+            // Verify the upload was successful by attempting to download
+            const { ok, error } = await objectStorage.client.downloadAsBytes(result.objectKey);
+            if (!ok) {
+              throw new Error(`Failed to verify upload: ${error}`);
+            }
+            return {
+              url: result.url,
+              objectKey: result.objectKey,
+              originalName: file.originalname,
+              mimetype: file.mimetype,
+              size: file.size,
+            };
+          })
         );
-
-        // Return file info with improved details
-        const fileInfo = uploadResults.map((result, index) => ({
-          url: result.url,
-          objectKey: result.objectKey,
-          originalName: files[index].originalname,
-          mimetype: files[index].mimetype,
-          size: files[index].size,
-        }));
 
         // Store file attachments in database if message_id is provided
         if (req.body.message_id) {
           await db.insert(file_attachments).values(
-            fileInfo.map(file => ({
+            uploadedFiles.map(file => ({
               message_id: req.body.message_id,
               file_url: file.url,
               file_name: file.originalName,
@@ -98,8 +100,8 @@ export function registerUploadRoutes(app: Express) {
           );
         }
 
-        console.log('Upload completed successfully:', fileInfo);
-        res.json(fileInfo);
+        console.log('Upload completed successfully:', uploadedFiles);
+        res.json(uploadedFiles);
       } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ 

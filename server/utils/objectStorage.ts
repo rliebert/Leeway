@@ -45,19 +45,10 @@ export class ObjectStorageService {
         throw new Error(`Failed to verify upload: ${verifyError}`);
       }
 
-      // Get a direct URL for the file
-      const { ok: urlOk, value: url, error: urlError } = await this.client.createPresignedUrl(objectKey, {
-        expires: 365 * 24 * 60 * 60 // 1 year expiry
-      });
-
-      if (!urlOk || !url) {
-        throw new Error(`Failed to generate URL: ${urlError}`);
-      }
-
       console.log(`File uploaded and verified successfully: ${objectKey}`);
 
       return {
-        url,
+        url: `https://objectstorage.replit.com/${objectKey}`,
         objectKey
       };
     } catch (error) {
@@ -69,18 +60,6 @@ export class ObjectStorageService {
   async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
     console.log(`Attempting to upload ${files.length} files`);
     return Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
-  }
-
-  async getFileUrl(objectKey: string): Promise<string> {
-    const { ok, value: url, error } = await this.client.createPresignedUrl(objectKey, {
-      expires: 365 * 24 * 60 * 60 // 1 year expiry
-    });
-
-    if (!ok || !url) {
-      throw new Error(`Failed to generate URL: ${error}`);
-    }
-
-    return url;
   }
 }
 
