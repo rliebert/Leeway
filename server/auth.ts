@@ -5,10 +5,24 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users } from "@db/schema";
+import { users, type User } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+
+declare module "express-session" {
+  interface SessionData {
+    passport: {
+      user: string;  // UUID string
+    };
+  }
+}
+
+declare global {
+  namespace Express {
+    interface User extends User {}
+  }
+}
 
 const scryptAsync = promisify(scrypt);
 
@@ -16,11 +30,13 @@ const scryptAsync = promisify(scrypt);
 const MemoryStore = createMemoryStore(session);
 export const sessionStore = new MemoryStore({
   checkPeriod: 86400000, // prune expired entries every 24h
+  noDisposeOnSet: true, // prevent session disposal on set
+  touchAfter: 24 * 3600 // time period in seconds to force session updates
 });
 
 // Cache for deserialized users to prevent frequent database queries
-const userCache = new Map<number, Express.User>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const userCache = new Map<string, Express.User>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 // Crypto utilities for password hashing
 const crypto = {
@@ -50,6 +66,7 @@ const loginSchema = z.object({
 const registrationSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email().optional(),
 });
 
 export function setupAuth(app: Express) {
@@ -63,6 +80,8 @@ export function setupAuth(app: Express) {
       sameSite: "lax",
     },
     store: sessionStore,
+    name: 'connect.sid',
+    rolling: true
   };
 
   app.use(session(sessionSettings));
@@ -71,11 +90,13 @@ export function setupAuth(app: Express) {
 
   // Serialize/deserialize user
   passport.serializeUser((user: Express.User, done) => {
-    console.log('Serializing user:', user.id);
+    if (!user.id) {
+      return done(new Error('User has no ID'));
+    }
     done(null, user.id);
   });
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     try {
       // Check cache first
       const cachedUser = userCache.get(id);
@@ -83,15 +104,12 @@ export function setupAuth(app: Express) {
         return done(null, cachedUser);
       }
 
-      console.log('Cache miss, deserializing user from database:', id);
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id))
-        .limit(1);
+      // Cache miss - load from database
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, id),
+      });
 
       if (!user) {
-        console.error('User not found:', id);
         return done(null, false);
       }
 
@@ -101,7 +119,6 @@ export function setupAuth(app: Express) {
 
       done(null, user);
     } catch (err) {
-      console.error('Error deserializing user:', err);
       done(err);
     }
   });
@@ -109,11 +126,9 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.username, username))
-          .limit(1);
+        const user = await db.query.users.findFirst({
+          where: eq(users.username, username),
+        });
 
         if (!user) {
           return done(null, false, { message: "Incorrect username." });
@@ -124,10 +139,6 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Incorrect password." });
         }
 
-        // Cache the user on successful login
-        userCache.set(user.id, user);
-        setTimeout(() => userCache.delete(user.id), CACHE_TTL);
-
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -135,60 +146,7 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Registration endpoint
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const result = registrationSchema.safeParse(req.body);
-      if (!result.success) {
-        const errorMessage = result.error.issues.map(i => i.message).join(", ");
-        return res.status(400).send(errorMessage);
-      }
-
-      const { username, password } = result.data;
-
-      // Check if user already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.username, username))
-        .limit(1);
-
-      if (existingUser) {
-        return res.status(400).send("Username already exists");
-      }
-
-      // Hash the password
-      const hashedPassword = await crypto.hash(password);
-
-      // Create the new user
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          username,
-          password: hashedPassword,
-        })
-        .returning();
-
-      // Cache the new user
-      userCache.set(newUser.id, newUser);
-      setTimeout(() => userCache.delete(newUser.id), CACHE_TTL);
-
-      // Log the user in after registration
-      req.login(newUser, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({
-          message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username },
-        });
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Login endpoint
+  // Authentication routes
   app.post("/api/login", (req, res, next) => {
     const result = loginSchema.safeParse(req.body);
     if (!result.success) {
@@ -210,44 +168,80 @@ export function setupAuth(app: Express) {
           return next(err);
         }
 
-        console.log('User logged in successfully:', user.id);
         return res.json({
           message: "Login successful",
-          user,
+          user: { id: user.id, username: user.username },
         });
       });
     })(req, res, next);
   });
 
-  // Logout endpoint
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      const result = registrationSchema.safeParse(req.body);
+      if (!result.success) {
+        const errorMessage = result.error.issues.map(i => i.message).join(", ");
+        return res.status(400).send(errorMessage);
+      }
+
+      const { username, password, email } = result.data;
+
+      // Check if user already exists
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.username, username),
+      });
+
+      if (existingUser) {
+        return res.status(400).send("Username already exists");
+      }
+
+      // Hash the password
+      const hashedPassword = await crypto.hash(password);
+
+      // Create the new user
+      const [newUser] = await db.insert(users)
+        .values({
+          username,
+          password: hashedPassword,
+          email,
+        })
+        .returning();
+
+      // Log the user in after registration
+      req.login(newUser, (err) => {
+        if (err) {
+          return next(err);
+        }
+        return res.json({
+          message: "Registration successful",
+          user: { id: newUser.id, username: newUser.username },
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.post("/api/logout", (req, res) => {
     if (!req.user) {
       return res.status(401).send("Not logged in");
     }
 
     const userId = req.user.id;
-    console.log('User logging out:', userId);
-
-    // Remove from cache on logout
     userCache.delete(userId);
 
     req.logout((err) => {
       if (err) {
-        console.error('Logout error:', err);
         return res.status(500).send("Logout failed");
       }
-      console.log('User logged out successfully:', userId);
       res.json({ message: "Logout successful" });
     });
   });
 
-  // Get current user endpoint
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
-      console.log('Current user:', req.user?.id);
       return res.json(req.user);
     }
-    console.log('No authenticated user');
     res.status(401).send("Not logged in");
   });
 }

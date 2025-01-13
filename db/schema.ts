@@ -2,10 +2,11 @@ import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, varchar, json 
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  email: text("email").unique().notNull(),
+  email: text("email"),  // Make email optional since our auth flow uses username/password
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
   full_name: text("full_name"),
@@ -17,11 +18,18 @@ export const users = pgTable("users", {
   is_admin: boolean("is_admin").default(false).notNull(),
 });
 
-export const sessions = pgTable("session", {
-  sid: varchar("sid").primaryKey(),
-  sess: json("sess").notNull(),
-  expire: timestamp("expire", { precision: 6 }).notNull(),
+// Update schema validation
+export const insertUserSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email().optional(),
 });
+
+export const selectUserSchema = createSelectSchema(users);
+
+// Export types
+export type User = typeof users.$inferSelect;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export const sections = pgTable("sections", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -114,24 +122,8 @@ export const fileAttachmentsRelations = relations(file_attachments, ({ one }) =>
   }),
 }));
 
-
-// Export schemas for validation
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
-
-// Export types
-export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+// Additional type exports
+export type Channel = typeof channels.$inferSelect;
+export type Section = typeof sections.$inferSelect;
+export type Message = typeof messages.$inferSelect;
 export type FileAttachment = typeof file_attachments.$inferSelect;
-export type Message = typeof messages.$inferSelect & {
-  author?: User;
-  attachments?: FileAttachment[];
-};
-export type Channel = typeof channels.$inferSelect & {
-  section?: typeof sections.$inferSelect;
-  creator?: User;
-};
-export type Section = typeof sections.$inferSelect & {
-  creator?: User;
-  channels?: Channel[];
-};
