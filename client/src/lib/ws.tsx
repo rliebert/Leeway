@@ -188,8 +188,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
                       return {
                         ...attachment,
                         originalName: fileName,
-                        url: window.location.origin + `/uploads/${fileName}`,
-                        file_url: window.location.origin + `/uploads/${fileName}`,
+                        url: `/uploads/${fileName}`,
+                        file_url: `/uploads/${fileName}`,
                         mimetype: attachment.file_type || attachment.mimetype || attachment.type
                       };
                     })
