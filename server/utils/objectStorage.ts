@@ -8,8 +8,6 @@ interface UploadResult {
 
 export class ObjectStorageService {
   private bucketId: string;
-  private baseUploadUrl: string;
-  private baseAccessUrl: string;
 
   constructor() {
     const bucketId = process.env.REPLIT_BUCKET_ID;
@@ -17,29 +15,26 @@ export class ObjectStorageService {
       throw new Error('Object Storage configuration error: Missing REPLIT_BUCKET_ID environment variable');
     }
     this.bucketId = bucketId;
-    this.baseUploadUrl = `https://cdn.replit.com/_next/static/storage/entries/${this.bucketId}`;
-    this.baseAccessUrl = `https://objectstorage.replit.com/v2/entries/${this.bucketId}`;
   }
 
   private generateUniqueFileName(originalName: string): string {
     const ext = path.extname(originalName);
     const timestamp = Date.now();
     const uuid = randomUUID();
-    return `uploads/${timestamp}-${uuid}${ext}`;
+    return `${timestamp}-${uuid}${ext}`;
   }
 
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
       const objectKey = this.generateUniqueFileName(originalFilename);
-      const uploadUrl = `${this.baseUploadUrl}/${objectKey}`;
+      const uploadUrl = `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
 
       const response = await fetch(uploadUrl, {
         method: 'PUT',
         body: buffer,
         headers: {
           'Content-Type': this.getContentType(originalFilename),
-          'X-Replit-Bucket': this.bucketId,
-          'Cache-Control': 'max-age=3600'
+          'X-Replit-Bucket': this.bucketId
         }
       });
 
@@ -48,7 +43,7 @@ export class ObjectStorageService {
         throw new Error(`Upload failed: ${response.status} - ${errorText}`);
       }
 
-      const resultUrl = `${this.baseAccessUrl}/${objectKey}`;
+      const resultUrl = `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
       console.log(`File uploaded successfully: ${resultUrl}`);
 
       return {
@@ -84,7 +79,7 @@ export class ObjectStorageService {
   }
 
   getPublicUrl(objectKey: string): string {
-    return `${this.baseAccessUrl}/${objectKey}`;
+    return `https://object-storage.${process.env.REPL_SLUG}.repl.co/${this.bucketId}/${objectKey}`;
   }
 }
 
