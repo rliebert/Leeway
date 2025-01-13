@@ -1,0 +1,54 @@
+ […
+User authenticated, proceeding with upload
+Validating file: 7860356.jpg type: image/jpeg
+File type accepted: image/jpeg
+Processing 1 files for upload...
+Files received: [ { name: '7860356.jpg', size: 254106, type: 'image/jpeg' } ]
+Starting upload process for 7860356.jpg (254106 bytes)
+Starting file upload process for: 7860356.jpg
+File size: 254106 bytes
+Generated unique filename: 1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg from original: 7860356.jpg
+Generated object key: 1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg
+Uploading to Object Storage...
+Upload successful
+Verifying uploaded file...
+File verification successful
+Generated file URL: https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg
+Upload success for file: {
+  originalName: '7860356.jpg',
+  size: 254106,
+  mimeType: 'image/jpeg',
+  uploadedUrl: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg',
+  objectKey: '1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg'
+}
+Sending successful response with file attachments: [
+  {
+    url: 'https://replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9.replit.dev/1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg',
+    objectKey: '1736740972843-3c7fdbd9-1303-4a06-b8f7-3080032010a8.jpg',
+    name: '7860356.jpg',
+    type: 'image/jpeg',
+    size: 254106
+  }
+]
+4:02:53 AM [express] POST /api/upload 200 in 1003ms :: [{"url":"https://replit-objstore-b3c162de-10d…
+Processing message with attachments: 1 attachments
+Error handling message: Error: No transactions support in neon-http driver
+    at NeonHttpSession.transaction (/home/runner/workspace/node_modules/src/neon-http/session.ts:221:9)
+    at NeonHttpDatabase.transaction (/home/runner/workspace/node_modules/src/pg-core/db.ts:627:23)
+    at WebSocket.<anonymous> (/home/runner/workspace/server/websocket.ts:182:55)
+    at WebSocket.emit (node:events:518:28)
+    at Receiver.receiverOnMessage (/home/runner/workspace/node_modules/ws/lib/websocket.js:1220:20)
+    at Receiver.emit (node:events:518:28)
+    at Receiver.dataMessage (/home/runner/workspace/node_modules/ws/lib/receiver.js:596:14)
+    at Receiver.getData (/home/runner/workspace/node_modules/ws/lib/receiver.js:496:10)
+    at Receiver.startLoop (/home/runner/workspace/node_modules/ws/lib/receiver.js:167:16)
+    at Receiver._write (/home/runner/workspace/node_modules/ws/lib/receiver.js:94:10)
+    at writeOrBuffer (node:internal/streams/writable:572:12)
+    at _write (node:internal/streams/writable:501:10)
+    at Writable.write (node:internal/streams/writable:510:10)
+    at Socket.socketOnData (/home/runner/workspace/node_modules/ws/lib/websocket.js:1355:35)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TCP.onStreamRead (node:internal/stream_base_commons:191:23)
