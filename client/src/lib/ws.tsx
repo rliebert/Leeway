@@ -20,11 +20,12 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping";
+  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted";
   channelId?: string;
   content?: string;
   parentId?: string;
-  attachments?: string[];
+  messageId?: string;
+  attachments?: any[];
 }
 
 const WSContext = createContext<WSContextType>({
@@ -45,6 +46,31 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messageQueue] = useState<WSMessage[]>([]);
   const { toast } = useToast();
   const { user } = useUser();
+
+  // Helper function to normalize attachment URLs
+  const normalizeAttachmentUrls = (message: any) => {
+    if (!message.attachments || !Array.isArray(message.attachments)) {
+      return message;
+    }
+
+    const baseUrl = window.location.origin;
+    return {
+      ...message,
+      attachments: message.attachments.map((attachment: any) => {
+        const fileName = attachment.file_name || attachment.originalName;
+        // Ensure we have a clean file URL path
+        const fileUrl = attachment.file_url || attachment.url;
+        const cleanFileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
+        return {
+          ...attachment,
+          originalName: fileName,
+          url: `${baseUrl}/uploads/${cleanFileUrl}`,
+          file_url: `${baseUrl}/uploads/${cleanFileUrl}`,
+          mimetype: attachment.file_type || attachment.mimetype || attachment.type
+        };
+      })
+    };
+  };
 
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | undefined;
@@ -179,25 +205,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
 
             if (data.type === "message" && data.message) {
-              const messageWithAttachments = {
-                ...data.message,
-                attachments: Array.isArray(data.message.attachments)
-                  ? data.message.attachments.map((attachment: any) => {
-                      const fileName = attachment.file_name || attachment.originalName;
-                      const baseUrl = window.location.origin;
-                      // Ensure we have a clean file URL path
-                      const fileUrl = attachment.file_url || attachment.url;
-                      const cleanFileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
-                      return {
-                        ...attachment,
-                        originalName: fileName,
-                        url: `${baseUrl}/uploads/${cleanFileUrl}`,
-                        file_url: `${baseUrl}/uploads/${cleanFileUrl}`,
-                        mimetype: attachment.file_type || attachment.mimetype || attachment.type
-                      };
-                    })
-                  : [],
-              };
+              const messageWithAttachments = normalizeAttachmentUrls(data.message);
 
               setMessages((prev) => {
                 const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
@@ -213,14 +221,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message_deleted") {
               console.log('Handling message deletion:', data);
               setMessages(prev => {
-                // Create a new array with filtered messages
-                const filtered = prev.filter(msg => {
-                  const isNotDeleted = msg.id !== data.messageId;
-                  const isNotReply = msg.parent_id !== data.messageId;
-                  return isNotDeleted && isNotReply;
-                });
-                console.log('Messages after deletion:', filtered);
-                return filtered;
+                // Remove the deleted message and its replies
+                return prev.filter(msg => 
+                  msg.id !== data.messageId && msg.parent_id !== data.messageId
+                );
               });
             }
           } catch (error) {

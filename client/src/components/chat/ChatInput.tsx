@@ -65,22 +65,30 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         console.log('ChatInput: Files uploaded successfully:', attachments);
       }
 
+      // Normalize attachment URLs before sending
+      const normalizedAttachments = attachments.map((attachment: any) => {
+        const baseUrl = window.location.origin;
+        const fileUrl = attachment.url.replace(/^\//, '');
+        return {
+          ...attachment,
+          url: `${baseUrl}/${fileUrl}`,
+          file_url: `${baseUrl}/${fileUrl}`,
+          originalName: attachment.originalName,
+          mimetype: attachment.mimetype,
+          file_type: attachment.mimetype,
+          file_size: attachment.size
+        };
+      });
+
       // Send message through WebSocket
-      console.log('ChatInput: Sending message with attachments:', attachments);
+      console.log('ChatInput: Sending message with normalized attachments:', normalizedAttachments);
 
       send({
         type: "message",
         channelId: channelId.toString(),
         content: message.trim() || "(attachment)",
         parentId: parentMessageId,
-        attachments: attachments.map((attachment: any) => ({
-          url: attachment.url.replace(/^\//, ''),  // Remove leading slash if present
-          originalName: attachment.originalName,
-          mimetype: attachment.mimetype,
-          file_size: attachment.size,
-          file_url: attachment.url.replace(/^\//, ''), // Ensure consistent url format
-          file_type: attachment.mimetype
-        })),
+        attachments: normalizedAttachments,
       });
 
       // Reset form state

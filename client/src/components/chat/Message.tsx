@@ -15,14 +15,8 @@ interface FileAttachment {
   originalName: string;
   mimetype: string;
   file_size: number;
-}
-
-interface FileAttachment {
-  url: string;
-  originalName: string;
-  mimetype: string;
-  file_size: number;
-  path: string;
+  file_url?: string;
+  file_type?: string;
 }
 
 interface MessageProps {
@@ -64,6 +58,15 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   });
 
   const replyCount = allReplies.length;
+
+  // Helper function to normalize file URLs
+  const normalizeFileUrl = (attachment: FileAttachment): string => {
+    const baseUrl = window.location.origin;
+    // Try different URL fields and clean them
+    let fileUrl = attachment.file_url || attachment.url;
+    fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
+    return `${baseUrl}/uploads/${fileUrl}`;
+  };
 
   // Helper function to check if file is an image
   const isImageFile = (mimetype?: string): boolean => {
@@ -151,17 +154,17 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               <div className="mt-2 space-y-2">
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => isImageFile(file.mimetype))
+                    .filter(file => isImageFile(file.mimetype || file.file_type))
                     .map((file, index) => (
                       <a 
                         key={index}
-                        href={file.url}
+                        href={normalizeFileUrl(file)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block max-w-xs hover:opacity-90 transition-opacity"
                       >
                         <img
-                          src={file.url}
+                          src={normalizeFileUrl(file)}
                           alt={file.originalName}
                           className="rounded-md max-h-48 object-cover"
                         />
@@ -171,11 +174,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => !isImageFile(file.mimetype))
+                    .filter(file => !isImageFile(file.mimetype || file.file_type))
                     .map((file, index) => (
                       <a
                         key={index}
-                        href={file.url}
+                        href={normalizeFileUrl(file)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
@@ -228,17 +231,17 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         <div className="mt-2 space-y-2">
                           <div className="flex flex-wrap gap-2">
                             {reply.attachments
-                              .filter(file => isImageFile(file.mimetype))
+                              .filter(file => isImageFile(file.mimetype || file.file_type))
                               .map((file, index) => (
                                 <a 
                                   key={index}
-                                  href={file.url}
+                                  href={normalizeFileUrl(file)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="block max-w-xs hover:opacity-90 transition-opacity"
                                 >
                                   <img
-                                    src={file.url}
+                                    src={normalizeFileUrl(file)}
                                     alt={file.originalName}
                                     className="rounded-md max-h-48 object-cover"
                                   />
@@ -248,11 +251,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
                           <div className="flex flex-wrap gap-2">
                             {reply.attachments
-                              .filter(file => !isImageFile(file.mimetype))
+                              .filter(file => !isImageFile(file.mimetype || file.file_type))
                               .map((file, index) => (
                                 <a
                                   key={index}
-                                  href={file.url}
+                                  href={normalizeFileUrl(file)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
