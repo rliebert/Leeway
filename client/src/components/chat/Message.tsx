@@ -66,8 +66,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const replyCount = allReplies.length;
 
   // Helper function to check if file is an image
-  const isImageFile = (mimetype: string): boolean => {
-    return mimetype.startsWith('image/');
+  const isImageFile = (mimetype?: string): boolean => {
+    return mimetype ? mimetype.startsWith('image/') : false;
   };
 
   const formatTimestamp = (date: string | Date | null): string => {

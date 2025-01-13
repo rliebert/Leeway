@@ -195,11 +195,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message" && data.message) {
               const messageWithAttachments = {
                 ...data.message,
-                attachments: data.message.attachments?.map((attachment: any) => ({
-                  ...attachment,
-                  url: attachment.file_url || `/uploads/${attachment.file_name}`,
-                  file_url: attachment.file_url || `/uploads/${attachment.file_name}`
-                }))
+                attachments: Array.isArray(data.message.attachments) 
+                  ? data.message.attachments.map((attachment: any) => ({
+                      ...attachment,
+                      url: attachment.file_url || `/uploads/${attachment.file_name}`,
+                      file_url: attachment.file_url || `/uploads/${attachment.file_name}`,
+                      mimetype: attachment.file_type || attachment.mimetype
+                    }))
+                  : []
               };
 
               setMessages((prev) => {
