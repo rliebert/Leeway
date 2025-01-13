@@ -1,7 +1,6 @@
 import { type Express } from "express";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 import express from "express";
 import { db } from "@db";
 import { file_attachments } from "@db/schema";
@@ -12,9 +11,16 @@ const storage = multer.memoryStorage();
 const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
   try {
     const bucket = process.env.REPLIT_BUCKET_ID;
-    if (!bucket) throw new Error('Object Storage bucket not configured');
+    if (!bucket) {
+      console.error('Object Storage configuration error: Missing bucket ID');
+      throw new Error('Object Storage bucket not configured');
+    }
 
+    // Generate a unique filename to prevent collisions
     const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
+
+    console.log(`Attempting to upload file to Object Storage: ${objectKey}`);
+
     const response = await fetch(`https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`, {
       method: 'POST',
       body: buffer,
@@ -26,11 +32,13 @@ const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Upload response:', response.status, errorText);
-      throw new Error(`Object Storage upload failed: ${errorText}`);
+      console.error('Upload failed:', response.status, errorText);
+      throw new Error(`Object Storage upload failed: ${response.status} - ${errorText}`);
     }
 
-    return `https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`;
+    const fileUrl = `https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`;
+    console.log(`File uploaded successfully: ${fileUrl}`);
+    return fileUrl;
   } catch (error) {
     console.error('Object Storage upload error:', error);
     throw error;
@@ -52,8 +60,10 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
+    console.log(`File type accepted: ${file.mimetype}`);
     cb(null, true);
   } else {
+    console.log(`File type rejected: ${file.mimetype}`);
     cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
   }
 };
@@ -68,10 +78,6 @@ const upload = multer({
 });
 
 export function registerUploadRoutes(app: Express) {
-  // Serve uploaded files -  No longer needed as files are served from CDN
-  // app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-  // Handle file uploads for messages
   app.post('/api/upload', 
     (req, res, next) => {
       if (!req.isAuthenticated()) {
@@ -83,8 +89,8 @@ export function registerUploadRoutes(app: Express) {
       upload.array('files', 5)(req, res, (err) => {
         if (err) {
           console.error('Upload middleware error:', err);
-          return res.status(500).json({ 
-            error: err.message || 'File upload failed',
+          return res.status(400).json({ 
+            error: 'File upload failed',
             details: err instanceof Error ? err.message : 'Unknown error'
           });
         }
@@ -99,9 +105,12 @@ export function registerUploadRoutes(app: Express) {
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
+        console.log(`Processing ${files.length} files for upload`);
+
         const fileUrls = await Promise.all(files.map(async file => {
-          const objectKey = await uploadToObjectStorage(file.buffer, file.originalname);
-          return objectKey;
+          console.log(`Uploading file: ${file.originalname} (${file.size} bytes)`);
+          const objectUrl = await uploadToObjectStorage(file.buffer, file.originalname);
+          return objectUrl;
         }));
 
         // Return file info
@@ -112,6 +121,7 @@ export function registerUploadRoutes(app: Express) {
           size: files[index].size,
         }));
 
+        console.log('Upload completed successfully:', fileInfo);
         res.json(fileInfo);
       } catch (error) {
         console.error('Upload error:', error);

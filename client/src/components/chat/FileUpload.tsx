@@ -1,6 +1,7 @@
 import { ChangeEvent, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface FileUploadProps {
   onFileSelect: (files: File[]) => void;
@@ -18,8 +19,9 @@ export function FileUpload({
   maxSize = 5 * 1024 * 1024, // 5MB default
 }: FileUploadProps) {
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     console.log('FileUpload: handleFileChange triggered');
     const selectedFiles = Array.from(e.target.files || []);
     console.log('FileUpload: Selected files:', selectedFiles.map(f => f.name));
@@ -40,7 +42,40 @@ export function FileUpload({
       return;
     }
 
-    onFileSelect(selectedFiles);
+    try {
+      // Create FormData and append files
+      const formData = new FormData();
+      selectedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+
+      // Upload files
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error);
+      }
+
+      const uploadedFiles = await response.json();
+      console.log('FileUpload: Files uploaded successfully:', uploadedFiles);
+
+      onFileSelect(selectedFiles);
+      toast({
+        description: "Files uploaded successfully",
+      });
+    } catch (error) {
+      console.error('FileUpload: Upload failed:', error);
+      toast({
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to upload files",
+      });
+    }
+
     e.target.value = ''; // Reset input
   };
 
