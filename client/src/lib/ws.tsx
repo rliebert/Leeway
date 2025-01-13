@@ -189,7 +189,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
                       return {
                         ...attachment,
                         originalName: fileName,
-                        url: `${baseUrl}/uploads/${attachment.file_url}`,
+                        url: attachment.file_url,
                         file_url: attachment.file_url,
                         path: attachment.file_url,
                         mimetype: attachment.file_type || attachment.mimetype || attachment.type
