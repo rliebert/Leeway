@@ -1,50 +1,11 @@
 import { type Express } from "express";
 import multer from "multer";
-import path from "path";
-import express from "express";
+import { objectStorage } from "../utils/objectStorage";
 import { db } from "@db";
 import { file_attachments } from "@db/schema";
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
-
-const uploadToObjectStorage = async (buffer: Buffer, filename: string) => {
-  try {
-    const bucket = process.env.REPLIT_BUCKET_ID;
-    if (!bucket) {
-      console.error('Object Storage configuration error: Missing bucket ID');
-      throw new Error('Object Storage bucket not configured');
-    }
-
-    // Generate a unique filename to prevent collisions
-    const objectKey = `uploads/${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(filename)}`;
-
-    console.log(`Attempting to upload file to Object Storage: ${objectKey}`);
-
-    const response = await fetch(`https://cdn.replit.com/_next/static/storage/entries/${bucket}/${objectKey}`, {
-      method: 'PUT',
-      body: buffer,
-      headers: { 
-        'Content-Type': 'application/octet-stream',
-        'X-Replit-Bucket': bucket,
-        'Cache-Control': 'max-age=3600'
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Upload failed:', response.status, errorText);
-      throw new Error(`Object Storage upload failed: ${response.status} - ${errorText}`);
-    }
-
-    const fileUrl = `https://objectstorage.replit.com/v2/entries/${bucket}/${objectKey}`;
-    console.log(`File uploaded successfully: ${fileUrl}`);
-    return fileUrl;
-  } catch (error) {
-    console.error('Object Storage upload error:', error);
-    throw error;
-  }
-};
 
 // File size and type validation
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
@@ -108,19 +69,34 @@ export function registerUploadRoutes(app: Express) {
 
         console.log(`Processing ${files.length} files for upload`);
 
-        const fileUrls = await Promise.all(files.map(async file => {
-          console.log(`Uploading file: ${file.originalname} (${file.size} bytes)`);
-          const objectUrl = await uploadToObjectStorage(file.buffer, file.originalname);
-          return objectUrl;
-        }));
+        const uploadResults = await objectStorage.uploadMultipleFiles(
+          files.map(file => ({
+            buffer: file.buffer,
+            originalname: file.originalname
+          }))
+        );
 
         // Return file info
-        const fileInfo = fileUrls.map((url, index) => ({
-          url: url,
+        const fileInfo = uploadResults.map((result, index) => ({
+          url: result.url,
+          objectKey: result.objectKey,
           originalName: files[index].originalname,
           mimetype: files[index].mimetype,
           size: files[index].size,
         }));
+
+        // Store file attachments in database if needed
+        if (req.body.message_id) {
+          await db.insert(file_attachments).values(
+            fileInfo.map(file => ({
+              message_id: req.body.message_id,
+              file_url: file.url,
+              file_name: file.originalName,
+              file_type: file.mimetype,
+              file_size: file.size,
+            }))
+          );
+        }
 
         console.log('Upload completed successfully:', fileInfo);
         res.json(fileInfo);
