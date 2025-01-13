@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -51,7 +52,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
     let reconnectTimeout: NodeJS.Timeout;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 5;
-    const initialDelay = 1000; // Start with 1 second delay
+    const initialDelay = 1000;
 
     const connect = () => {
       if (!user) {
@@ -60,20 +61,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        // Get the current location
         const loc = window.location;
-
-        // Determine WebSocket protocol and host
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
         const wsHost = loc.host;
         const wsPath = "/ws";
-
-        // Construct WebSocket URL
         const wsUrl = `${wsProtocol}//${wsHost}${wsPath}`;
 
         console.log(`Attempting WebSocket connection to: ${wsUrl}`);
 
-        // Close existing socket if any
         if (socket?.readyState === WebSocket.OPEN) {
           console.log("Closing existing WebSocket connection");
           socket.close();
@@ -81,14 +76,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         const ws = new WebSocket(wsUrl);
 
-        // Add error event listener for more detailed error logging
         ws.addEventListener("error", (error) => {
           console.error("WebSocket Error:", error);
           setError("Connection error. Please check console for details.");
         });
-        let connectionTimeout: NodeJS.Timeout;
 
-        // Set connection timeout
+        let connectionTimeout: NodeJS.Timeout;
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
             console.log("WebSocket connection timeout, closing socket");
@@ -101,14 +94,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
           console.log("WebSocket connection established successfully");
           clearTimeout(connectionTimeout);
 
-          // Set up heartbeat
           heartbeatInterval = setInterval(() => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: "ping" }));
             }
           }, 15000);
 
-          // Send any queued messages
           while (messageQueue.length > 0) {
             const msg = messageQueue.shift();
             if (msg) ws.send(JSON.stringify(msg));
@@ -119,7 +110,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
           reconnectAttempts = 0;
           setSocket(ws);
 
-          // Send initial ping to verify connection
           ws.send(JSON.stringify({ type: "ping" }));
         };
 
@@ -132,19 +122,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
           setConnected(false);
           setSocket(null);
 
-          // Don't reconnect on normal closure
           if (event.code === 1000 || event.code === 1001) {
             console.log("Clean WebSocket closure, not attempting reconnect");
             return;
           }
 
-          // Don't reconnect if user is not logged in
           if (!user) {
             console.log("User not logged in, skipping reconnection");
             return;
           }
 
-          // Implement exponential backoff for reconnection
           if (reconnectAttempts < maxReconnectAttempts) {
             const delay = Math.min(
               initialDelay * Math.pow(1.5, reconnectAttempts),
@@ -215,7 +202,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 }
                 return [...prev, messageWithAttachments];
               });
-</old_str>
             }
 
             if (data.type === "message_deleted") {
@@ -288,7 +274,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const subscribe = (channelId: string) => {
     if (channelId) {
       console.log("Subscribing to channel:", channelId);
-      setMessages([]); // Clear existing messages
+      setMessages([]);
       send({ type: "subscribe", channelId });
     }
   };
