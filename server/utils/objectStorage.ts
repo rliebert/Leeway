@@ -13,14 +13,16 @@ export class ObjectStorageService {
 
   constructor() {
     try {
-      console.log('Initializing Object Storage service...');
+      // Initialize the client
       this.client = new Client();
 
+      // Get the bucket ID from environment variable
       const bucketId = process.env.REPLIT_OBJECT_STORE_BUCKET_ID;
       if (!bucketId) {
         throw new Error('Object Storage bucket ID not configured');
       }
 
+      // Use the replit.dev domain format for the bucket URL
       this.bucketUrl = `https://${bucketId}.replit.dev`;
       console.log('Object Storage service initialized with bucket URL:', this.bucketUrl);
     } catch (error) {
@@ -33,9 +35,7 @@ export class ObjectStorageService {
     const ext = path.extname(originalName);
     const timestamp = Date.now();
     const uuid = randomUUID();
-    const fileName = `${timestamp}-${uuid}${ext}`;
-    console.log('Generated unique filename:', fileName, 'from original:', originalName);
-    return fileName;
+    return `${timestamp}-${uuid}${ext}`;
   }
 
   private validateUrl(url: string): void {
@@ -48,28 +48,22 @@ export class ObjectStorageService {
 
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
-      console.log('Starting file upload process for:', originalFilename);
-      console.log('File size:', buffer.length, 'bytes');
-
       const objectKey = this.generateUniqueFileName(originalFilename);
-      console.log('Generated object key:', objectKey);
+      console.log('Attempting to upload file:', objectKey);
 
-      console.log('Uploading to Object Storage...');
+      // Upload the file using uploadFromBytes
       const { ok, error } = await this.client.uploadFromBytes(objectKey, buffer);
       if (!ok) {
-        console.error('Upload failed:', error);
         throw new Error(`Upload failed: ${error}`);
       }
-      console.log('Upload successful');
 
-      console.log('Verifying uploaded file...');
+      // Verify the upload by attempting to download
       const { ok: verifyOk, error: verifyError } = await this.client.downloadAsBytes(objectKey);
       if (!verifyOk) {
-        console.error('Verification failed:', verifyError);
         throw new Error(`Failed to verify upload: ${verifyError}`);
       }
-      console.log('File verification successful');
 
+      // Construct and validate the URL
       const fileUrl = new URL(objectKey, this.bucketUrl).toString();
       console.log('Generated file URL:', fileUrl);
 
@@ -84,31 +78,25 @@ export class ObjectStorageService {
   }
 
   async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
-    console.log(`Starting batch upload of ${files.length} files`);
-    const results = await Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
-    console.log('Batch upload completed');
-    return results;
+    console.log(`Attempting to upload ${files.length} files`);
+    return Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
   }
 
   async verifyFile(objectKey: string): Promise<boolean> {
-    console.log('Verifying file:', objectKey);
     const { ok, error } = await this.client.downloadAsBytes(objectKey);
     if (!ok) {
       console.error(`File verification failed: ${error}`);
       return false;
     }
-    console.log('File verification successful:', objectKey);
     return true;
   }
 
   async deleteFile(objectKey: string): Promise<boolean> {
-    console.log('Attempting to delete file:', objectKey);
     const { ok, error } = await this.client.delete(objectKey);
     if (!ok) {
       console.error(`File deletion failed: ${error}`);
       return false;
     }
-    console.log('File deletion successful:', objectKey);
     return true;
   }
 }

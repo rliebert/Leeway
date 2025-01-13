@@ -9,8 +9,6 @@ const storage = multer.memoryStorage();
 
 // File size and type validation
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  console.log('Validating file:', file.originalname, 'type:', file.mimetype);
-
   const allowedTypes = [
     // Images
     'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -28,7 +26,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
     console.log(`File type accepted: ${file.mimetype}`);
     cb(null, true);
   } else {
-    console.error(`File type rejected: ${file.mimetype}`);
+    console.log(`File type rejected: ${file.mimetype}`);
     cb(new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`));
   }
 };
@@ -43,20 +41,18 @@ const upload = multer({
 });
 
 export function registerUploadRoutes(app: Express) {
-  app.post('/api/upload',
+  app.post('/api/upload', 
     (req, res, next) => {
       if (!req.isAuthenticated()) {
-        console.error('Upload attempt without authentication');
         return res.status(401).json({ error: 'Authentication required' });
       }
-      console.log('User authenticated, proceeding with upload');
       next();
     },
     (req, res, next) => {
       upload.array('files', 5)(req, res, (err) => {
         if (err) {
           console.error('Upload middleware error:', err);
-          return res.status(400).json({
+          return res.status(400).json({ 
             error: 'File upload failed',
             details: err instanceof Error ? err.message : 'Unknown error'
           });
@@ -68,22 +64,21 @@ export function registerUploadRoutes(app: Express) {
       try {
         const files = req.files as Express.Multer.File[];
         if (!files || files.length === 0) {
-          console.error('No files in upload request');
           return res.status(400).json({ error: 'No files uploaded' });
         }
 
         console.log(`Processing ${files.length} files for upload...`);
-        console.log('Files received:', files.map(f => ({ name: f.originalname, size: f.size, type: f.mimetype })));
 
-        // Upload files to object storage and create standardized response
+        // Process each file individually
         const fileAttachments = await Promise.all(
           files.map(async (file) => {
-            console.log(`Starting upload process for ${file.originalname} (${file.size} bytes)`);
+            console.log(`Uploading file ${file.originalname} (${file.size} bytes)...`);
 
             // Upload to object storage
             const uploadResult = await objectStorage.uploadFile(file.buffer, file.originalname);
 
-            console.log('Upload success for file:', {
+            // Log upload result for debugging
+            console.log('Upload result:', {
               originalName: file.originalname,
               size: file.size,
               mimeType: file.mimetype,
@@ -91,49 +86,45 @@ export function registerUploadRoutes(app: Express) {
               objectKey: uploadResult.objectKey
             });
 
-            // Return standardized file information
             return {
-              url: uploadResult.url,
+              url: uploadResult.url,        // Use the URL directly from object storage
               objectKey: uploadResult.objectKey,
               name: file.originalname,
               type: file.mimetype,
-              size: file.size
+              size: file.size              // Use the actual file size
             };
           })
         );
 
-        // If message_id is provided, create attachment records
+        // Store file attachments in database if message_id is provided
         if (req.body.message_id) {
-          console.log('Creating database records for attachments with message_id:', req.body.message_id);
+          console.log('Creating database records for attachments...');
 
-          try {
-            const attachmentRecords = fileAttachments.map(file => ({
-              message_id: req.body.message_id,
-              file_url: file.url,
-              file_name: file.name,
-              file_type: file.type,
-              file_size: file.size
-            }));
+          // Prepare attachment records
+          const attachmentRecords = fileAttachments.map(file => ({
+            message_id: req.body.message_id,
+            file_url: file.url,            // Use the correct URL from object storage
+            file_name: file.name,
+            file_type: file.type,
+            file_size: file.size           // Use the actual file size
+          }));
 
-            console.log('Creating attachment records:', attachmentRecords);
-            const attachments = await db.insert(file_attachments)
-              .values(attachmentRecords)
-              .returning();
+          // Log the records we're about to insert
+          console.log('Attachment records to insert:', attachmentRecords);
 
-            console.log('Created attachment records:', attachments);
-          } catch (error) {
-            console.error('Failed to create attachment records:', error);
-            throw error;
-          }
+          // Insert the records
+          const attachments = await db.insert(file_attachments)
+            .values(attachmentRecords)
+            .returning();
+
+          console.log('Successfully created attachment records:', attachments);
         }
 
         // Return the file information to the client
-        console.log('Sending successful response with file attachments:', fileAttachments);
         res.json(fileAttachments);
-
       } catch (error) {
-        console.error('Upload process error:', error);
-        res.status(500).json({
+        console.error('Upload error:', error);
+        res.status(500).json({ 
           error: 'Upload failed',
           details: error instanceof Error ? error.message : 'Unknown error'
         });
