@@ -216,7 +216,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
             if (data.type === "message_deleted" && data.messageId) {
               console.log('Handling message deletion:', data.messageId);
               setMessages((prev) => {
-                const updated = prev.filter((msg) => msg.id !== data.messageId);
+                // Include channel check to ensure we only filter messages from current channel
+                const updated = prev.filter((msg) => 
+                  msg.id !== data.messageId && 
+                  msg.parent_id !== data.messageId // Also remove any replies
+                );
                 console.log('Updated messages after deletion:', updated);
                 return updated;
               });
