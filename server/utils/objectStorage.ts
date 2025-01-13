@@ -49,7 +49,7 @@ export class ObjectStorageService {
       }
 
       // Construct the URL using the correct format for Replit Object Storage
-      const fileUrl = `https://objectstorage.replit.com/${this.bucketId}/${objectKey}`;
+      const fileUrl = `https://${this.bucketId}.replit.dev/${objectKey}`;
       console.log('Generated file URL:', fileUrl);
 
       return {

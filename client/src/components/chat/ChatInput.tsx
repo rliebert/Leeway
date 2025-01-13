@@ -62,7 +62,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         }
 
         attachments = await response.json();
-        console.log('ChatInput: Files uploaded successfully:', attachments);
+        console.log('ChatInput: Upload response:', attachments);
       }
 
       // Send message through WebSocket
@@ -75,9 +75,9 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         parentId: parentMessageId,
         attachments: attachments.map((attachment: any) => ({
           url: attachment.url,
-          originalName: attachment.originalName || attachment.name,  // Handle both formats
-          mimetype: attachment.fileType || attachment.type,  // Handle both formats
-          size: attachment.fileSize || attachment.size  // Handle both formats
+          originalName: attachment.originalName,
+          mimetype: attachment.fileType,
+          size: attachment.fileSize
         })),
       });
 

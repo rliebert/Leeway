@@ -10,14 +10,6 @@ import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 
 interface FileAttachment {
-  id: string;
-  url: string;
-  originalName: string;
-  mimetype: string;
-  file_size: number;
-}
-
-interface FileAttachment {
   url: string;
   originalName: string;
   mimetype: string;
@@ -164,6 +156,10 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                           src={file.url}
                           alt={file.originalName}
                           className="rounded-md max-h-48 object-cover"
+                          onError={(e) => {
+                            console.error('Image failed to load:', file.url);
+                            e.currentTarget.style.display = 'none';
+                          }}
                         />
                       </a>
                     ))}
@@ -241,6 +237,10 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                                     src={file.url}
                                     alt={file.originalName}
                                     className="rounded-md max-h-48 object-cover"
+                                    onError={(e) => {
+                                      console.error('Image failed to load:', file.url);
+                                      e.currentTarget.style.display = 'none';
+                                    }}
                                   />
                                 </a>
                               ))}
