@@ -8,6 +8,7 @@ import React, {
 import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
+import { debugLogger } from './debug';
 
 interface WSContextType {
   messages: Message[];
@@ -17,6 +18,8 @@ interface WSContextType {
   error: string | null;
   subscribe: (channelId: string) => void;
   unsubscribe: (channelId: string) => void;
+  toggleDebug: () => void;
+  isDebugEnabled: () => boolean;
 }
 
 interface WSMessage {
@@ -36,6 +39,8 @@ const WSContext = createContext<WSContextType>({
   error: null,
   subscribe: () => {},
   unsubscribe: () => {},
+  toggleDebug: () => {},
+  isDebugEnabled: () => false,
 });
 
 export function WSProvider({ children }: { children: ReactNode }) {
@@ -56,7 +61,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
     const connect = () => {
       if (!user) {
-        console.log("No user logged in, skipping WebSocket connection");
+        debugLogger.info("No user logged in, skipping WebSocket connection");
         return;
       }
 
@@ -65,10 +70,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${loc.host}/ws`;
 
-        console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+        debugLogger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
 
         if (socket?.readyState === WebSocket.OPEN) {
-          console.log("Closing existing WebSocket connection");
+          debugLogger.debug("Closing existing WebSocket connection");
           socket.close();
         }
 
@@ -77,14 +82,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
         let connectionTimeout: NodeJS.Timeout;
         connectionTimeout = setTimeout(() => {
           if (ws.readyState !== WebSocket.OPEN) {
-            console.log("WebSocket connection timeout, closing socket");
+            debugLogger.error("WebSocket connection timeout, closing socket");
             ws.close(1000, "Connection timeout");
             setError("Connection timeout");
           }
         }, 10000);
 
         ws.onopen = () => {
-          console.log("WebSocket connection established");
+          debugLogger.startGroup("WebSocket Connected");
+          debugLogger.info("WebSocket connection established");
           clearTimeout(connectionTimeout);
 
           heartbeatInterval = setInterval(() => {
@@ -104,73 +110,28 @@ export function WSProvider({ children }: { children: ReactNode }) {
           setSocket(ws);
 
           ws.send(JSON.stringify({ type: "ping" }));
-        };
-
-        ws.onclose = (event) => {
-          console.log(`WebSocket closed with code: ${event.code}`);
-          clearTimeout(connectionTimeout);
-          if (heartbeatInterval) clearInterval(heartbeatInterval);
-          setConnected(false);
-          setSocket(null);
-
-          if (event.code === 1000 || event.code === 1001) {
-            console.log("Clean WebSocket closure");
-            return;
-          }
-
-          if (!user) {
-            console.log("User not logged in, skipping reconnection");
-            return;
-          }
-
-          if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(
-              initialDelay * Math.pow(1.5, reconnectAttempts),
-              15000
-            );
-            console.log(
-              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
-            );
-
-            reconnectTimeout = setTimeout(() => {
-              if (!connected) {
-                reconnectAttempts++;
-                connect();
-              }
-            }, delay);
-          } else {
-            console.log("Max reconnection attempts reached");
-            setError("Connection lost. Please refresh the page.");
-            toast({
-              variant: "destructive",
-              description: "Unable to connect to chat server. Please refresh the page.",
-              duration: 5000,
-            });
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error("WebSocket error:", error);
-          setError("Connection error occurred");
+          debugLogger.endGroup();
         };
 
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            console.log('WebSocket message received:', data);
+            debugLogger.startGroup(`WebSocket Message: ${data.type}`);
+            debugLogger.debug('Received message', data);
 
             if (data.type === "pong" || data.type === "connected") {
+              debugLogger.debug(`Received ${data.type} message`);
+              debugLogger.endGroup();
               return;
             }
 
             const normalizeMessage = (message: any) => {
               if (!message) {
-                console.warn('Attempted to normalize undefined message');
+                debugLogger.error('Attempted to normalize undefined message');
                 return null;
               }
 
-              console.log('Original message:', message);
-              // Ensure consistent field names and types between initial load and updates
+              debugLogger.debug('Normalizing message input', message);
               const normalized = {
                 ...message,
                 id: message.id?.toString(),
@@ -191,92 +152,139 @@ export function WSProvider({ children }: { children: ReactNode }) {
                     }))
                   : []
               };
-
-              console.log('Normalized message:', normalized);
+              debugLogger.debug('Normalized message output', normalized);
               return normalized;
             };
 
             const updateMessageInState = (messageData: any) => {
               const normalizedMessage = normalizeMessage(messageData);
               if (!normalizedMessage) {
-                console.warn('Failed to normalize message:', messageData);
+                debugLogger.error('Failed to normalize message', messageData);
                 return;
               }
 
-              console.log('Updating message state with:', normalizedMessage);
+              debugLogger.debug('Attempting to update message state with', normalizedMessage);
 
               setMessages((prevMessages) => {
-                // Find existing message by ID (ensure string comparison)
                 const existingIndex = prevMessages.findIndex(
                   (msg) => msg.id?.toString() === normalizedMessage.id?.toString()
                 );
-                console.log('Existing message index:', existingIndex);
+                debugLogger.debug('Found existing message at index', existingIndex);
 
                 if (existingIndex > -1) {
-                  // Update existing message while preserving fields
-                  const updatedMessages = [...prevMessages];
                   const existingMessage = prevMessages[existingIndex];
+                  debugLogger.debug('Existing message', existingMessage);
 
+                  const updatedMessages = [...prevMessages];
                   updatedMessages[existingIndex] = {
-                    ...existingMessage,  // Keep existing fields
-                    ...normalizedMessage, // Apply updates
-                    // Ensure critical fields are present and normalized
+                    ...normalizedMessage,
+                    // Ensure we keep the message ID consistent
                     id: normalizedMessage.id,
-                    content: normalizedMessage.content,
-                    updated_at: new Date().toISOString(),
+                    // Preserve any fields that might not be in the update
                     author: normalizedMessage.author || existingMessage.author,
-                    attachments: normalizedMessage.attachments || existingMessage.attachments
+                    attachments: normalizedMessage.attachments || existingMessage.attachments,
+                    // Force update timestamp
+                    updated_at: new Date().toISOString()
                   };
 
-                  console.log('Updated message:', updatedMessages[existingIndex]);
+                  debugLogger.debug('Updated message state', {
+                    before: existingMessage,
+                    after: updatedMessages[existingIndex]
+                  });
+
                   return updatedMessages;
                 }
 
-                // Add new message
+                debugLogger.debug('No existing message found, adding new message');
                 return [...prevMessages, normalizedMessage];
               });
             };
 
             switch (data.type) {
               case "message":
-                if (data.message) {
-                  console.log('Processing new message:', data.message);
-                  updateMessageInState(data.message);
-                }
-                break;
-
               case "message_edited":
                 if (data.message) {
-                  console.log('Processing edited message:', data.message);
+                  debugLogger.debug(`Processing ${data.type}`, data.message);
                   updateMessageInState(data.message);
                 }
                 break;
 
               case "message_deleted":
-                console.log('Processing message deletion:', data);
+                debugLogger.debug('Processing message deletion', data);
                 setMessages((prevMessages) =>
                   prevMessages.filter(
-                    (msg) => 
-                      msg.id?.toString() !== data.messageId?.toString() && 
+                    (msg) =>
+                      msg.id?.toString() !== data.messageId?.toString() &&
                       msg.parent_id?.toString() !== data.messageId?.toString()
                   )
                 );
                 break;
             }
+            debugLogger.endGroup();
           } catch (error) {
-            console.error('Error processing WebSocket message:', error);
+            debugLogger.error('Error processing WebSocket message:', error);
             setError('Error processing message');
           }
         };
+
+        ws.onclose = (event) => {
+          debugLogger.info(`WebSocket closed with code: ${event.code}`);
+          clearTimeout(connectionTimeout);
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          setConnected(false);
+          setSocket(null);
+
+          if (event.code === 1000 || event.code === 1001) {
+            debugLogger.info("Clean WebSocket closure");
+            return;
+          }
+
+          if (!user) {
+            debugLogger.info("User not logged in, skipping reconnection");
+            return;
+          }
+
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(
+              initialDelay * Math.pow(1.5, reconnectAttempts),
+              15000
+            );
+            debugLogger.info(
+              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
+            );
+
+            reconnectTimeout = setTimeout(() => {
+              if (!connected) {
+                reconnectAttempts++;
+                connect();
+              }
+            }, delay);
+          } else {
+            debugLogger.error("Max reconnection attempts reached");
+            setError("Connection lost. Please refresh the page.");
+            toast({
+              variant: "destructive",
+              description: "Unable to connect to chat server. Please refresh the page.",
+              duration: 5000,
+            });
+          }
+        };
+
+        ws.onerror = (error) => {
+          debugLogger.error("WebSocket error:", error);
+          setError("Connection error occurred");
+        };
       } catch (error) {
-        console.error("Error creating WebSocket connection:", error);
+        debugLogger.error("Error creating WebSocket connection:", error);
         setError("Failed to create connection");
       }
     };
 
+    debugLogger.enable();
     connect();
 
     return () => {
+      debugLogger.disable();
       clearTimeout(reconnectTimeout);
       if (heartbeatInterval) {
         clearInterval(heartbeatInterval);
@@ -290,29 +298,29 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const send = (data: WSMessage) => {
     if (!socket) {
-      console.log("No socket connection, queueing message");
+      debugLogger.warn("No socket connection, queueing message");
       messageQueue.push(data);
       return;
     }
 
     if (socket.readyState === WebSocket.CONNECTING) {
-      console.log("Socket still connecting, queueing message");
+      debugLogger.warn("Socket still connecting, queueing message");
       messageQueue.push(data);
       return;
     }
 
     if (socket.readyState !== WebSocket.OPEN) {
-      console.log("Socket not open, reconnecting");
+      debugLogger.warn("Socket not open, reconnecting");
       messageQueue.push(data);
       socket.close();
       return;
     }
 
     try {
-      console.log('Sending WebSocket message:', data);
+      debugLogger.debug('Sending WebSocket message:', data);
       socket.send(JSON.stringify(data));
     } catch (error) {
-      console.error("Error sending message:", error);
+      debugLogger.error("Error sending message:", error);
       messageQueue.push(data);
       toast({
         variant: "destructive",
@@ -324,7 +332,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const subscribe = (channelId: string) => {
     if (channelId) {
-      console.log("Subscribing to channel:", channelId);
+      debugLogger.info("Subscribing to channel:", channelId);
       setMessages([]);
       send({ type: "subscribe", channelId });
     }
@@ -332,9 +340,21 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
   const unsubscribe = (channelId: string) => {
     if (channelId) {
-      console.log("Unsubscribing from channel:", channelId);
+      debugLogger.info("Unsubscribing from channel:", channelId);
       send({ type: "unsubscribe", channelId });
     }
+  };
+
+  const toggleDebug = () => {
+    if (debugLogger.isEnabled()) {
+      debugLogger.disable();
+    } else {
+      debugLogger.enable();
+    }
+  };
+
+  const isDebugEnabled = () => {
+    return debugLogger.isEnabled();
   };
 
   return (
@@ -347,6 +367,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
         error,
         subscribe,
         unsubscribe,
+        toggleDebug,
+        isDebugEnabled,
       }}
     >
       {children}

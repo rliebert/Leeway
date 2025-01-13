@@ -1,0 +1,2148 @@
+Fetching existing messages for channel: 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+7:17:54 PM [express] GET /api/messages/64def421-0188-4c33-89d0-3d5c11a8d00b/replies 304 in 74ms :: []
+Found messages: 11
+Processing message for initial load: 64def421-0188-4c33-89d0-3d5c11a8d00b
+Normalizing message: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  updated_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 6bb10d75-3280-4288-82a4-c8410a08b920
+Normalizing message: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  updated_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e
+Normalizing message: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  updated_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 25c15b91-6dca-4cc2-a22e-2e4b8e5411d8
+Normalizing message: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  updated_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6
+Normalizing message: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  updated_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 1a5e3984-5d0b-4428-b398-658fc8a568df
+Normalizing message: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  updated_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c9dcada3-8020-4775-a586-e8e0f78bba05
+Normalizing message: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  updated_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 3913db3a-6345-4aeb-9f86-180d8cf496fc
+Normalizing message: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  updated_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c6cc78d2-02df-4cd2-83d4-644faf2c31ca
+Normalizing message: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  updated_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d7736944-192e-4123-ba2e-c1dd7e8b3aed
+Normalizing message: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  updated_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 9bd11b01-a845-4b16-b5af-eb767222f1c2
+Normalizing message: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      message_id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+      file_url: 'uploads/1736789200668-940065606.jpg',
+      file_name: '7860356.jpg',
+      file_type: 'image/jpeg',
+      file_size: 0,
+      created_at: 2025-01-13T17:26:40.805Z
+    }
+  ]
+}
+Normalized result: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  updated_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      url: 'uploads/1736789200668-940065606.jpg',
+      originalName: '7860356.jpg',
+      mimetype: 'image/jpeg',
+      file_size: 0
+    }
+  ]
+}
+Found messages: 11
+Processing message for initial load: 64def421-0188-4c33-89d0-3d5c11a8d00b
+Normalizing message: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  updated_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 6bb10d75-3280-4288-82a4-c8410a08b920
+Normalizing message: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  updated_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e
+Normalizing message: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  updated_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 25c15b91-6dca-4cc2-a22e-2e4b8e5411d8
+Normalizing message: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  updated_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6
+Normalizing message: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  updated_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 1a5e3984-5d0b-4428-b398-658fc8a568df
+Normalizing message: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  updated_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c9dcada3-8020-4775-a586-e8e0f78bba05
+Normalizing message: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  updated_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 3913db3a-6345-4aeb-9f86-180d8cf496fc
+Normalizing message: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  updated_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c6cc78d2-02df-4cd2-83d4-644faf2c31ca
+Normalizing message: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  updated_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d7736944-192e-4123-ba2e-c1dd7e8b3aed
+Normalizing message: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  updated_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 9bd11b01-a845-4b16-b5af-eb767222f1c2
+Normalizing message: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      message_id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+      file_url: 'uploads/1736789200668-940065606.jpg',
+      file_name: '7860356.jpg',
+      file_type: 'image/jpeg',
+      file_size: 0,
+      created_at: 2025-01-13T17:26:40.805Z
+    }
+  ]
+}
+Normalized result: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  updated_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      url: 'uploads/1736789200668-940065606.jpg',
+      originalName: '7860356.jpg',
+      mimetype: 'image/jpeg',
+      file_size: 0
+    }
+  ]
+}
+7:17:54 PM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 304 in 86ms :: […
+7:17:54 PM [express] GET /api/messages/c9dcada3-8020-4775-a586-e8e0f78bba05/replies 304 in 87ms :: []
+7:17:54 PM [express] GET /api/messages/64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6/replies 304 in 86ms :: []
+7:17:54 PM [express] GET /api/messages/1a5e3984-5d0b-4428-b398-658fc8a568df/replies 304 in 89ms :: []
+WebSocket connected for user: 1120df3e-2a36-4772-b21c-dde059ba2a70
+7:17:55 PM [express] GET /api/messages/3913db3a-6345-4aeb-9f86-180d8cf496fc/replies 304 in 75ms :: []
+7:17:55 PM [express] GET /api/messages/6bb10d75-3280-4288-82a4-c8410a08b920/replies 304 in 183ms :: …
+7:17:55 PM [express] GET /api/messages/9bd11b01-a845-4b16-b5af-eb767222f1c2/replies 304 in 68ms :: []
+7:17:55 PM [express] GET /api/messages/c6cc78d2-02df-4cd2-83d4-644faf2c31ca/replies 304 in 70ms :: []
+7:17:55 PM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 304 in 71ms :: […
+7:17:55 PM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 304 in 70ms :: […
+7:17:55 PM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 304 in 69ms :: […
+7:17:55 PM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 304 in 69ms :: […
+WebSocket closed for user: 1120df3e-2a36-4772-b21c-dde059ba2a70
+WebSocket closed for user: 1120df3e-2a36-4772-b21c-dde059ba2a70
+7:18:02 PM [express] GET /api/user 304 in 53ms :: {"id":"1120df3e-2a36-4772-b21c-dde059ba2a70","emai…
+7:18:03 PM [express] GET /api/sections 304 in 71ms :: [{"id":"772a02fd-7843-4c37-8b0c-8a0da872e0fa",…
+7:18:03 PM [express] GET /api/channels/592a3c6f-072b-4b24-ba22-0b0d6ff72463/messages 304 in 74ms :: …
+7:18:03 PM [express] GET /api/users 304 in 75ms :: [{"id":"1120df3e-2a36-4772-b21c-dde059ba2a70","em…
+7:18:03 PM [express] GET /api/channels 304 in 120ms :: [{"id":"9a86d16f-0608-4750-9c1b-4e6872be5431"…
+WebSocket connected for user: 1120df3e-2a36-4772-b21c-dde059ba2a70
+User 1120df3e-2a36-4772-b21c-dde059ba2a70 subscribed to channel 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+Fetching existing messages for channel: 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+User 1120df3e-2a36-4772-b21c-dde059ba2a70 unsubscribed from channel 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+User 1120df3e-2a36-4772-b21c-dde059ba2a70 subscribed to channel 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+Fetching existing messages for channel: 592a3c6f-072b-4b24-ba22-0b0d6ff72463
+Found messages: 11
+Processing message for initial load: 64def421-0188-4c33-89d0-3d5c11a8d00b
+Normalizing message: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  updated_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 6bb10d75-3280-4288-82a4-c8410a08b920
+Normalizing message: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  updated_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e
+Normalizing message: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  updated_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 25c15b91-6dca-4cc2-a22e-2e4b8e5411d8
+Normalizing message: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  updated_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6
+Normalizing message: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  updated_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 1a5e3984-5d0b-4428-b398-658fc8a568df
+Normalizing message: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  updated_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c9dcada3-8020-4775-a586-e8e0f78bba05
+Normalizing message: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  updated_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 3913db3a-6345-4aeb-9f86-180d8cf496fc
+Normalizing message: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  updated_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c6cc78d2-02df-4cd2-83d4-644faf2c31ca
+Normalizing message: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  updated_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d7736944-192e-4123-ba2e-c1dd7e8b3aed
+Normalizing message: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  updated_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 9bd11b01-a845-4b16-b5af-eb767222f1c2
+Normalizing message: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      message_id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+      file_url: 'uploads/1736789200668-940065606.jpg',
+      file_name: '7860356.jpg',
+      file_type: 'image/jpeg',
+      file_size: 0,
+      created_at: 2025-01-13T17:26:40.805Z
+    }
+  ]
+}
+Normalized result: {
+  id: '9bd11b01-a845-4b16-b5af-eb767222f1c2',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '... oh, my attachments are back 💀',
+  created_at: 2025-01-13T17:26:40.736Z,
+  updated_at: 2025-01-13T17:26:40.736Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: [
+    {
+      id: '5a62ba04-5024-4827-8221-94f68545725b',
+      url: 'uploads/1736789200668-940065606.jpg',
+      originalName: '7860356.jpg',
+      mimetype: 'image/jpeg',
+      file_size: 0
+    }
+  ]
+}
+Found messages: 11
+Processing message for initial load: 64def421-0188-4c33-89d0-3d5c11a8d00b
+Normalizing message: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64def421-0188-4c33-89d0-3d5c11a8d00b',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Hello World! 🤪',
+  created_at: 2025-01-12T16:17:02.737Z,
+  updated_at: 2025-01-12T16:17:02.737Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 6bb10d75-3280-4288-82a4-c8410a08b920
+Normalizing message: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🪐 ',
+  created_at: 2025-01-12T19:06:53.325Z,
+  updated_at: 2025-01-12T19:06:53.325Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e
+Normalizing message: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: '🚀🚀🚀🚀',
+  created_at: 2025-01-12T19:25:11.812Z,
+  updated_at: 2025-01-12T19:25:11.812Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 25c15b91-6dca-4cc2-a22e-2e4b8e5411d8
+Normalizing message: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '25c15b91-6dca-4cc2-a22e-2e4b8e5411d8',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Where you headed?  To the moon?!!',
+  created_at: 2025-01-12T19:40:35.393Z,
+  updated_at: 2025-01-12T19:40:35.393Z,
+  parent_id: 'd0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6
+Normalizing message: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Did someone say something about the moon?',
+  created_at: 2025-01-12T19:41:38.040Z,
+  updated_at: 2025-01-12T19:41:38.040Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 1a5e3984-5d0b-4428-b398-658fc8a568df
+Normalizing message: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '1a5e3984-5d0b-4428-b398-658fc8a568df',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: '🥮 I like moon cakes! 🥮',
+  created_at: 2025-01-12T19:44:06.928Z,
+  updated_at: 2025-01-12T19:44:06.928Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c9dcada3-8020-4775-a586-e8e0f78bba05
+Normalizing message: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c9dcada3-8020-4775-a586-e8e0f78bba05',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Me too, buddy, me too!  Well, maybe I just love the Moon!!',
+  created_at: 2025-01-12T20:04:58.698Z,
+  updated_at: 2025-01-12T20:04:58.698Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: 3913db3a-6345-4aeb-9f86-180d8cf496fc
+Normalizing message: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Normalized result: {
+  id: '3913db3a-6345-4aeb-9f86-180d8cf496fc',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+  content: 'Realtime testing, baby! 🥨',
+  created_at: 2025-01-12T20:46:54.512Z,
+  updated_at: 2025-01-12T20:46:54.512Z,
+  parent_id: null,
+  author: {
+    id: '70fe3072-9cc0-4dfd-a8b6-4e6e86177bed',
+    email: 'robert@liebert.io',
+    username: 'robert2',
+    password: '625216afa41fa878b3fa83f65378b7d9b10a5fe259613ab9257f79526788b9b6f15feb6de30054e90901aee2a9aaef7d40d8e6b4f02c863c6ab55aa155525905.0c29ec1c69b962ad8f9600b52a4caad4',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: null,
+    created_at: 2025-01-12T06:45:57.388Z,
+    role: 'user',
+    is_admin: false
+  },
+  attachments: []
+}
+Processing message for initial load: c6cc78d2-02df-4cd2-83d4-644faf2c31ca
+Normalizing message: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'c6cc78d2-02df-4cd2-83d4-644faf2c31ca',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'I will now release my attachments on the way to enlightenment...🕊️',
+  created_at: 2025-01-12T23:51:11.083Z,
+  updated_at: 2025-01-12T23:51:11.083Z,
+  parent_id: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Processing message for initial load: d7736944-192e-4123-ba2e-c1dd7e8b3aed
+Normalizing message: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  pinned_by: null,
+  pinned_at: null,
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },
+  attachments: []
+}
+Normalized result: {
+  id: 'd7736944-192e-4123-ba2e-c1dd7e8b3aed',
+  channel_id: '592a3c6f-072b-4b24-ba22-0b0d6ff72463',
+  user_id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+  content: 'Yes!!!!',
+  created_at: 2025-01-13T06:02:34.498Z,
+  updated_at: 2025-01-13T06:02:34.498Z,
+  parent_id: '6bb10d75-3280-4288-82a4-c8410a08b920',
+  author: {
+    id: '1120df3e-2a36-4772-b21c-dde059ba2a70',
+    email: 'robert.liebert@gauntletai.com',
+    username: 'rliebert',
+    password: '09516fe9f0fa53dc5f184c9d8d31f30bc0ec676c1df4cfab02bbfb868c4c683f4f84c7d67eeeb20cccfefee8743e88373890e3cf6f6c4d1509081f654d75fd45.19177b6dac7bfbdeeed2c595ab0884dc',
+    full_name: null,
+    avatar_url: null,
+    status: null,
+    last_active: 2025-01-12T06:19:46.336Z,
+    created_at: 2025-01-11T23:40:34.239Z,
+    role: 'admin',
+    is_admin: true
+  },

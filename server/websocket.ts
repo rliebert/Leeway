@@ -1,10 +1,11 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, channels, users, sections, file_attachments, sessions } from "@db/schema";
+import { messages, file_attachments, sessions } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
+import { serverDebugLogger as debug } from "./debug";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -21,6 +22,11 @@ interface WSMessage {
 }
 
 export function setupWebSocketServer(server: Server) {
+  // Enable debug logging for development
+  if (process.env.NODE_ENV !== 'production') {
+    debug.enable();
+  }
+
   const wss = new WebSocketServer({
     server,
     path: '/ws',
@@ -38,14 +44,14 @@ export function setupWebSocketServer(server: Server) {
         const sessionId = cookies['connect.sid'];
 
         if (!sessionId) {
-          console.error('WebSocket connection rejected: No session cookie');
+          debug.error('WebSocket connection rejected: No session cookie');
           done(false, 401, 'No session cookie');
           return;
         }
 
         const cleanSessionId = decodeURIComponent(sessionId).split('s:')[1]?.split('.')[0];
         if (!cleanSessionId) {
-          console.error('WebSocket connection rejected: Invalid session format');
+          debug.error('WebSocket connection rejected: Invalid session format');
           done(false, 401, 'Invalid session format');
           return;
         }
@@ -55,7 +61,7 @@ export function setupWebSocketServer(server: Server) {
         });
 
         if (!session?.sess) {
-          console.error('WebSocket connection rejected: Invalid session');
+          debug.error('WebSocket connection rejected: Invalid session');
           done(false, 401, 'Invalid session');
           return;
         }
@@ -65,7 +71,7 @@ export function setupWebSocketServer(server: Server) {
           : session.sess;
 
         if (!sessionData?.passport?.user) {
-          console.error('WebSocket connection rejected: No user in session');
+          debug.error('WebSocket connection rejected: No user in session');
           done(false, 401, 'Authentication failed');
           return;
         }
@@ -73,7 +79,7 @@ export function setupWebSocketServer(server: Server) {
         (req as any).userId = sessionData.passport.user;
         done(true);
       } catch (error) {
-        console.error('WebSocket authentication error:', error);
+        debug.error('WebSocket authentication error:', error);
         done(false, 500, 'Internal server error');
       }
     }
@@ -84,7 +90,7 @@ export function setupWebSocketServer(server: Server) {
   const interval = setInterval(() => {
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
-        console.log('Terminating inactive connection for user:', ws.userId);
+        debug.log('Terminating inactive connection for user:', ws.userId);
         return ws.terminate();
       }
       ws.isAlive = false;
@@ -93,7 +99,9 @@ export function setupWebSocketServer(server: Server) {
   }, 15000);
 
   const normalizeMessageForClient = (msg: any) => {
-    console.log('Normalizing message:', msg);
+    debug.startGroup('Normalizing message');
+    debug.debug('Input message:', msg);
+
     const normalized = {
       id: msg.id?.toString(),
       channel_id: msg.channel_id?.toString(),
@@ -111,7 +119,9 @@ export function setupWebSocketServer(server: Server) {
         file_size: Number(attachment.file_size) || 0
       })) || []
     };
-    console.log('Normalized result:', normalized);
+
+    debug.debug('Normalized output:', normalized);
+    debug.endGroup();
     return normalized;
   };
 
@@ -122,7 +132,7 @@ export function setupWebSocketServer(server: Server) {
 
     ws.userId = (request as any).userId?.toString();
     ws.isAlive = true;
-    console.log('WebSocket connected for user:', ws.userId);
+    debug.info('WebSocket connected for user:', ws.userId);
 
     ws.send(JSON.stringify({
       type: 'connected',
@@ -136,9 +146,12 @@ export function setupWebSocketServer(server: Server) {
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
+        debug.startGroup(`Processing message type: ${message.type}`);
+        debug.debug('Received message:', message);
 
         if (message.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
+          debug.endGroup();
           return;
         }
 
@@ -149,10 +162,10 @@ export function setupWebSocketServer(server: Server) {
               channelSubscriptions.set(message.channelId, new Set());
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
-            console.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
+            debug.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
 
             try {
-              console.log('Fetching existing messages for channel:', message.channelId);
+              debug.log('Fetching existing messages for channel:', message.channelId);
               const existingMessages = await db.query.messages.findMany({
                 where: eq(messages.channel_id, message.channelId),
                 with: {
@@ -162,9 +175,9 @@ export function setupWebSocketServer(server: Server) {
                 orderBy: [asc(messages.created_at)],
               });
 
-              console.log('Found messages:', existingMessages.length);
+              debug.log('Found messages:', existingMessages.length);
               existingMessages.forEach(msg => {
-                console.log('Processing message for initial load:', msg.id);
+                debug.log('Processing message for initial load:', msg.id);
                 const normalizedMessage = normalizeMessageForClient(msg);
                 ws.send(JSON.stringify({
                   type: 'message',
@@ -172,7 +185,7 @@ export function setupWebSocketServer(server: Server) {
                 }));
               });
             } catch (error) {
-              console.error('Error fetching message history:', error);
+              debug.error('Error fetching message history:', error);
             }
             break;
           }
@@ -180,7 +193,7 @@ export function setupWebSocketServer(server: Server) {
           case 'unsubscribe': {
             if (!message.channelId) break;
             channelSubscriptions.get(message.channelId)?.delete(ws);
-            console.log(`User ${ws.userId} unsubscribed from channel ${message.channelId}`);
+            debug.log(`User ${ws.userId} unsubscribed from channel ${message.channelId}`);
             break;
           }
 
@@ -205,7 +218,7 @@ export function setupWebSocketServer(server: Server) {
                 }));
 
                 await db.insert(file_attachments).values(attachmentRecords);
-                console.log('Created attachment records:', attachmentRecords);
+                debug.log('Created attachment records:', attachmentRecords);
               }
 
               const messageWithAuthor = await db.query.messages.findFirst({
@@ -218,7 +231,7 @@ export function setupWebSocketServer(server: Server) {
 
               if (messageWithAuthor) {
                 const normalizedMessage = normalizeMessageForClient(messageWithAuthor);
-                console.log('Broadcasting new message:', normalizedMessage);
+                debug.log('Broadcasting new message:', normalizedMessage);
 
                 broadcastToChannel(message.channelId, {
                   type: 'message',
@@ -226,7 +239,7 @@ export function setupWebSocketServer(server: Server) {
                 });
               }
             } catch (error) {
-              console.error('Error handling message:', error);
+              debug.error('Error handling message:', error);
               ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Failed to send message'
@@ -239,9 +252,11 @@ export function setupWebSocketServer(server: Server) {
             if (!message.channelId || !message.messageId || !message.content || !ws.userId) break;
 
             try {
-              console.log('Processing message edit:', {
+              debug.startGroup('Processing message edit');
+              debug.debug('Edit request:', {
                 messageId: message.messageId,
-                content: message.content
+                content: message.content,
+                channelId: message.channelId
               });
 
               await db
@@ -261,17 +276,20 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (updatedMessage) {
-                console.log('Message before normalization:', updatedMessage);
+                debug.debug('Message before normalization:', updatedMessage);
                 const normalizedMessage = normalizeMessageForClient(updatedMessage);
-                console.log('Broadcasting normalized edited message:', normalizedMessage);
+                debug.debug('Broadcasting normalized edited message:', normalizedMessage);
 
                 broadcastToChannel(message.channelId, {
                   type: 'message_edited',
                   message: normalizedMessage
                 });
+              } else {
+                debug.warn('Message not found after update');
               }
+              debug.endGroup();
             } catch (error) {
-              console.error('Error handling message edit:', error);
+              debug.error('Error handling message edit:', error);
               ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Failed to edit message'
@@ -291,7 +309,7 @@ export function setupWebSocketServer(server: Server) {
                 channelId: message.channelId
               });
             } catch (error) {
-              console.error('Error handling message deletion:', error);
+              debug.error('Error handling message deletion:', error);
               ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Failed to delete message'
@@ -300,8 +318,9 @@ export function setupWebSocketServer(server: Server) {
             break;
           }
         }
+        debug.endGroup();
       } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        debug.error('Error processing WebSocket message:', error);
         ws.send(JSON.stringify({
           type: 'error',
           message: 'Failed to process message'
@@ -311,14 +330,14 @@ export function setupWebSocketServer(server: Server) {
 
     ws.on('close', () => {
       ws.isAlive = false;
-      console.log('WebSocket closed for user:', ws.userId);
+      debug.log('WebSocket closed for user:', ws.userId);
       channelSubscriptions.forEach(subscribers => {
         subscribers.delete(ws);
       });
     });
 
     ws.on('error', (error) => {
-      console.error('WebSocket error for user:', ws.userId, error);
+      debug.error('WebSocket error for user:', ws.userId, error);
     });
   });
 
