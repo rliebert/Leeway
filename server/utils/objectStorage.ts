@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import path from "path";
-import * as ObjectStorage from '@replit/object-storage';
+import { Client } from '@replit/object-storage';
 
 interface UploadResult {
   url: string;
@@ -8,15 +8,15 @@ interface UploadResult {
 }
 
 export class ObjectStorageService {
-  private storage: any;
+  private storage: Client;
   private bucketId: string;
 
   constructor() {
     try {
-      this.storage = new ObjectStorage.Client();
+      this.storage = new Client();
 
-      // Get bucket ID from Replit's environment
-      const bucketId = process.env.REPLIT_OBJECT_STORE_BUCKET_ID || process.env.defaultBucketID;
+      // Hard-code the bucket ID from .replit file for testing
+      const bucketId = "replit-objstore-b3c162de-10d0-4ad8-ae54-c8dd3886f1b9";
       if (!bucketId) {
         throw new Error('Object Storage configuration error: Missing bucket ID. Please make sure Object Storage is enabled in your Repl.');
       }
@@ -39,21 +39,18 @@ export class ObjectStorageService {
   async uploadFile(buffer: Buffer, originalFilename: string): Promise<UploadResult> {
     try {
       const objectKey = this.generateUniqueFileName(originalFilename);
-      console.log('Attempting to upload file:', objectKey, 'to bucket:', this.bucketId);
+      console.log('Attempting to upload file:', objectKey);
 
-      await this.storage.put(
+      await this.storage.createObject(
         objectKey,
-        buffer,
-        {
-          'Content-Type': this.getContentType(originalFilename)
-        }
+        buffer
       );
 
-      const resultUrl = this.storage.getPublicUrl(objectKey);
-      console.log(`File uploaded successfully: ${resultUrl}`);
+      const publicUrl = this.storage.getPublicUrl(objectKey);
+      console.log(`File uploaded successfully: ${publicUrl}`);
 
       return {
-        url: resultUrl,
+        url: publicUrl,
         objectKey
       };
     } catch (error) {
@@ -62,26 +59,8 @@ export class ObjectStorageService {
     }
   }
 
-  private getContentType(filename: string): string {
-    const ext = path.extname(filename).toLowerCase();
-    const mimeTypes: Record<string, string> = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.pdf': 'application/pdf',
-      '.doc': 'application/msword',
-      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.txt': 'text/plain',
-      '.mp3': 'audio/mpeg',
-      '.mp4': 'video/mp4',
-      '.zip': 'application/zip'
-    };
-    return mimeTypes[ext] || 'application/octet-stream';
-  }
-
   async uploadMultipleFiles(files: { buffer: Buffer; originalname: string }[]): Promise<UploadResult[]> {
-    console.log(`Attempting to upload ${files.length} files to bucket:`, this.bucketId);
+    console.log(`Attempting to upload ${files.length} files`);
     return Promise.all(files.map(file => this.uploadFile(file.buffer, file.originalname)));
   }
 
