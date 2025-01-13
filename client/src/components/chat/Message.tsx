@@ -14,7 +14,7 @@ interface FileAttachment {
   originalName: string;
   mimetype: string;
   file_size: number;
-  path: string;
+  path?: string;
 }
 
 interface MessageProps {
@@ -58,13 +58,19 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const replyCount = allReplies.length;
 
   // Helper function to check if file is an image
-  const isImageFile = (mimetype?: string): boolean => {
-    return mimetype ? mimetype.startsWith('image/') : false;
+  const isImageFile = (mimetype: string): boolean => {
+    return mimetype.startsWith('image/');
   };
 
   const formatTimestamp = (date: string | Date | null): string => {
     if (!date) return '';
     return new Date(date).toLocaleTimeString();
+  };
+
+  // Function to handle image load errors
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, url: string) => {
+    console.error('Image failed to load:', url);
+    e.currentTarget.style.display = 'none';
   };
 
   useEffect(() => {
@@ -73,6 +79,49 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       queryClient.invalidateQueries({ queryKey: [`/api/messages/${message.id}/replies`] });
     }
   }, [wsMessages, message.id, queryClient]);
+
+  const renderAttachments = (attachments: FileAttachment[]) => (
+    <div className="mt-2 space-y-2">
+      <div className="flex flex-wrap gap-2">
+        {attachments
+          .filter(file => isImageFile(file.mimetype))
+          .map((file, index) => (
+            <a 
+              key={index}
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block max-w-xs hover:opacity-90 transition-opacity"
+            >
+              <img
+                src={file.url}
+                alt={file.originalName}
+                className="rounded-md max-h-48 object-cover"
+                onError={(e) => handleImageError(e, file.url)}
+              />
+            </a>
+          ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {attachments
+          .filter(file => !isImageFile(file.mimetype))
+          .map((file, index) => (
+            <a
+              key={index}
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
+            >
+              <FileIcon className="h-4 w-4" />
+              {file.originalName}
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          ))}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -117,7 +166,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         });
                         if (response.ok) {
                           toast({ description: "Message deleted" });
-                          // Send WebSocket event for deletion
                           ws.send({
                             type: 'message_deleted',
                             channelId: message.channel_id,
@@ -139,51 +187,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
 
-            {message.attachments && message.attachments.length > 0 && (
-              <div className="mt-2 space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {message.attachments
-                    .filter(file => isImageFile(file.mimetype))
-                    .map((file, index) => (
-                      <a 
-                        key={index}
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block max-w-xs hover:opacity-90 transition-opacity"
-                      >
-                        <img
-                          src={file.url}
-                          alt={file.originalName}
-                          className="rounded-md max-h-48 object-cover"
-                          onError={(e) => {
-                            console.error('Image failed to load:', file.url);
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      </a>
-                    ))}
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {message.attachments
-                    .filter(file => !isImageFile(file.mimetype))
-                    .map((file, index) => (
-                      <a
-                        key={index}
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
-                      >
-                        <FileIcon className="h-4 w-4" />
-                        {file.originalName}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    ))}
-                </div>
-              </div>
-            )}
+            {message.attachments && message.attachments.length > 0 && renderAttachments(message.attachments)}
 
             {replyCount > 0 && (
               <Button
@@ -220,51 +224,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       </div>
                       <p className="text-sm mt-1">{reply.content}</p>
 
-                      {reply.attachments && reply.attachments.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                          <div className="flex flex-wrap gap-2">
-                            {reply.attachments
-                              .filter(file => isImageFile(file.mimetype))
-                              .map((file, index) => (
-                                <a 
-                                  key={index}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block max-w-xs hover:opacity-90 transition-opacity"
-                                >
-                                  <img
-                                    src={file.url}
-                                    alt={file.originalName}
-                                    className="rounded-md max-h-48 object-cover"
-                                    onError={(e) => {
-                                      console.error('Image failed to load:', file.url);
-                                      e.currentTarget.style.display = 'none';
-                                    }}
-                                  />
-                                </a>
-                              ))}
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {reply.attachments
-                              .filter(file => !isImageFile(file.mimetype))
-                              .map((file, index) => (
-                                <a
-                                  key={index}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
-                                >
-                                  <FileIcon className="h-4 w-4" />
-                                  {file.originalName}
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              ))}
-                          </div>
-                        </div>
-                      )}
+                      {reply.attachments && reply.attachments.length > 0 && renderAttachments(reply.attachments)}
                     </div>
                   </div>
                 ))}

@@ -184,16 +184,37 @@ export function WSProvider({ children }: { children: ReactNode }) {
               return;
             }
 
+            const normalizeAttachment = (attachment: any) => {
+              // Get URL from either format
+              const url = attachment.file_url || attachment.url;
+
+              // If URL is already absolute (starts with http/https), use it as is
+              if (url.startsWith('http')) {
+                return {
+                  url,
+                  originalName: attachment.file_name || attachment.originalName,
+                  mimetype: attachment.file_type || attachment.mimetype,
+                  size: attachment.file_size || attachment.size,
+                };
+              }
+
+              // Otherwise, construct absolute URL using the current origin
+              const baseUrl = window.location.origin;
+              const normalizedUrl = `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+
+              return {
+                url: normalizedUrl,
+                originalName: attachment.file_name || attachment.originalName,
+                mimetype: attachment.file_type || attachment.mimetype,
+                size: attachment.file_size || attachment.size,
+              };
+            };
+
             if (data.type === "message" && data.message) {
               const messageWithAttachments = {
                 ...data.message,
                 attachments: Array.isArray(data.message.attachments)
-                  ? data.message.attachments.map((attachment: any) => ({
-                      url: attachment.file_url || attachment.url,  // Handle both formats
-                      originalName: attachment.file_name || attachment.originalName,
-                      mimetype: attachment.file_type || attachment.mimetype,
-                      size: attachment.file_size || attachment.size,
-                    }))
+                  ? data.message.attachments.map(normalizeAttachment)
                   : [],
               };
 

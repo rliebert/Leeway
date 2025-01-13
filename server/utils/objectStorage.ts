@@ -48,9 +48,9 @@ export class ObjectStorageService {
         throw new Error(`Upload failed: ${error}`);
       }
 
-      // Construct the URL using the correct format for Replit Object Storage
+      // Always construct the URL with HTTPS and ensure it's a fully qualified URL
       const fileUrl = `https://${this.bucketId}.replit.dev/${objectKey}`;
-      console.log('Generated file URL:', fileUrl);
+      console.log('Generated absolute file URL:', fileUrl);
 
       return {
         url: fileUrl,

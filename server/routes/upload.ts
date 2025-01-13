@@ -73,7 +73,7 @@ export function registerUploadRoutes(app: Express) {
         const uploadResults = await Promise.all(
           files.map(async (file) => {
             try {
-              // Upload to object storage
+              // Upload to object storage and get the absolute HTTPS URL
               const { url, objectKey } = await objectStorage.uploadFile(file.buffer, file.originalname);
 
               // Log upload details
@@ -120,7 +120,7 @@ export function registerUploadRoutes(app: Express) {
           console.log('Created attachment records:', savedAttachments);
         }
 
-        // Return the upload results with consistent property names
+        // Return the upload results
         res.json(uploadResults);
 
       } catch (error) {
