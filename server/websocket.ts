@@ -231,15 +231,25 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) break;
-            // Delete from database first
-            await db.delete(messages)
-              .where(eq(messages.id, message.messageId));
-            // Then broadcast deletion
-            broadcastToChannel(message.channelId, {
-              type: 'message_deleted',
-              messageId: message.messageId,
-              channelId: message.channelId
-            });
+            
+            try {
+              // Delete from database first
+              await db.delete(messages)
+                .where(eq(messages.id, message.messageId));
+
+              // Broadcast deletion immediately
+              broadcastToChannel(message.channelId, {
+                type: 'message_deleted',
+                messageId: message.messageId,
+                channelId: message.channelId
+              });
+            } catch (error) {
+              console.error('Error deleting message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to delete message'
+              }));
+            }
             break;
           }
         }
