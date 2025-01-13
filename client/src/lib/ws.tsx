@@ -47,31 +47,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { user } = useUser();
 
-  // Helper function to normalize attachment URLs
-  const normalizeAttachmentUrls = (message: any) => {
-    if (!message.attachments || !Array.isArray(message.attachments)) {
-      return message;
-    }
-
-    const baseUrl = window.location.origin;
-    return {
-      ...message,
-      attachments: message.attachments.map((attachment: any) => {
-        const fileName = attachment.file_name || attachment.originalName;
-        // Ensure we have a clean file URL path
-        const fileUrl = attachment.file_url || attachment.url;
-        const cleanFileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
-        return {
-          ...attachment,
-          originalName: fileName,
-          url: `${baseUrl}/uploads/${cleanFileUrl}`,
-          file_url: `${baseUrl}/uploads/${cleanFileUrl}`,
-          mimetype: attachment.file_type || attachment.mimetype || attachment.type
-        };
-      })
-    };
-  };
-
   useEffect(() => {
     let heartbeatInterval: NodeJS.Timeout | undefined;
     let reconnectTimeout: NodeJS.Timeout;
@@ -205,9 +180,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
 
             if (data.type === "message" && data.message) {
-              const messageWithAttachments = normalizeAttachmentUrls(data.message);
+              const messageWithAttachments = {
+                ...data.message,
+                attachments: Array.isArray(data.message.attachments)
+                  ? data.message.attachments
+                  : [],
+              };
 
               setMessages((prev) => {
+                // Find and replace existing message or add new one
                 const existingMsgIndex = prev.findIndex(msg => msg.id === messageWithAttachments.id);
                 if (existingMsgIndex > -1) {
                   const newMessages = [...prev];
@@ -220,9 +201,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
             if (data.type === "message_deleted") {
               console.log('Handling message deletion:', data);
-              setMessages(prev => {
-                // Remove the deleted message and its replies
-                return prev.filter(msg => 
+              // Immediately remove the message from the state
+              setMessages(prevMessages => {
+                // Remove both the message and its replies
+                return prevMessages.filter(msg => 
                   msg.id !== data.messageId && msg.parent_id !== data.messageId
                 );
               });

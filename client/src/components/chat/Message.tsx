@@ -21,7 +21,7 @@ interface FileAttachment {
 
 interface MessageProps {
   message: MessageType & {
-    author?: { username: string; avatar_url?: string };
+    author?: { username: string; avatar_url?: string | null };
     attachments?: FileAttachment[];
   };
 }
@@ -36,7 +36,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const ws = useWS();
 
   const { data: replies = [] } = useQuery<(MessageType & {
-    author?: { username: string; avatar_url?: string };
+    author?: { username: string; avatar_url?: string | null };
     attachments?: FileAttachment[];
   })[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
@@ -61,8 +61,13 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   // Helper function to normalize file URLs
   const normalizeFileUrl = (attachment: FileAttachment): string => {
+    // If the URL is already absolute, return it as is
+    if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
+      return attachment.file_url || attachment.url;
+    }
+
     const baseUrl = window.location.origin;
-    // Try different URL fields and clean them
+    // Clean and normalize the URL
     let fileUrl = attachment.file_url || attachment.url;
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
@@ -85,6 +90,38 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
   }, [wsMessages, message.id, queryClient]);
 
+  const handleDeleteMessage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('Are you sure you want to delete this message?')) {
+      try {
+        const response = await fetch(`/api/messages/${message.id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          toast({ description: "Message deleted" });
+          // Send WebSocket event for deletion
+          ws.send({
+            type: 'message_deleted',
+            channelId: message.channel_id || '',
+            messageId: message.id
+          });
+
+          // Optimistically remove the message from the UI
+          ws.setMessages(prev => prev.filter(msg => msg.id !== message.id));
+        } else {
+          throw new Error('Failed to delete message');
+        }
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        toast({ 
+          variant: "destructive",
+          description: "Failed to delete message"
+        });
+      }
+    }
+  };
+
   return (
     <>
       <div 
@@ -94,7 +131,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       >
         <div className="flex gap-4">
           <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
-            <AvatarImage src={message.author?.avatar_url} />
+            <AvatarImage src={message.author?.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/10">
               {message.author?.username?.[0]?.toUpperCase()}
             </AvatarFallback>
@@ -120,28 +157,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                     variant="ghost"
                     size="sm"
                     className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (window.confirm('Are you sure you want to delete this message?')) {
-                        const response = await fetch(`/api/messages/${message.id}`, {
-                          method: 'DELETE',
-                        });
-                        if (response.ok) {
-                          toast({ description: "Message deleted" });
-                          // Send WebSocket event for deletion
-                          ws.send({
-                            type: 'message_deleted',
-                            channelId: message.channel_id,
-                            messageId: message.id
-                          });
-                        } else {
-                          toast({ 
-                            variant: "destructive",
-                            description: "Failed to delete message"
-                          });
-                        }
-                      }
-                    }}
+                    onClick={handleDeleteMessage}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -213,7 +229,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {allReplies.map((reply) => (
                   <div key={reply.id} className="flex gap-4 mt-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={reply.author?.avatar_url} />
+                      <AvatarImage src={reply.author?.avatar_url || undefined} />
                       <AvatarFallback className="bg-primary/10">
                         {reply.author?.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
