@@ -1,0 +1,17 @@
+ […
+WebSocket connected for user: 70fe3072-9cc0-4dfd-a8b6-4e6e86177bed
+WebSocket connected for user: 70fe3072-9cc0-4dfd-a8b6-4e6e86177bed
+Upload response: 403 <?xml version='1.0' encoding='UTF-8'?><Error><Code>AccessDenied</Code><Message>Access denied.</Message><Details>Anonymous caller does not have storage.objects.create access to the Google Cloud Storage object. Permission 'storage.objects.create' denied on resource (or it may not exist).</Details></Error>
+Object Storage upload error: Error: Object Storage upload failed: <?xml version='1.0' encoding='UTF-8'?><Error><Code>AccessDenied</Code><Message>Access denied.</Message><Details>Anonymous caller does not have storage.objects.create access to the Google Cloud Storage object. Permission 'storage.objects.create' denied on resource (or it may not exist).</Details></Error>
+    at uploadToObjectStorage (/home/runner/workspace/server/routes/upload.ts:31:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/upload.ts:104:29)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/server/routes/upload.ts:103:26)
+Upload error: Error: Object Storage upload failed: <?xml version='1.0' encoding='UTF-8'?><Error><Code>AccessDenied</Code><Message>Access denied.</Message><Details>Anonymous caller does not have storage.objects.create access to the Google Cloud Storage object. Permission 'storage.objects.create' denied on resource (or it may not exist).</Details></Error>
+    at uploadToObjectStorage (/home/runner/workspace/server/routes/upload.ts:31:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async <anonymous> (/home/runner/workspace/server/routes/upload.ts:104:29)
+    at async Promise.all (index 0)
+    at async <anonymous> (/home/runner/workspace/server/routes/upload.ts:103:26)
+2:29:06 AM [express] POST /api/upload 500 in 475ms :: {"error":"Upload failed","details":"Object Sto…
