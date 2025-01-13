@@ -182,15 +182,16 @@ export function setupWebSocketServer(server: Server) {
 
               // Create file attachments if any
               if (message.attachments && message.attachments.length > 0) {
-                await Promise.all(message.attachments.map(async (attachment) => {
-                  await db.insert(file_attachments).values({
-                    message_id: newMessage.id,
-                    file_url: attachment.url,
-                    file_name: attachment.originalName,
-                    file_type: attachment.mimetype,
-                    file_size: attachment.size,
-                  });
+                const attachmentRecords = message.attachments.map((attachment) => ({
+                  message_id: newMessage.id,
+                  file_url: attachment.url,
+                  file_name: attachment.originalName,
+                  file_type: attachment.mimetype,
+                  file_size: attachment.size || 0, // Ensure file_size is never null
                 }));
+
+                await db.insert(file_attachments).values(attachmentRecords);
+                console.log('Created attachment records:', attachmentRecords);
               }
 
               // Get message with author and attachments
