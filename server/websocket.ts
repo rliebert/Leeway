@@ -203,12 +203,6 @@ export function setupWebSocketServer(server: Server) {
                 }),
                 attachments: attachmentRecords
               };
-                where: eq(messages.id, newMessage.id),
-                with: {
-                  author: true,
-                  attachments: true,
-                }
-              });
 
               if (messageWithAuthor) {
                 broadcastToChannel(message.channelId, {
