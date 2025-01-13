@@ -210,10 +210,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
               });
             }
 
-            if (data.type === "message_deleted") {
-              setMessages((prev) =>
-                prev.filter((msg) => msg.id !== data.messageId),
-              );
+            if (data.type === "message_deleted" && data.messageId) {
+              console.log('Handling message deletion:', data.messageId);
+              setMessages((prev) => {
+                const updated = prev.filter((msg) => msg.id !== data.messageId);
+                console.log('Updated messages after deletion:', updated);
+                return updated;
+              });
             }
           } catch (error) {
             console.error("Error processing WebSocket message:", error);

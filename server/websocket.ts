@@ -229,9 +229,11 @@ export function setupWebSocketServer(server: Server) {
 
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) break;
+            // Broadcast deletion event immediately to all subscribers
             broadcastToChannel(message.channelId, {
               type: 'message_deleted',
-              messageId: message.messageId
+              messageId: message.messageId,
+              channelId: message.channelId
             });
             break;
           }
