@@ -41,6 +41,11 @@ export default function MessageList({ channelId }: MessageListProps) {
   const allMessages = [
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(wsMsg => {
+      // Skip deleted messages
+      if (wsMsg.type === 'message_deleted') {
+        return false;
+      }
+      
       const isRelevant = 
         wsMsg.channel_id?.toString() === channelId?.toString() && 
         !wsMsg.parent_id &&
@@ -53,7 +58,11 @@ export default function MessageList({ channelId }: MessageListProps) {
       }
       return isRelevant;
     }),
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  ]
+  .filter(msg => !wsMessages.some(wsMsg => 
+    wsMsg.type === 'message_deleted' && wsMsg.messageId === msg.id
+  ))
+  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   // Debug effect for tracking message updates
   useEffect(() => {
