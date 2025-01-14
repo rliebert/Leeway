@@ -14,6 +14,11 @@ interface MessageListProps {
 export default function MessageList({ channelId }: MessageListProps) {
   const { messages: wsMessages, subscribe, unsubscribe } = useWS();
   
+  const { data: initialMessages } = useQuery<MessageType[]>({
+    queryKey: [`/api/channels/${channelId}/messages`],
+    enabled: !!channelId && channelId !== "0", // Only fetch if we have a valid channelId
+  });
+
   useEffect(() => {
     let isActive = true;
 
