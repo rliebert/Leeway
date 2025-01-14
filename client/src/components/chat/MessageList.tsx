@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws.tsx";
 import Message from "@/components/chat/Message";
@@ -13,6 +14,12 @@ interface MessageListProps {
 
 export default function MessageList({ channelId }: MessageListProps) {
   const { messages: wsMessages, subscribe, unsubscribe } = useWS();
+  const { user } = useUser();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
   
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
@@ -40,7 +47,7 @@ export default function MessageList({ channelId }: MessageListProps) {
         unsubscribe(channelId);
       }
     };
-  }, [channelId]);
+  }, [channelId, subscribe, unsubscribe, initialMessages, wsMessages.length]);
 
   useEffect(() => {
     console.log('MessageList: Message State', {
@@ -55,17 +62,6 @@ export default function MessageList({ channelId }: MessageListProps) {
       channelId
     });
   }, [wsMessages, initialMessages, channelId]);
-
-  const { data: initialMessages } = useQuery<MessageType[]>({
-    queryKey: [`/api/channels/${channelId}/messages`],
-    enabled: !!channelId && channelId !== "0", // Only fetch if we have a valid channelId
-  });
-  const { user } = useUser();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [showScrollButton, setShowScrollButton] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const lastMessageRef = useRef<HTMLDivElement>(null);
 
   // Filter out thread replies and combine messages
   const allMessages = [
@@ -129,7 +125,7 @@ export default function MessageList({ channelId }: MessageListProps) {
       // Increment unread count for messages from others when not at bottom
       setUnreadCount(prev => prev + 1);
     }
-  }, [allMessages.length, user?.id]);
+  }, [allMessages.length, user?.id, showScrollButton]);
 
   if (!channelId || channelId === "0") {
     return (
