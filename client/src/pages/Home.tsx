@@ -23,14 +23,10 @@ interface HomeProps {
 export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
+  const [selectedDM, setSelectedDM] = useState<string | null>(null);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-    enabled: !!user,
-  });
-
-  const { data: dmChannels } = useQuery<Channel[]>({
-    queryKey: ["/api/dm/channels"],
     enabled: !!user,
   });
 
@@ -49,17 +45,17 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
 
   if (!user) return null;
 
-  // Check if current channel is a DM channel
-  const isDMChannel = dmChannels?.some(channel => channel.id === localSelectedChannel);
+  const handleSelectDM = (dmId: string) => {
+    setSelectedDM(dmId);
+    setLocalSelectedChannel(null);
+    onSelectChannel(""); // Clear selected channel when switching to DM
+  };
 
   const handleSelectChannel = (channelId: string) => {
     onSelectChannel(channelId);
-    setLocalSelectedChannel(channelId);
+    setSelectedDM(null);
     localStorage.setItem('lastSelectedChannel', channelId);
   };
-
-  const selectedChannelData = channels?.find(c => c.id === localSelectedChannel) || 
-                            dmChannels?.find(c => c.id === localSelectedChannel);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -85,22 +81,22 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
             onSelectChannel={handleSelectChannel}
           />
           <DirectMessageSidebar
-            selectedChannel={localSelectedChannel}
-            onSelectChannel={handleSelectChannel}
+            selectedDM={selectedDM}
+            onSelectDM={handleSelectDM}
           />
           <UserProfile />
         </div>
 
         <div className="flex-1 flex flex-col">
-          {isDMChannel ? (
-            <DirectMessageView channelId={localSelectedChannel || ""} />
+          {selectedDM ? (
+            <DirectMessageView channelId={selectedDM} />
           ) : (
             <>
               <div className="border-b px-6 py-3">
                 <div className="flex items-center gap-2">
                   <Hash className="h-5 w-5 text-muted-foreground" />
                   <h2 className="font-semibold text-lg">
-                    {selectedChannelData?.name}
+                    {channels?.find((c) => c.id === localSelectedChannel)?.name}
                   </h2>
                 </div>
               </div>

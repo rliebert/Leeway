@@ -4,43 +4,55 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, MessageSquare } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { User, Channel } from "@db/schema";
+import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface DirectMessageSidebarProps {
-  selectedChannel: string | null;
-  onSelectChannel: (channelId: string) => void;
+  selectedDM: string | null;
+  onSelectDM: (id: string) => void;
 }
 
-export default function DirectMessageSidebar({ selectedChannel, onSelectChannel }: DirectMessageSidebarProps) {
+export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { user: currentUser } = useUser();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  // Query existing DM channels
-  const { data: dmChannels = [] } = useQuery<Channel[]>({
-    queryKey: ["/api/channels"],
-    select: (channels) => channels.filter(channel => channel.is_dm),
-  });
+  // First try to get existing DM channel
+  const getDMChannel = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/dm/channels/user/${userId}`, {
+        credentials: "include",
+      });
 
-  // Create or get existing DM channel
+      if (response.ok) {
+        const data = await response.json();
+        return data;
+      }
+
+      // If no channel exists (404) or other error, return null
+      return null;
+    } catch (error) {
+      console.error('Error getting DM channel:', error);
+      return null;
+    }
+  };
+
+  // Create new DM channel if needed
   const createDMChannel = async (userId: string) => {
-    const response = await fetch("/api/channels", {
+    const response = await fetch("/api/dm/channels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({
-        is_dm: true,
-        participant_ids: [currentUser?.id, userId],
-        name: `dm_${currentUser?.id}_${userId}`,
-      }),
+      body: JSON.stringify({ userId }),
     });
 
     if (!response.ok) {
@@ -54,25 +66,22 @@ export default function DirectMessageSidebar({ selectedChannel, onSelectChannel 
     if (userId === currentUser?.id) return; // Don't handle self-DMs for now
 
     try {
-      // Check if DM channel already exists
-      const existingChannel = dmChannels.find(channel => 
-        channel.is_dm && 
-        channel.participant_ids?.includes(userId) && 
-        channel.participant_ids?.includes(currentUser?.id || '')
-      );
+      // First try to get existing channel
+      let channel = await getDMChannel(userId);
 
-      let channel;
-      if (existingChannel) {
-        channel = existingChannel;
-      } else {
+      // If no channel exists, create one
+      if (!channel) {
         channel = await createDMChannel(userId);
       }
 
       // Handle the channel result
       if (channel?.id) {
-        onSelectChannel(channel.id);
-        queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-        localStorage.setItem('lastSelectedChannel', channel.id);
+        onSelectDM(channel.id);
+        const newUrl = `/dm/${channel.id}`;
+        if (window.location.pathname !== newUrl) {
+          window.history.pushState({}, '', newUrl);
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
       }
     } catch (error) {
       console.error('Error handling DM:', error);
@@ -123,11 +132,6 @@ export default function DirectMessageSidebar({ selectedChannel, onSelectChannel 
             {sortedUsers.map((user) => {
               const isOnline = isUserOnline(user.last_active);
               const isSelf = user.id === currentUser?.id;
-              const dmChannel = dmChannels.find(channel => 
-                channel.is_dm && 
-                channel.participant_ids?.includes(user.id) && 
-                channel.participant_ids?.includes(currentUser?.id || '')
-              );
 
               return (
                 <div
@@ -135,7 +139,7 @@ export default function DirectMessageSidebar({ selectedChannel, onSelectChannel 
                   onClick={() => handleDMClick(user.id)}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
-                    selectedChannel === dmChannel?.id && "bg-accent"
+                    selectedDM === user.id && "bg-accent"
                   )}
                 >
                   <div className="flex items-center gap-2 flex-1">

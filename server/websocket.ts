@@ -1,7 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments, sessions, channels } from "@db/schema";
+import { messages, file_attachments, sessions } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
@@ -168,33 +168,19 @@ export function setupWebSocketServer(server: Server) {
         switch (message.type) {
           case 'subscribe': {
             if (!message.channelId) break;
-
-            // Get channel info to check access
-            const channel = await db.query.channels.findFirst({
-              where: eq(channels.id, message.channelId),
-            });
-
-            if (!channel) {
-              debug.error(`Channel ${message.channelId} not found`);
-              break;
-            }
-
-            // For DM channels, verify the user is a participant
-            if (channel.is_dm && !channel.participant_ids?.includes(ws.userId || '')) {
-              debug.error(`User ${ws.userId} not authorized for DM channel ${message.channelId}`);
-              break;
-            }
+            const isDirectMessage = message.channelId.startsWith('dm_');
 
             if (!channelSubscriptions.has(message.channelId)) {
               channelSubscriptions.set(message.channelId, new Set());
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
-            debug.log(`User ${ws.userId} subscribed to ${channel.is_dm ? 'DM' : 'channel'} ${message.channelId}`);
+            debug.log(`User ${ws.userId} subscribed to ${isDirectMessage ? 'DM' : 'channel'} ${message.channelId}`);
 
             try {
               debug.log('Fetching existing messages for channel:', message.channelId);
-              const existingMessages = await db.query.messages.findMany({
-                where: eq(messages.channel_id, message.channelId),
+              const messageTable = isDirectMessage ? 'direct_messages' : 'messages';
+              const existingMessages = await db.query[messageTable].findMany({
+                where: eq(messages.channel_id, isDirectMessage ? message.channelId.replace('dm_', '') : message.channelId),
                 with: {
                   author: true,
                   attachments: true,

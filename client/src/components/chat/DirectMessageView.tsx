@@ -2,13 +2,19 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import type { Message, User as UserType, Channel } from "@db/schema";
+import type { Message, User as UserType } from "@db/schema";
 import MessageComponent from "./Message";
 import ChatInput from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useWS } from "@/lib/ws";
+
+interface DirectMessageChannel {
+  id: string;
+  created_at: Date;
+  participants: UserType[];
+}
 
 interface DirectMessageViewProps {
   channelId: string;
@@ -21,10 +27,10 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const { data: channel } = useQuery<Channel>({
-    queryKey: [`/api/channels/${channelId}`],
+  const { data: channel, error } = useQuery<DirectMessageChannel>({
+    queryKey: [`/api/dm/channels/${channelId}`],
     queryFn: async () => {
-      const response = await fetch(`/api/channels/${channelId}`, {
+      const response = await fetch(`/api/dm/channels/${channelId}`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -38,15 +44,16 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
 
   const otherUser = channel?.participants?.find(p => p.id !== user?.id);
 
-  // Subscribe to channel when it's loaded
+  // Subscribe to DM channel when it's loaded
   useEffect(() => {
     if (!channelId || isSubscribed) return;
 
-    subscribe(channelId);
+    const dmChannelId = `dm_${channelId}`;
+    subscribe(dmChannelId);
     setIsSubscribed(true);
 
     return () => {
-      unsubscribe(channelId);
+      unsubscribe(dmChannelId);
       setIsSubscribed(false);
     };
   }, [channelId, subscribe, unsubscribe, isSubscribed]);
@@ -57,7 +64,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     try {
       send({
         type: 'message',
-        channelId: channelId,
+        channelId: `dm_${channelId}`,
         content: content.trim()
       });
     } catch (error) {
@@ -69,10 +76,18 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     }
   };
 
-  // Filter messages for this channel
+  // Filter messages for this DM channel
   const channelMessages = wsMessages.filter(msg => 
-    msg.channel_id === channelId
+    msg.channel_id === `dm_${channelId}` || msg.channel_id === channelId
   );
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-destructive">Error: {error instanceof Error ? error.message : 'Failed to load DM'}</p>
+      </div>
+    );
+  }
 
   if (!channel || !otherUser) {
     return (
