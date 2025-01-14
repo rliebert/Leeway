@@ -165,6 +165,38 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
+        // Import RAG functions at the top of the file
+        const { isQuestion, findSimilarMessages, generateAIResponse } = require('./services/rag');
+
+        // Check if message is a question and should trigger AI response
+        if (message.type === 'message' && message.content && isQuestion(message.content)) {
+          const similarMessages = await findSimilarMessages(message.content);
+          const aiResponse = await generateAIResponse(message.content, similarMessages);
+          
+          // Send AI response as ai.rob
+          const [aiMessage] = await db.insert(messages).values({
+            channel_id: message.channelId,
+            user_id: 'ai.rob', // Assuming ai.rob user ID is created
+            content: aiResponse,
+            parent_id: null,
+          }).returning();
+
+          const messageWithAuthor = await db.query.messages.findFirst({
+            where: eq(messages.id, aiMessage.id),
+            with: {
+              author: true,
+              attachments: true,
+            }
+          });
+
+          if (messageWithAuthor) {
+            broadcastToChannel(message.channelId, {
+              type: 'message',
+              message: normalizeMessageForClient(messageWithAuthor)
+            });
+          }
+        }
+
         switch (message.type) {
           case 'subscribe': {
             if (!message.channelId) break;
