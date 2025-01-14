@@ -52,6 +52,14 @@ export const messages = pgTable("messages", {
   pinned_at: timestamp("pinned_at"),
 });
 
+export const message_embeddings = pgTable("message_embeddings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }).notNull(),
+  user_id: uuid("user_id").references(() => users.id).notNull(),
+  embedding: text("embedding").notNull(),
+  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const file_attachments = pgTable("file_attachments", {
   id: uuid("id").defaultRandom().primaryKey(),
   message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }).notNull(),
