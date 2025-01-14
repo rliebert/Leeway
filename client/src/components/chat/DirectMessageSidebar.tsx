@@ -23,6 +23,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     queryKey: ["/api/users"],
   });
 
+  const [, setLocation] = useLocation();
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       const response = await fetch("/api/dm/channels", {
@@ -39,10 +40,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
       return response.json();
     },
     onSuccess: (data) => {
-      // Navigate to the DM view
-      window.location.href = `/dm/${data.id}`;
-      toast({ description: "Direct message channel created" });
-      // Force a refresh of DM channels
+      setLocation(`/dm/${data.id}`);
+      toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
     },
     onError: (error: Error) => {
