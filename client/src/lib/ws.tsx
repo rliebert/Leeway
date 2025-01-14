@@ -272,7 +272,27 @@ export function WSProvider({ children }: { children: ReactNode }) {
               case "message_edited":
                 if (data.message) {
                   debugLogger.debug(`Processing ${data.type}`, data.message);
-                  updateMessageInState(data.message);
+                  const normalizedMessage = normalizeMessage(data.message);
+                  if (!normalizedMessage) {
+                    debugLogger.error('Failed to normalize message', data.message);
+                    return;
+                  }
+
+                  setMessages(prevMessages => {
+                    const messageIndex = prevMessages.findIndex(msg => 
+                      msg.id?.toString() === normalizedMessage.id?.toString()
+                    );
+
+                    if (messageIndex > -1) {
+                      const updatedMessages = [...prevMessages];
+                      updatedMessages[messageIndex] = {
+                        ...normalizedMessage,
+                        author: normalizedMessage.author || prevMessages[messageIndex].author
+                      };
+                      return updatedMessages;
+                    }
+                    return [...prevMessages, normalizedMessage];
+                  });
                 }
                 break;
 
