@@ -111,13 +111,93 @@ export default function ThreadModal({
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 group">
                   <span className="font-semibold">{parentMessage.author?.username}</span>
                   <span className="text-xs text-muted-foreground">
                     {formatTimestamp(parentMessage.created_at)}
                   </span>
+                  {parentMessage.user_id === user?.id && (
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                        onClick={() => {
+                          setEditingMessageId(parentMessage.id);
+                          setEditContent(parentMessage.content);
+                        }}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (window.confirm('Are you sure you want to delete this message?')) {
+                            const response = await fetch(`/api/messages/${parentMessage.id}`, {
+                              method: 'DELETE',
+                            });
+                            if (response.ok) {
+                              send({
+                                type: 'message_deleted',
+                                channelId: parentMessage.channel_id,
+                                messageId: parentMessage.id
+                              });
+                              onOpenChange(false);
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm mt-1">{parentMessage.content}</p>
+                {editingMessageId === parentMessage.id ? (
+                  <div className="mt-1 space-y-2">
+                    <Textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="min-h-[60px] text-sm"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleEditMessage(parentMessage.id);
+                        }
+                        if (e.key === "Escape") {
+                          setEditingMessageId(null);
+                          setEditContent('');
+                        }
+                      }}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7"
+                        onClick={() => handleEditMessage(parentMessage.id)}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7"
+                        onClick={() => {
+                          setEditingMessageId(null);
+                          setEditContent('');
+                        }}
+                      >
+                        <X className="h-3 w-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm mt-1">{parentMessage.content}</p>
+                )}
               </div>
             </div>
           </div>
