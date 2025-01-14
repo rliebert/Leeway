@@ -42,7 +42,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     },
     onSuccess: (data) => {
       if (data?.id) {
-        onSelectDM(data.id.toString());
+        onSelectDM(data.id);
+        window.history.pushState({}, '', `/dm/${data.id}`);
       }
       toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
@@ -105,7 +106,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
-                    selectedDM && "bg-accent"
+                    selectedDM === user.id && "bg-accent"
                   )}
                 >
                   <div className="flex items-center gap-2 flex-1">
