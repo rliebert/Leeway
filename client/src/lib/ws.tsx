@@ -73,7 +73,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
     const maxReconnectAttempts = 5;
     const initialDelay = 1000;
 
-    const connect = () => {
+    const connect = async () => {
       if (!user) {
         debugLogger.info("No user logged in, skipping WebSocket connection");
         return;
