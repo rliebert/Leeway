@@ -33,12 +33,14 @@ export const sections = pgTable("sections", {
 
 export const channels = pgTable("channels", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").unique().notNull(),
+  name: text("name").notNull(),
   description: text("description"),
   section_id: uuid("section_id").references(() => sections.id),
   creator_id: uuid("creator_id").references(() => users.id),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   order_index: integer("order_index").notNull().default(0),
+  is_dm: boolean("is_dm").default(false).notNull(),
+  participant_ids: uuid("participant_ids").array(),
 });
 
 export const messages = pgTable("messages", {
@@ -96,6 +98,7 @@ export const channelsRelations = relations(channels, ({ one, many }) => ({
     relationName: "creator",
   }),
   messages: many(messages),
+  participants: many(users),
 }));
 
 export const sectionsRelations = relations(sections, ({ one, many }) => ({
@@ -114,7 +117,6 @@ export const fileAttachmentsRelations = relations(file_attachments, ({ one }) =>
   }),
 }));
 
-
 // Export schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
@@ -130,6 +132,7 @@ export type Message = typeof messages.$inferSelect & {
 export type Channel = typeof channels.$inferSelect & {
   section?: typeof sections.$inferSelect;
   creator?: User;
+  participants?: User[];
 };
 export type Section = typeof sections.$inferSelect & {
   creator?: User;

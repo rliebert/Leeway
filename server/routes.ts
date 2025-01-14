@@ -5,7 +5,6 @@ import { messages, channels, users, sections, file_attachments } from "@db/schem
 import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
-import dmRoutes from "./routes/dm";
 import { registerUploadRoutes } from "./routes/upload";
 import type { User, Message, Channel, Section } from "@db/schema";
 import multer from "multer";
@@ -29,7 +28,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Allow images and common document types
     const allowedMimes = [
       'image/jpeg',
       'image/png',
@@ -58,7 +56,6 @@ const requireAuth = (req: any, res: any, next: any) => {
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware first
   setupAuth(app);
-  app.use("/api/dm", requireAuth, dmRoutes);
   registerUploadRoutes(app);
 
   // File upload endpoint
@@ -80,6 +77,177 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('File upload error:', error);
       res.status(500).json({ error: "File upload failed" });
+    }
+  });
+
+  // Channel management endpoints
+  app.post("/api/channels", requireAuth, async (req, res) => {
+    const { name, description, section_id, is_dm, participant_ids } = req.body;
+    try {
+      // For DM channels, validate participants
+      if (is_dm) {
+        if (!participant_ids || !Array.isArray(participant_ids) || participant_ids.length !== 2) {
+          return res.status(400).json({ error: "DM channels require exactly two participants" });
+        }
+
+        // Check if DM channel already exists between these users
+        const existingChannel = await db.query.channels.findFirst({
+          where: and(
+            eq(channels.is_dm, true),
+            eq(channels.participant_ids, participant_ids)
+          ),
+        });
+
+        if (existingChannel) {
+          return res.json(existingChannel);
+        }
+      }
+
+      const [newChannel] = await db.insert(channels).values({
+        name,
+        description,
+        section_id: is_dm ? null : section_id, // DM channels don't belong to sections
+        creator_id: (req.user as User).id,
+        is_dm: is_dm || false,
+        participant_ids: is_dm ? participant_ids : null,
+        order_index: 0,
+      }).returning();
+
+      // For DM channels, fetch participant details
+      if (is_dm && newChannel) {
+        const channelWithParticipants = await db.query.channels.findFirst({
+          where: eq(channels.id, newChannel.id),
+          with: {
+            participants: true,
+          },
+        });
+        return res.status(201).json(channelWithParticipants);
+      }
+
+      res.status(201).json(newChannel);
+    } catch (error) {
+      console.error('Failed to create channel:', error);
+      res.status(500).json({ error: "Failed to create channel" });
+    }
+  });
+
+  app.get("/api/channels", requireAuth, async (_req, res) => {
+    try {
+      const result = await db.query.channels.findMany({
+        with: {
+          section: true,
+          creator: true,
+          participants: true,
+        },
+        orderBy: [asc(channels.order_index)]
+      });
+      res.json(result);
+    } catch (error) {
+      console.error('Failed to fetch channels:', error);
+      res.status(500).json({ error: "Failed to fetch channels" });
+    }
+  });
+
+  app.patch("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    const { name, description, section_id } = req.body;
+    try {
+      // First check if user is creator or admin
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, id),
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      // Don't allow editing DM channels
+      if (channel.is_dm) {
+        return res.status(403).json({ error: "Cannot edit DM channels" });
+      }
+
+      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
+        return res.status(403).json({ error: "Not authorized to edit this channel" });
+      }
+
+      const [updatedChannel] = await db.update(channels)
+        .set({
+          name,
+          description,
+          section_id,
+        })
+        .where(eq(channels.id, id))
+        .returning();
+
+      res.json(updatedChannel);
+    } catch (error) {
+      console.error('Failed to update channel:', error);
+      res.status(500).json({ error: "Failed to update channel" });
+    }
+  });
+
+  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+      // First check if user is creator or admin
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, id),
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      // Don't allow deleting DM channels
+      if (channel.is_dm) {
+        return res.status(403).json({ error: "Cannot delete DM channels" });
+      }
+
+      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
+        return res.status(403).json({ error: "Not authorized to delete this channel" });
+      }
+
+      await db.delete(channels)
+        .where(eq(channels.id, id));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+      res.status(500).json({ error: "Failed to delete channel" });
+    }
+  });
+
+  app.get("/api/channels/:id", requireAuth, async (req, res) => {
+    const { id } = req.params;
+    try {
+      const channel = await db.query.channels.findFirst({
+        where: eq(channels.id, id),
+        with: {
+          participants: true,
+          messages: {
+            with: {
+              author: true,
+              attachments: true,
+            },
+            orderBy: [desc(messages.created_at)],
+            limit: 50,
+          },
+        },
+      });
+
+      if (!channel) {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+
+      // For DM channels, check if the user is a participant
+      if (channel.is_dm && !channel.participant_ids?.includes((req.user as User).id)) {
+        return res.status(403).json({ error: "Not authorized to view this channel" });
+      }
+
+      res.json(channel);
+    } catch (error) {
+      console.error('Failed to fetch channel:', error);
+      res.status(500).json({ error: "Failed to fetch channel" });
     }
   });
 
@@ -116,100 +284,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Channel management endpoints
-  app.post("/api/channels", requireAuth, async (req, res) => {
-    const { name, description, section_id } = req.body;
-    try {
-      const [newChannel] = await db.insert(channels).values({
-        name,
-        description,
-        section_id,
-        creator_id: (req.user as User).id,
-        order_index: 0,
-      }).returning();
-      res.status(201).json(newChannel);
-    } catch (error) {
-      console.error('Failed to create channel:', error);
-      res.status(500).json({ error: "Failed to create channel" });
-    }
-  });
-
-  app.get("/api/channels", requireAuth, async (_req, res) => {
-    try {
-      const result = await db.query.channels.findMany({
-        with: {
-          section: true,
-          creator: true,
-        },
-        orderBy: [asc(channels.order_index)]
-      });
-      res.json(result);
-    } catch (error) {
-      console.error('Failed to fetch channels:', error);
-      res.status(500).json({ error: "Failed to fetch channels" });
-    }
-  });
-
-  // Update channel
-  app.patch("/api/channels/:id", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    const { name, description, section_id } = req.body;
-    try {
-      // First check if user is creator or admin
-      const channel = await db.query.channels.findFirst({
-        where: eq(channels.id, id),
-      });
-
-      if (!channel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
-        return res.status(403).json({ error: "Not authorized to edit this channel" });
-      }
-
-      const [updatedChannel] = await db.update(channels)
-        .set({
-          name,
-          description,
-          section_id,
-        })
-        .where(eq(channels.id, id))
-        .returning();
-
-      res.json(updatedChannel);
-    } catch (error) {
-      console.error('Failed to update channel:', error);
-      res.status(500).json({ error: "Failed to update channel" });
-    }
-  });
-
-  // Delete channel
-  app.delete("/api/channels/:id", requireAuth, async (req, res) => {
-    const { id } = req.params;
-    try {
-      // First check if user is creator or admin
-      const channel = await db.query.channels.findFirst({
-        where: eq(channels.id, id),
-      });
-
-      if (!channel) {
-        return res.status(404).json({ error: "Channel not found" });
-      }
-
-      if (channel.creator_id !== (req.user as User).id && !(req.user as User).is_admin) {
-        return res.status(403).json({ error: "Not authorized to delete this channel" });
-      }
-
-      await db.delete(channels)
-        .where(eq(channels.id, id));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error('Failed to delete channel:', error);
-      res.status(500).json({ error: "Failed to delete channel" });
-    }
-  });
 
   // Message endpoints
   app.get("/api/channels/:channelId/messages", requireAuth, async (req, res) => {
@@ -307,7 +381,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch replies" });
     }
   });
-    app.get("/api/users", async (req, res) => {
+  app.get("/api/users", async (req, res) => {
     if (!req.user) {
       return res.status(401).send("Not authenticated");
     }
