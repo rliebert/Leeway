@@ -16,6 +16,7 @@ import { useWS } from "@/lib/ws";
 import { Pencil, Check, X } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 interface ThreadModalProps {
   open: boolean;
