@@ -27,7 +27,7 @@ interface MessageProps {
   };
 }
 
-const Message = forwardRef<HTMLDivElement, MessageProps>((props, ref) => {
+const Message = forwardRef<HTMLDivElement, MessageProps>((props: MessageProps, ref) => {
   const { message } = props;
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
@@ -74,7 +74,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>((props, ref) => {
           [`/api/messages/${message.id}/replies`],
           (oldReplies: any) => oldReplies?.filter((reply: any) => reply.id !== replyId)
         );
-        
+
         send({
           type: 'message_deleted',
           channelId: message.channel_id || '',
