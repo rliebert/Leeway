@@ -252,6 +252,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Not authorized to delete this message" });
       }
 
+      // Delete all replies first if this is a parent message
+      if (!message.parent_id) {
+        await db.delete(messages).where(eq(messages.parent_id, id));
+      }
+
+      // Delete the message itself
       await db.delete(messages).where(eq(messages.id, id));
       res.json({ success: true });
     } catch (error) {

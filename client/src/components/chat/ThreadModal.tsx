@@ -135,7 +135,7 @@ export default function ThreadModal({
                         className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
                         onClick={async (e) => {
                           e.stopPropagation();
-                          if (window.confirm('Are you sure you want to delete this message?')) {
+                          if (window.confirm('This will delete the entire thread. Are you sure you want to continue?')) {
                             const response = await fetch(`/api/messages/${parentMessage.id}`, {
                               method: 'DELETE',
                             });
