@@ -29,14 +29,13 @@ export default function MessageList({ channelId }: MessageListProps) {
   useEffect(() => {
     if (channelId && channelId !== "0") {
       console.log('[MessageList] Subscribing to channel:', channelId);
-      console.log('[MessageList] Initial WS messages:', wsMessages.length);
       subscribe(channelId);
       return () => {
         console.log('[MessageList] Unsubscribing from channel:', channelId);
         unsubscribe(channelId);
       };
     }
-  }, [channelId, wsMessages.length]);
+  }, [channelId]); // Remove wsMessages.length dependency
 
   // Filter out thread replies and combine messages
   const allMessages = [

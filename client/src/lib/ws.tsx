@@ -83,6 +83,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
         const loc = window.location;
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${loc.host}/ws`;
+        
+        // Add retry delay if there was a previous connection attempt
+        if (socket?.readyState === WebSocket.CLOSED) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
         debugLogger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
 
