@@ -40,7 +40,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
       return response.json();
     },
     onSuccess: (data) => {
-      setLocation(`/dm/${data.id}`);
+      onSelectDM(data.id);
       toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
     },
@@ -97,12 +97,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
-                  onClick={async () => {
-                    const data = await createDMMutation.mutateAsync(user.id);
-                    if (data?.id) {
-                      onSelectDM(data.id);
-                      window.history.pushState({}, '', '/');
-                    }
+                  onClick={() => {
+                    createDMMutation.mutate(user.id);
                   }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
@@ -136,13 +132,9 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      const data = await createDMMutation.mutateAsync(user.id);
-                      if (data?.id) {
-                        onSelectDM(data.id);
-                        window.history.pushState({}, '', '/');
-                      }
+                      createDMMutation.mutate(user.id);
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                   >
