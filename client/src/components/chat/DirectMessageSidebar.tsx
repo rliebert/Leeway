@@ -43,7 +43,11 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     onSuccess: (data) => {
       if (data?.id) {
         onSelectDM(data.id);
-        window.history.pushState({}, '', `/dm/${data.id}`);
+        // Update route without page reload
+        const newUrl = `/dm/${data.id}`;
+        if (window.location.pathname !== newUrl) {
+          window.history.pushState({}, '', newUrl);
+        }
       }
       toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
@@ -101,7 +105,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
                     createDMMutation.mutate(user.id);
                   }}
                   className={cn(
