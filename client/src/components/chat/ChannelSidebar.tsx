@@ -462,7 +462,10 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
       className={`group flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
         isSelected ? 'bg-blue-50 dark:bg-blue-900/50' : ''
       }`}
-      onClick={() => onSelect(channel.id.toString())}
+      onClick={() => {
+  onSelect(channel.id.toString());
+  window.history.pushState({}, '', '/');
+}}
     >
       <Hash className="h-4 w-4 mr-2 text-gray-500" />
       <span className="flex-1 text-sm">{channel.name}</span>
