@@ -16,13 +16,20 @@ import { FileUpload } from "./FileUpload";
 interface ChatInputProps {
   channelId: string;
   parentMessageId?: string;
+  onSend?: (content: string) => Promise<void>;
+  placeholder?: string;
 }
 
 interface FormData {
   message: string;
 }
 
-export default function ChatInput({ channelId, parentMessageId }: ChatInputProps) {
+export default function ChatInput({ 
+  channelId, 
+  parentMessageId,
+  onSend,
+  placeholder = "Type your message..."
+}: ChatInputProps) {
   const { send } = useWS();
   const { user } = useUser();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -36,7 +43,6 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   });
 
   const onSubmit = async (data: FormData) => {
-    console.log('ChatInput: Submitting form with files:', files.map(f => f.name));
     const message = data?.message || "";
     if ((!message.trim() && files.length === 0) || !user || !channelId) return;
 
@@ -44,7 +50,6 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
       // Upload files if any
       let attachments = [];
       if (files.length > 0) {
-        console.log('ChatInput: Uploading files');
         const formData = new FormData();
         files.forEach((file) => {
           formData.append('files', file);
@@ -62,34 +67,36 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
         }
 
         attachments = await response.json();
-        console.log('ChatInput: Files uploaded successfully:', attachments);
       }
 
-      // Send message through WebSocket
-      console.log('ChatInput: Sending message with attachments:', attachments);
-
-      send({
-        type: "message",
-        channelId: channelId.toString(),
-        content: message.trim() || "(attachment)",
-        parentId: parentMessageId,
-        attachments: attachments.map((attachment: any) => ({
-          url: attachment.url,  // Keep original URL
-          originalName: attachment.originalName,
-          mimetype: attachment.mimetype,
-          file_size: attachment.size,
-          file_url: attachment.url,
-          file_type: attachment.mimetype
-        })),
-      });
+      // If custom onSend handler is provided (for DMs), use it
+      if (onSend) {
+        await onSend(message);
+      } else {
+        // Otherwise send through WebSocket for regular channels
+        send({
+          type: "message",
+          channelId: channelId.toString(),
+          content: message.trim() || "(attachment)",
+          parentId: parentMessageId,
+          attachments: attachments.map((attachment: any) => ({
+            url: attachment.url,
+            originalName: attachment.originalName,
+            mimetype: attachment.mimetype,
+            file_size: attachment.size,
+            file_url: attachment.url,
+            file_type: attachment.mimetype
+          })),
+        });
+      }
 
       // Reset form state
       form.reset();
       setFiles([]);
       setShowEmojiPicker(false);
     } catch (error) {
-      console.error('Error sending message with attachments:', error);
-      alert('Failed to send message with attachments. Please try again.');
+      console.error('Error sending message:', error);
+      alert('Failed to send message. Please try again.');
     }
   };
 
@@ -122,12 +129,10 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
   };
 
   const handleFileSelect = (selectedFiles: File[]) => {
-    console.log('ChatInput: Handling file selection:', selectedFiles.map(f => f.name));
     setFiles(prev => [...prev, ...selectedFiles]);
   };
 
   const handleFileRemove = (index: number) => {
-    console.log('ChatInput: Removing file at index:', index);
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -171,7 +176,7 @@ export default function ChatInput({ channelId, parentMessageId }: ChatInputProps
               form.register("message").ref(e);
               textareaRef.current = e;
             }}
-            placeholder={parentMessageId ? "Reply to thread..." : "Type your message..."}
+            placeholder={placeholder}
             className="resize-none min-h-[2.75rem] py-2.5"
             rows={1}
             onKeyDown={(e) => {

@@ -2,13 +2,25 @@ import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { DirectMessage, DirectMessageChannel, User as UserType } from "@db/schema";
-import Message from "./Message";
+import type { Message, User as UserType } from "@db/schema";
+import MessageComponent from "./Message";
 import ChatInput from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useWS } from "@/lib/ws";
+
+interface FileAttachment {
+  url: string;
+  originalName: string;
+  mimetype: string;
+}
+
+interface DirectMessageChannel {
+  id: string;
+  created_at: Date;
+  participants: UserType[];
+}
 
 interface DirectMessageViewProps {
   channelId: string;
@@ -20,12 +32,14 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const [, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
 
-  const { data: channel } = useQuery<DirectMessageChannel & { participants: UserType[] }>({
+  const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
-    onError: (error: Error) => {
+    enabled: !!channelId,
+    retry: false,
+    onError: (err: Error) => {
       toast({
         variant: "destructive",
-        description: error.message || "Failed to load DM channel",
+        description: err.message || "Failed to load DM channel",
       });
       setLocation("/");
     },
@@ -42,7 +56,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     return () => {
       unsubscribe(`dm_${channelId}`);
     };
-  }, [channelId]);
+  }, [channelId, subscribe, unsubscribe]);
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim()) return;
@@ -65,6 +79,14 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   // Filter messages for this DM channel
   const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-destructive">Error: {error?.message}</p>
+      </div>
+    );
+  }
+
   if (!channel || !otherUser) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -86,22 +108,36 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
           <h2 className="font-semibold">
             DM with {otherUser?.full_name || otherUser?.username}
           </h2>
+          <p className="text-sm text-muted-foreground">
+            {otherUser?.email}
+          </p>
         </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {channelMessages.map((message) => (
-            <Message
+            <MessageComponent
               key={message.id}
-              message={message}
+              message={{
+                ...message,
+                attachments: message.attachments?.map(att => ({
+                  url: att.file_url,
+                  originalName: att.file_name,
+                  mimetype: att.file_type
+                }))
+              }}
             />
           ))}
         </div>
       </ScrollArea>
 
       <div className="p-4 border-t">
-        <ChatInput onSend={handleSendMessage} placeholder="Send a message..." />
+        <ChatInput 
+          channelId={channelId} 
+          onSend={handleSendMessage} 
+          placeholder={`Message ${otherUser?.username}`} 
+        />
       </div>
     </div>
   );

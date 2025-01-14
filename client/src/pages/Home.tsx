@@ -4,6 +4,8 @@ import { Hash } from "lucide-react";
 import leewayLogo from "@/assets/leeway-logo3.svg";
 import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
+import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
+import DirectMessageView from "@/components/chat/DirectMessageView";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
 import SearchMessages from "@/components/chat/SearchMessages";
@@ -13,7 +15,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
-
 interface HomeProps {
   selectedChannel: string | null;
   onSelectChannel: (channelId: string) => void;
@@ -22,6 +23,7 @@ interface HomeProps {
 export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
+  const [selectedDM, setSelectedDM] = useState<string | null>(null);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -42,6 +44,16 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   }
 
   if (!user) return null;
+
+  const handleSelectDM = (dmId: string) => {
+    setSelectedDM(dmId);
+    setLocalSelectedChannel(null);
+  };
+
+  const handleSelectChannel = (channelId: string) => {
+    onSelectChannel(channelId);
+    setSelectedDM(null);
+  };
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -64,26 +76,36 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
         <div className="w-64 flex flex-col border-r bg-sidebar">
           <ChannelSidebar
             selectedChannel={localSelectedChannel || ""}
-            onSelectChannel={onSelectChannel}
+            onSelectChannel={handleSelectChannel}
+          />
+          <DirectMessageSidebar
+            selectedDM={selectedDM}
+            onSelectDM={handleSelectDM}
           />
           <UserProfile />
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="border-b px-6 py-3">
-            <div className="flex items-center gap-2">
-              <Hash className="h-5 w-5 text-muted-foreground" />
-              <h2 className="font-semibold text-lg">
-                {channels?.find((c) => c.id === localSelectedChannel)?.name}
-              </h2>
-            </div>
-          </div>
-          <ScrollArea className="flex-1">
-            <MessageList channelId={localSelectedChannel || ""} />
-          </ScrollArea>
-          <div className="px-4 py-3 border-t">
-            <ChatInput channelId={localSelectedChannel || ""} />
-          </div>
+          {selectedDM ? (
+            <DirectMessageView channelId={selectedDM} />
+          ) : (
+            <>
+              <div className="border-b px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <Hash className="h-5 w-5 text-muted-foreground" />
+                  <h2 className="font-semibold text-lg">
+                    {channels?.find((c) => c.id === localSelectedChannel)?.name}
+                  </h2>
+                </div>
+              </div>
+              <ScrollArea className="flex-1">
+                <MessageList channelId={localSelectedChannel || ""} />
+              </ScrollArea>
+              <div className="px-4 py-3 border-t">
+                <ChatInput channelId={localSelectedChannel || ""} />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

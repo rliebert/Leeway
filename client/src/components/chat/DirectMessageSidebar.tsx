@@ -3,11 +3,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, MessageSquare } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 
 interface DirectMessageSidebarProps {
   selectedDM: string | null;
@@ -18,13 +19,13 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   const [isExpanded, setIsExpanded] = useState(true);
   const { user: currentUser } = useUser();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       const response = await fetch("/api/dm/channels", {
@@ -68,7 +69,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   }
 
   // Sort users and ensure current user is first
-  const sortedUsers = [...users];
+  const sortedUsers = [...users].filter(Boolean);
   if (currentUser) {
     const currentUserIndex = sortedUsers.findIndex(u => u.id === currentUser.id);
     if (currentUserIndex !== -1) {
@@ -98,7 +99,6 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
         {isExpanded && (
           <div className="space-y-1">
             {sortedUsers.map((user) => {
-              if (!user) return null;
               const isOnline = isUserOnline(user.last_active);
               const isSelf = user.id === currentUser?.id;
 
@@ -107,7 +107,9 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   key={user.id}
                   onClick={(e) => {
                     e.preventDefault();
-                    createDMMutation.mutate(user.id);
+                    if (!isSelf) {
+                      createDMMutation.mutate(user.id);
+                    }
                   }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
@@ -138,17 +140,19 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                       )}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      createDMMutation.mutate(user.id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                  </Button>
+                  {!isSelf && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        createDMMutation.mutate(user.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               );
             })}
