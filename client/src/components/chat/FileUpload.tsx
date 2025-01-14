@@ -25,6 +25,13 @@ export function FileUpload({
     console.log('FileUpload: Selected files:', selectedFiles.map(f => f.name));
     setError(null);
 
+    // Calculate total size of existing and new files
+    const totalSize = [...files, ...selectedFiles].reduce((sum, file) => sum + file.size, 0);
+    if (totalSize > maxSize) {
+      setError(`Total file size cannot exceed ${maxSize / (1024 * 1024)}MB`);
+      return;
+    }
+
     // Check file count
     if (files.length + selectedFiles.length > maxFiles) {
       console.log('FileUpload: Max files limit exceeded');

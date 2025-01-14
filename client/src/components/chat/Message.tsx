@@ -133,7 +133,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   };
 
   const isImageFile = (mimetype?: string): boolean => {
-    return mimetype ? mimetype.startsWith('image/') : false;
+    if (!mimetype) return false;
+    return mimetype.startsWith('image/') || mimetype === 'image/svg+xml';
   };
 
   const formatTimestamp = (date: string | Date | null): string => {
@@ -256,20 +257,57 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             {isEditing ? (
               <div className="mt-1 space-y-2">
-                <Textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[60px] text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleEditMessage();
-                    }
-                    if (e.key === "Escape") {
-                      setIsEditing(false);
-                      setEditContent(message.content);
-                    }
-                  }}
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                        <Smile className="h-5 w-5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" side="top" align="start">
+                      <EmojiPicker
+                        onEmojiClick={(emojiData) => {
+                          const textarea = document.querySelector('textarea');
+                          if (!textarea) return;
+                          const start = textarea.selectionStart;
+                          const end = textarea.selectionEnd;
+                          setEditContent(
+                            editContent.substring(0, start) +
+                            emojiData.emoji +
+                            editContent.substring(end)
+                          );
+                          setTimeout(() => {
+                            textarea.focus();
+                            textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
+                          }, 0);
+                        }}
+                        width="100%"
+                        height="350px"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[60px] text-sm flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleEditMessage();
+                      }
+                      if (e.key === "Escape") {
+                        setIsEditing(false);
+                        setEditContent(message.content);
+                      }
+                    }}
+                  />
+                </div>
+                <FileUpload
+                  files={editFiles}
+                  onFileSelect={(newFiles) => setEditFiles([...editFiles, ...newFiles])}
+                  onFileRemove={(index) => setEditFiles(editFiles.filter((_, i) => i !== index))}
+                  maxFiles={10}
+                  maxSize={10 * 1024 * 1024} // 10MB
                 />
                 <div className="flex gap-2">
                   <Button
@@ -296,6 +334,73 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               </div>
             ) : (
               <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEmojiPicker(!showEmojiPicker);
+                  }}
+                >
+                  <Smile className="h-3 w-3 mr-1" />
+                  Add Reaction
+                </Button>
+                {showEmojiPicker && (
+                  <div className="absolute z-50">
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        send({
+                          type: 'reaction_added',
+                          messageId: message.id,
+                          emoji: emojiData.emoji,
+                          channelId: message.channel_id || ''
+                        });
+                        setShowEmojiPicker(false);
+                      }}
+                      width="350px"
+                      height="350px"
+                    />
+                  </div>
+                )}
+              </div>
+              {message.reactions && message.reactions.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {Object.entries(
+                    message.reactions.reduce((acc: Record<string, string[]>, reaction) => {
+                      acc[reaction.emoji] = [...(acc[reaction.emoji] || []), reaction.user_id];
+                      return acc;
+                    }, {})
+                  ).map(([emoji, users]) => (
+                    <Button
+                      key={emoji}
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2"
+                      onClick={() => {
+                        if (users.includes(user?.id || '')) {
+                          send({
+                            type: 'reaction_removed',
+                            messageId: message.id,
+                            emoji,
+                            channelId: message.channel_id || ''
+                          });
+                        } else {
+                          send({
+                            type: 'reaction_added',
+                            messageId: message.id,
+                            emoji,
+                            channelId: message.channel_id || ''
+                          });
+                        }
+                      }}
+                    >
+                      {emoji} {users.length}
+                    </Button>
+                  ))}
+                </div>
+              )}
             )}
 
             {message.attachments && message.attachments.length > 0 && (
