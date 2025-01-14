@@ -68,6 +68,12 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         method: 'DELETE',
       });
       if (response.ok) {
+        // Update local state immediately for optimistic UI
+        queryClient.setQueryData(
+          [`/api/messages/${message.id}/replies`],
+          (oldReplies: any) => oldReplies?.filter((reply: any) => reply.id !== replyId)
+        );
+        
         send({
           type: 'message_deleted',
           channelId: message.channel_id || '',
