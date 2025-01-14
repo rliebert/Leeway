@@ -32,10 +32,26 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showReplies, setShowReplies] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [replyEditContent, setReplyEditContent] = useState('');
   const queryClient = useQueryClient();
   const { messages: wsMessages, send } = useWS();
   const { user } = useUser();
   const { toast } = useToast();
+
+  const handleEditReply = (replyId: string) => {
+    if (!replyEditContent.trim()) return;
+
+    send({
+      type: 'message_edited',
+      messageId: replyId,
+      content: replyEditContent.trim(),
+      channelId: message.channel_id || ''
+    });
+
+    setEditingReplyId(null);
+    setReplyEditContent('');
+  };
 
   // Update local state when message content changes from WebSocket
   useEffect(() => {
@@ -317,8 +333,87 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         <span className="text-xs text-muted-foreground">
                           {formatTimestamp(reply.created_at)}
                         </span>
+                        {reply.user_id === user?.id && (
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                              onClick={() => {
+                                setEditingReplyId(reply.id);
+                                setReplyEditContent(reply.content);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (window.confirm('Are you sure you want to delete this reply?')) {
+                                  const response = await fetch(`/api/messages/${reply.id}`, {
+                                    method: 'DELETE',
+                                  });
+                                  if (response.ok) {
+                                    send({
+                                      type: 'message_deleted',
+                                      channelId: message.channel_id || '',
+                                      messageId: reply.id
+                                    });
+                                  }
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-sm mt-1">{reply.content}</p>
+                      {editingReplyId === reply.id ? (
+                        <div className="mt-1 space-y-2">
+                          <Textarea
+                            value={replyEditContent}
+                            onChange={(e) => setReplyEditContent(e.target.value)}
+                            className="min-h-[60px] text-sm"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                handleEditReply(reply.id);
+                              }
+                              if (e.key === "Escape") {
+                                setEditingReplyId(null);
+                                setReplyEditContent('');
+                              }
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="h-7"
+                              onClick={() => handleEditReply(reply.id)}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Save
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7"
+                              onClick={() => {
+                                setEditingReplyId(null);
+                                setReplyEditContent('');
+                              }}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm mt-1">{reply.content}</p>
+                      )}
 
                       {reply.attachments && reply.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
