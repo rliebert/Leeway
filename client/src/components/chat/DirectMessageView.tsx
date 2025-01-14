@@ -8,19 +8,17 @@ import ChatInput from "./ChatInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { User } from "lucide-react";
-import { FileUpload } from "./FileUpload";
+import { useWS } from "@/lib/ws";
 
 interface DirectMessageViewProps {
-  channelId: number;
+  channelId: string;
 }
 
 export default function DirectMessageView({ channelId }: DirectMessageViewProps) {
   const { user } = useUser();
   const { toast } = useToast();
-  const [ws, setWs] = useState<WebSocket | null>(null);
-  const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [, setLocation] = useLocation();
+  const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
 
   const { data: channel } = useQuery<DirectMessageChannel & { participants: UserType[] }>({
     queryKey: [`/api/dm/channels/${channelId}`],
@@ -35,65 +33,26 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
 
   const otherUser = channel?.participants?.find(p => p.id !== user?.id);
 
-  // WebSocket connection
   useEffect(() => {
-    if (!user) return;
+    if (!channelId) return;
 
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.host}`;
-    const newWs = new WebSocket(wsUrl);
-
-    newWs.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'dm' && data.message.channelId === channelId) {
-          setMessages(prev => [...prev, data.message]);
-        }
-      } catch (error) {
-        console.error("Error processing WebSocket message:", error);
-      }
-    };
-
-    setWs(newWs);
+    // Subscribe to DM channel
+    subscribe(`dm_${channelId}`);
 
     return () => {
-      newWs.close();
+      unsubscribe(`dm_${channelId}`);
     };
-  }, [user, channelId]);
-
-  // Fetch messages
-  useEffect(() => {
-    if (!channelId || !user) return;
-
-    fetch(`/api/dm/channels/${channelId}/messages`, {
-      credentials: 'include'
-    })
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(res.statusText);
-        }
-        return res.json();
-      })
-      .then(data => setMessages(data))
-      .catch(error => {
-        console.error("Error fetching messages:", error);
-        toast({
-          variant: "destructive",
-          description: "Failed to load messages",
-        });
-      });
-  }, [channelId, user, toast]);
+  }, [channelId]);
 
   const handleSendMessage = async (content: string) => {
-    if (!ws || !user || !content.trim()) return;
+    if (!user || !content.trim()) return;
 
     try {
-      ws.send(JSON.stringify({
+      send({
         type: 'message',
         channelId: `dm_${channelId}`,
-        content: content.trim(),
-        userId: user.id,
-      }));
+        content: content.trim()
+      });
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -102,6 +61,9 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
       });
     }
   };
+
+  // Filter messages for this DM channel
+  const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
   if (!channel || !otherUser) {
     return (
@@ -121,21 +83,18 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
           </AvatarFallback>
         </Avatar>
         <div>
-          <h2 className="font-semibold">{otherUser?.username}</h2>
+          <h2 className="font-semibold">
+            DM with {otherUser?.full_name || otherUser?.username}
+          </h2>
         </div>
       </div>
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {messages.map((message) => (
+          {channelMessages.map((message) => (
             <Message
               key={message.id}
-              message={{
-                ...message,
-                channelId,
-                parentMessageId: null,
-                attachments: null,
-              }}
+              message={message}
             />
           ))}
         </div>

@@ -168,16 +168,19 @@ export function setupWebSocketServer(server: Server) {
         switch (message.type) {
           case 'subscribe': {
             if (!message.channelId) break;
+            const isDirectMessage = message.channelId.startsWith('dm_');
+
             if (!channelSubscriptions.has(message.channelId)) {
               channelSubscriptions.set(message.channelId, new Set());
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
-            debug.log(`User ${ws.userId} subscribed to channel ${message.channelId}`);
+            debug.log(`User ${ws.userId} subscribed to ${isDirectMessage ? 'DM' : 'channel'} ${message.channelId}`);
 
             try {
               debug.log('Fetching existing messages for channel:', message.channelId);
-              const existingMessages = await db.query.messages.findMany({
-                where: eq(messages.channel_id, message.channelId),
+              const messageTable = isDirectMessage ? 'direct_messages' : 'messages';
+              const existingMessages = await db.query[messageTable].findMany({
+                where: eq(messages.channel_id, isDirectMessage ? message.channelId.replace('dm_', '') : message.channelId),
                 with: {
                   author: true,
                   attachments: true,
@@ -187,11 +190,9 @@ export function setupWebSocketServer(server: Server) {
 
               debug.log('Found messages:', existingMessages.length);
               existingMessages.forEach(msg => {
-                debug.log('Processing message for initial load:', msg.id);
-                const normalizedMessage = normalizeMessageForClient(msg);
                 ws.send(JSON.stringify({
                   type: 'message',
-                  message: normalizedMessage
+                  message: normalizeMessageForClient(msg)
                 }));
               });
             } catch (error) {

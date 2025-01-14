@@ -37,8 +37,14 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
       }
 
       const data = await response.json();
+      // Update UI immediately
       onSelectDM(data.id);
       return data;
+    },
+    onSuccess: (data) => {
+      toast({ description: "Direct message channel created" });
+      // Force a refresh of DM channels
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
     },
     onError: (error: Error) => {
       toast({
