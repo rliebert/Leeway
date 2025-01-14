@@ -62,15 +62,6 @@ export default function MessageList({ channelId }: MessageListProps) {
       channelId
     });
   }, [initialMessages, wsMessages, allMessages.length, channelId]);
-        const isRelevant = 
-          wsMsg.channel_id?.toString() === channelId?.toString() && 
-          !wsMsg.parent_id &&
-          wsMsg.content !== null;
-        const isDuplicate = initialMessages?.some(initMsg => initMsg.id === wsMsg.id);
-        return isRelevant && !isDuplicate;
-      }
-    ),
-  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   useEffect(() => {
     console.log('MessageList: Final message count:', allMessages.length);
