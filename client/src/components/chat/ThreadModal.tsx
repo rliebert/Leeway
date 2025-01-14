@@ -13,7 +13,7 @@ import type { Message } from "@db/schema";
 import ChatInput from "./ChatInput";
 import { useEffect, useRef, useState } from "react";
 import { useWS } from "@/lib/ws";
-import { Pencil, Check, X } from "lucide-react";
+import { Pencil, Check, X, Trash2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,28 @@ export default function ThreadModal({
                             }}
                           >
                             <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to delete this reply?')) {
+                                const response = await fetch(`/api/messages/${reply.id}`, {
+                                  method: 'DELETE',
+                                });
+                                if (response.ok) {
+                                  send({
+                                    type: 'message_deleted',
+                                    channelId: parentMessage.channel_id,
+                                    messageId: reply.id
+                                  });
+                                }
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       )}
