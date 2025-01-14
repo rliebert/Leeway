@@ -1,11 +1,12 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments, sessions } from "@db/schema";
+import { messages, file_attachments, sessions, users } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
+import { trainOnUserMessages, startPeriodicRetraining, isQuestion, findSimilarMessages, generateAIResponse } from './services/rag';
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -13,13 +14,13 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited' | 'debug_mode';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited' | 'debug_mode' | 'retrain_ai';
   channelId?: string;
   content?: string;
   parentId?: string;
   messageId?: string;
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
-  enabled?: boolean;  // For debug_mode type
+  enabled?: boolean;
 }
 
 export function setupWebSocketServer(server: Server) {
@@ -156,6 +157,32 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
+        // Handle retrain_ai command (admin only)
+        if (message.type === 'retrain_ai') {
+          const user = await db.query.users.findFirst({
+            where: eq(users.id, ws.userId)
+          });
+
+          if (!user?.is_admin) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Only administrators can trigger AI retraining'
+            }));
+            return;
+          }
+
+          const result = await trainOnUserMessages(user.id);
+          ws.send(JSON.stringify({
+            type: 'retrain_ai_status',
+            success: result.success,
+            message: result.success
+              ? `Successfully processed ${result.newMessagesProcessed} messages`
+              : `Training failed: ${result.error}`
+          }));
+          return;
+        }
+
+
         debug.startGroup(`Processing message type: ${message.type}`);
         debug.debug('Received message:', message);
 
@@ -165,14 +192,11 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        // Import RAG functions at the top of the file
-        const { isQuestion, findSimilarMessages, generateAIResponse } = require('./services/rag');
-
         // Check if message is a question and should trigger AI response
         if (message.type === 'message' && message.content && isQuestion(message.content)) {
           const similarMessages = await findSimilarMessages(message.content);
           const aiResponse = await generateAIResponse(message.content, similarMessages);
-          
+
           // Send AI response as ai.rob
           const [aiMessage] = await db.insert(messages).values({
             channel_id: message.channelId,
@@ -383,6 +407,9 @@ export function setupWebSocketServer(server: Server) {
       debug.error('WebSocket error for user:', ws.userId, error);
     });
   });
+
+  // Start periodic retraining when server starts
+  startPeriodicRetraining();
 
   wss.on('close', () => {
     clearInterval(interval);

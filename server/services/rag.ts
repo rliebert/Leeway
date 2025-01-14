@@ -1,12 +1,15 @@
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { db } from "@db";
 import { messages, message_embeddings, users } from "@db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and, gt } from "drizzle-orm";
 
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
   modelName: "text-embedding-3-small"
 });
+
+let lastTrainingTimestamp: Date | null = null;
+const RETRAINING_INTERVAL = 1000 * 60 * 60; // 1 hour
 
 // Store message embedding in the database
 export async function storeMessageEmbedding(messageId: string, userId: string, content: string) {
@@ -23,20 +26,54 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
 }
 
 // Train on existing messages from a specific user
-export async function trainOnUserMessages(userId: string) {
+export async function trainOnUserMessages(userId: string, since?: Date) {
   try {
+    const whereClause = since 
+      ? and(eq(messages.user_id, userId), gt(messages.created_at, since))
+      : eq(messages.user_id, userId);
+
     const userMessages = await db.query.messages.findMany({
-      where: eq(messages.user_id, userId),
+      where: whereClause,
       orderBy: [desc(messages.created_at)]
     });
 
+    let newMessagesProcessed = 0;
     for (const message of userMessages) {
       await storeMessageEmbedding(message.id, userId, message.content);
+      newMessagesProcessed++;
     }
-    return true;
+
+    lastTrainingTimestamp = new Date();
+    return { success: true, newMessagesProcessed };
   } catch (error) {
     console.error('Error training on user messages:', error);
-    return false;
+    return { success: false, error: error.message };
+  }
+}
+
+// Check if retraining is needed based on new messages
+export async function checkAndRetrain() {
+  try {
+    const rliebert = await db.query.users.findFirst({
+      where: eq(users.username, 'rliebert')
+    });
+
+    if (!rliebert) {
+      console.error('User rliebert not found');
+      return { success: false, error: 'User not found' };
+    }
+
+    const shouldRetrain = !lastTrainingTimestamp || 
+      (Date.now() - lastTrainingTimestamp.getTime() > RETRAINING_INTERVAL);
+
+    if (shouldRetrain) {
+      return await trainOnUserMessages(rliebert.id, lastTrainingTimestamp);
+    }
+
+    return { success: true, newMessagesProcessed: 0, message: 'Retraining not needed' };
+  } catch (error) {
+    console.error('Error in checkAndRetrain:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -107,7 +144,10 @@ export function isQuestion(message: string): boolean {
   return message.trim().endsWith('?');
 }
 
-export async function generateEmbedding(text: string) {
-  const result = await embeddings.embedQuery(text);
-  return JSON.stringify(result);
+// Start periodic retraining
+export function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
+  setInterval(async () => {
+    console.log('Running periodic retraining check...');
+    await checkAndRetrain();
+  }, interval);
 }
