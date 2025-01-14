@@ -27,41 +27,13 @@ export default function MessageList({ channelId }: MessageListProps) {
   });
 
   useEffect(() => {
-    let isActive = true;
-
     if (channelId && channelId !== "0") {
-      console.log('MessageList: Managing subscription for channel:', channelId, {
-        isActive,
-        hasInitialMessages: !!initialMessages,
-        wsMessageCount: wsMessages.length
-      });
-      if (isActive) {
-        subscribe(channelId);
-      }
+      subscribe(channelId);
+      return () => unsubscribe(channelId);
     }
+  }, [channelId]);
 
-    return () => {
-      isActive = false;
-      if (channelId && channelId !== "0") {
-        console.log('MessageList: Cleaning up subscription for channel:', channelId);
-        unsubscribe(channelId);
-      }
-    };
-  }, [channelId, subscribe, unsubscribe, initialMessages, wsMessages.length]);
-
-  useEffect(() => {
-    console.log('MessageList: Message State', {
-      initialMessages: initialMessages?.length || 0,
-      wsMessages: wsMessages.length,
-      filtered: wsMessages.filter(
-        wsMsg => 
-          wsMsg.channel_id?.toString() === channelId?.toString() && 
-          !wsMsg.parent_id &&
-          !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
-      ).length,
-      channelId
-    });
-  }, [wsMessages, initialMessages, channelId]);
+  
 
   // Filter out thread replies and combine messages
   const allMessages = [
