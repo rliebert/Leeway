@@ -62,9 +62,6 @@ export default function MessageList({ channelId }: MessageListProps) {
       channelId
     });
   }, [initialMessages, wsMessages, allMessages.length, channelId]);
-    ...(initialMessages?.filter(msg => !msg.parent_id) || []),
-    ...wsMessages.filter(
-      wsMsg => {
         const isRelevant = 
           wsMsg.channel_id?.toString() === channelId?.toString() && 
           !wsMsg.parent_id &&
