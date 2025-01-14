@@ -27,7 +27,7 @@ interface MessageProps {
   };
 }
 
-const Message = forwardRef<HTMLDivElement, MessageProps>((props: MessageProps, ref) => {
+const Message = forwardRef<HTMLDivElement, MessageProps>(function Message(props: MessageProps, ref) {
   const { message } = props;
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
