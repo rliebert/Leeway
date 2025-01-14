@@ -24,6 +24,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   });
 
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       const response = await fetch("/api/dm/channels", {
@@ -40,7 +41,9 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
       return response.json();
     },
     onSuccess: (data) => {
-      onSelectDM(data.id);
+      if (data?.id) {
+        onSelectDM(data.id.toString());
+      }
       toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
     },
@@ -102,7 +105,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
-                    selectedDM === user.id && "bg-accent"
+                    selectedDM && "bg-accent"
                   )}
                 >
                   <div className="flex items-center gap-2 flex-1">
