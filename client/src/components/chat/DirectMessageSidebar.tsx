@@ -100,7 +100,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   onClick={async () => {
                     const data = await createDMMutation.mutateAsync(user.id);
                     if (data?.id) {
-                      setLocation(`/dm/${data.id}`);
+                      onSelectDM(data.id);
+                      window.history.pushState({}, '', '/');
                     }
                   }}
                   className={cn(
@@ -139,7 +140,8 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                       e.stopPropagation();
                       const data = await createDMMutation.mutateAsync(user.id);
                       if (data?.id) {
-                        setLocation(`/dm/${data.id}`);
+                        onSelectDM(data.id);
+                        window.history.pushState({}, '', '/');
                       }
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
