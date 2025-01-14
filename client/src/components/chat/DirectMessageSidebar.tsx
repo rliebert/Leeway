@@ -97,7 +97,12 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
-                  onClick={() => createDMMutation.mutate(user.id)}
+                  onClick={async () => {
+                    const data = await createDMMutation.mutateAsync(user.id);
+                    if (data?.id) {
+                      setLocation(`/dm/${data.id}`);
+                    }
+                  }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
                     selectedDM === user.id && "bg-accent"
@@ -130,9 +135,12 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
-                      createDMMutation.mutate(user.id);
+                      const data = await createDMMutation.mutateAsync(user.id);
+                      if (data?.id) {
+                        setLocation(`/dm/${data.id}`);
+                      }
                     }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                   >
