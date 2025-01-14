@@ -39,18 +39,51 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const handleEditReply = (replyId: string) => {
+  const handleEditReply = async (replyId: string) => {
     if (!replyEditContent.trim()) return;
 
-    send({
-      type: 'message_edited',
-      messageId: replyId,
-      content: replyEditContent.trim(),
-      channelId: message.channel_id || ''
-    });
+    try {
+      send({
+        type: 'message_edited',
+        messageId: replyId,
+        content: replyEditContent.trim(),
+        channelId: message.channel_id || ''
+      });
 
-    setEditingReplyId(null);
-    setReplyEditContent('');
+      setEditingReplyId(null);
+      setReplyEditContent('');
+      toast({ description: "Reply updated" });
+    } catch (error) {
+      console.error('Error editing reply:', error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to update reply"
+      });
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    try {
+      const response = await fetch(`/api/messages/${replyId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        send({
+          type: 'message_deleted',
+          channelId: message.channel_id || '',
+          messageId: replyId
+        });
+        toast({ description: "Reply deleted" });
+      } else {
+        throw new Error('Failed to delete reply');
+      }
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to delete reply"
+      });
+    }
   };
 
   // Update local state when message content changes from WebSocket
@@ -350,19 +383,10 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               variant="ghost"
                               size="sm"
                               className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2 text-destructive hover:text-destructive"
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.stopPropagation();
                                 if (window.confirm('Are you sure you want to delete this reply?')) {
-                                  const response = await fetch(`/api/messages/${reply.id}`, {
-                                    method: 'DELETE',
-                                  });
-                                  if (response.ok) {
-                                    send({
-                                      type: 'message_deleted',
-                                      channelId: message.channel_id || '',
-                                      messageId: reply.id
-                                    });
-                                  }
+                                  handleDeleteReply(reply.id);
                                 }
                               }}
                             >
