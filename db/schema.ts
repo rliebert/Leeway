@@ -17,12 +17,6 @@ export const users = pgTable("users", {
   is_admin: boolean("is_admin").default(false).notNull(),
 });
 
-export const sessions = pgTable("session", {
-  sid: varchar("sid").primaryKey(),
-  sess: json("sess").notNull(),
-  expire: timestamp("expire", { precision: 6 }).notNull(),
-});
-
 export const sections = pgTable("sections", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -40,18 +34,26 @@ export const channels = pgTable("channels", {
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   order_index: integer("order_index").notNull().default(0),
   is_dm: boolean("is_dm").default(false).notNull(),
-  participant_ids: uuid("participant_ids").array(),
+});
+
+export const channel_participants = pgTable("channel_participants", {
+  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: 'cascade' }),
+  user_id: uuid("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  joined_at: timestamp("joined_at").default(sql`CURRENT_TIMESTAMP`),
+}, (table) => {
+  return {
+    pk: sql`PRIMARY KEY (channel_id, user_id)`,
+  };
 });
 
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: 'cascade' }),
+  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: 'cascade' }).notNull(),
   user_id: uuid("user_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   parent_id: uuid("parent_id").references(() => messages.id),
-  pinned_by: uuid("pinned_by").references(() => users.id),
-  pinned_at: timestamp("pinned_at"),
+  updated_at: timestamp("updated_at"),
 });
 
 export const file_attachments = pgTable("file_attachments", {
@@ -69,6 +71,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   created_channels: many(channels, { relationName: "creator" }),
   created_sections: many(sections, { relationName: "creator" }),
+  participatedChannels: many(channel_participants),
 }));
 
 export const messagesRelations = relations(messages, ({ one, many }) => ({
@@ -98,7 +101,18 @@ export const channelsRelations = relations(channels, ({ one, many }) => ({
     relationName: "creator",
   }),
   messages: many(messages),
-  participants: many(users),
+  participants: many(channel_participants),
+}));
+
+export const channelParticipantsRelations = relations(channel_participants, ({ one }) => ({
+  channel: one(channels, {
+    fields: [channel_participants.channel_id],
+    references: [channels.id],
+  }),
+  user: one(users, {
+    fields: [channel_participants.user_id],
+    references: [users.id],
+  }),
 }));
 
 export const sectionsRelations = relations(sections, ({ one, many }) => ({
@@ -117,10 +131,6 @@ export const fileAttachmentsRelations = relations(file_attachments, ({ one }) =>
   }),
 }));
 
-// Export schemas for validation
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
-
 // Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -132,7 +142,7 @@ export type Message = typeof messages.$inferSelect & {
 export type Channel = typeof channels.$inferSelect & {
   section?: typeof sections.$inferSelect;
   creator?: User;
-  participants?: User[];
+  participants?: { user: User }[];
 };
 export type Section = typeof sections.$inferSelect & {
   creator?: User;

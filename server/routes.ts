@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { messages, channels, users, sections, file_attachments } from "@db/schema";
+import { messages, channels, users, sections, file_attachments, channel_participants } from "@db/schema";
 import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
@@ -94,11 +94,18 @@ export function registerRoutes(app: Express): Server {
         const existingChannel = await db.query.channels.findFirst({
           where: and(
             eq(channels.is_dm, true),
-            eq(channels.participant_ids, participant_ids)
           ),
+          with: {
+            participants: {
+              where: or(
+                eq(channel_participants.user_id, participant_ids[0]),
+                eq(channel_participants.user_id, participant_ids[1])
+              )
+            }
+          }
         });
 
-        if (existingChannel) {
+        if (existingChannel && existingChannel.participants?.length === 2) {
           return res.json(existingChannel);
         }
       }
@@ -109,16 +116,29 @@ export function registerRoutes(app: Express): Server {
         section_id: is_dm ? null : section_id, // DM channels don't belong to sections
         creator_id: (req.user as User).id,
         is_dm: is_dm || false,
-        participant_ids: is_dm ? participant_ids : null,
         order_index: 0,
       }).returning();
+
+      // Add participants for DM channels
+      if (is_dm && participant_ids) {
+        await db.insert(channel_participants).values(
+          participant_ids.map(userId => ({
+            channel_id: newChannel.id,
+            user_id: userId,
+          }))
+        );
+      }
 
       // For DM channels, fetch participant details
       if (is_dm && newChannel) {
         const channelWithParticipants = await db.query.channels.findFirst({
           where: eq(channels.id, newChannel.id),
           with: {
-            participants: true,
+            participants: {
+              with: {
+                user: true
+              }
+            }
           },
         });
         return res.status(201).json(channelWithParticipants);
@@ -137,7 +157,11 @@ export function registerRoutes(app: Express): Server {
         with: {
           section: true,
           creator: true,
-          participants: true,
+          participants: {
+            with: {
+              user: true
+            }
+          },
         },
         orderBy: [asc(channels.order_index)]
       });
@@ -240,7 +264,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // For DM channels, check if the user is a participant
-      if (channel.is_dm && !channel.participant_ids?.includes((req.user as User).id)) {
+      if (channel.is_dm && !channel.participants?.some((p:any) => p.user_id === (req.user as User).id)) {
         return res.status(403).json({ error: "Not authorized to view this channel" });
       }
 
