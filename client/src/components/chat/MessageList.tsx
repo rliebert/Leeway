@@ -40,16 +40,19 @@ export default function MessageList({ channelId }: MessageListProps) {
   // Filter out thread replies and combine messages
   const allMessages = [
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
-    ...wsMessages.filter(
-      wsMsg => {
-        const isRelevant = 
-          wsMsg.channel_id?.toString() === channelId?.toString() && 
-          !wsMsg.parent_id &&
-          wsMsg.content !== null;
-        const isDuplicate = initialMessages?.some(initMsg => initMsg.id === wsMsg.id);
-        return isRelevant && !isDuplicate;
+    ...wsMessages.filter(wsMsg => {
+      const isRelevant = 
+        wsMsg.channel_id?.toString() === channelId?.toString() && 
+        !wsMsg.parent_id &&
+        wsMsg.content !== null;
+      // For edited messages, replace the existing one
+      const existingIndex = initialMessages?.findIndex(msg => msg.id === wsMsg.id);
+      if (existingIndex !== undefined && existingIndex > -1) {
+        initialMessages[existingIndex] = wsMsg;
+        return false;
       }
-    ),
+      return isRelevant;
+    }),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   // Debug effect for tracking message updates
