@@ -10,6 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useWS } from "@/lib/ws";
 
+interface FileAttachment {
+  url: string;
+  originalName: string;
+  mimetype: string;
+}
+
 interface DirectMessageChannel {
   id: string;
   created_at: Date;
@@ -25,38 +31,32 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
-  const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const { data: channel, error } = useQuery<DirectMessageChannel>({
+  const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/dm/channels/${channelId}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-      return response.json();
-    },
     enabled: !!channelId,
     retry: false,
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        description: err.message || "Failed to load DM channel",
+      });
+      setLocation("/");
+    },
   });
 
   const otherUser = channel?.participants?.find(p => p.id !== user?.id);
 
-  // Subscribe to DM channel when it's loaded
   useEffect(() => {
-    if (!channelId || isSubscribed) return;
+    if (!channelId) return;
 
-    const dmChannelId = `dm_${channelId}`;
-    subscribe(dmChannelId);
-    setIsSubscribed(true);
+    // Subscribe to DM channel
+    subscribe(`dm_${channelId}`);
 
     return () => {
-      unsubscribe(dmChannelId);
-      setIsSubscribed(false);
+      unsubscribe(`dm_${channelId}`);
     };
-  }, [channelId, subscribe, unsubscribe, isSubscribed]);
+  }, [channelId, subscribe, unsubscribe]);
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim()) return;
@@ -77,14 +77,12 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   };
 
   // Filter messages for this DM channel
-  const channelMessages = wsMessages.filter(msg => 
-    msg.channel_id === `dm_${channelId}` || msg.channel_id === channelId
-  );
+  const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-destructive">Error: {error instanceof Error ? error.message : 'Failed to load DM'}</p>
+        <p className="text-destructive">Error: {error?.message}</p>
       </div>
     );
   }
@@ -124,9 +122,9 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
               message={{
                 ...message,
                 attachments: message.attachments?.map(att => ({
-                  url: att.file_url || att.url,
-                  originalName: att.file_name || att.originalName,
-                  mimetype: att.file_type || att.mimetype
+                  url: att.file_url,
+                  originalName: att.file_name,
+                  mimetype: att.file_type
                 }))
               }}
             />

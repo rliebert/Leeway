@@ -48,13 +48,11 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   const handleSelectDM = (dmId: string) => {
     setSelectedDM(dmId);
     setLocalSelectedChannel(null);
-    onSelectChannel(""); // Clear selected channel when switching to DM
   };
 
   const handleSelectChannel = (channelId: string) => {
     onSelectChannel(channelId);
     setSelectedDM(null);
-    localStorage.setItem('lastSelectedChannel', channelId);
   };
 
   return (

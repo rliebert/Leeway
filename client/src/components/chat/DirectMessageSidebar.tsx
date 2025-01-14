@@ -26,72 +26,41 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     queryKey: ["/api/users"],
   });
 
-  // First try to get existing DM channel
-  const getDMChannel = async (userId: string) => {
-    try {
-      const response = await fetch(`/api/dm/channels/user/${userId}`, {
+  const createDMMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch("/api/dm/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ userId }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        return data;
+      if (!response.ok) {
+        throw new Error(await response.text());
       }
 
-      // If no channel exists (404) or other error, return null
-      return null;
-    } catch (error) {
-      console.error('Error getting DM channel:', error);
-      return null;
-    }
-  };
-
-  // Create new DM channel if needed
-  const createDMChannel = async (userId: string) => {
-    const response = await fetch("/api/dm/channels", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ userId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
-
-    return response.json();
-  };
-
-  const handleDMClick = async (userId: string) => {
-    if (userId === currentUser?.id) return; // Don't handle self-DMs for now
-
-    try {
-      // First try to get existing channel
-      let channel = await getDMChannel(userId);
-
-      // If no channel exists, create one
-      if (!channel) {
-        channel = await createDMChannel(userId);
-      }
-
-      // Handle the channel result
-      if (channel?.id) {
-        onSelectDM(channel.id);
-        const newUrl = `/dm/${channel.id}`;
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data?.id) {
+        onSelectDM(data.id);
+        // Update route without page reload
+        const newUrl = `/dm/${data.id}`;
         if (window.location.pathname !== newUrl) {
           window.history.pushState({}, '', newUrl);
         }
-        queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
       }
-    } catch (error) {
-      console.error('Error handling DM:', error);
+      toast({ description: "Direct message channel opened" });
+      queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
+    },
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to open DM",
+        description: error.message || "Failed to create chat",
         variant: "destructive",
       });
-    }
-  };
+    },
+  });
 
   function isUserOnline(last_active: Date | null): boolean {
     if (!last_active) return false;
@@ -136,7 +105,12 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
-                  onClick={() => handleDMClick(user.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!isSelf) {
+                      createDMMutation.mutate(user.id);
+                    }
+                  }}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
                     selectedDM === user.id && "bg-accent"
@@ -172,7 +146,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                       size="icon"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDMClick(user.id);
+                        createDMMutation.mutate(user.id);
                       }}
                       className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                     >
