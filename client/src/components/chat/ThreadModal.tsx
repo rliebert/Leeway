@@ -42,7 +42,7 @@ export default function ThreadModal({
 
   const handleEditMessage = (messageId: string) => {
     if (!editContent.trim()) return;
-    
+
     send({
       type: 'message_edited',
       messageId,
