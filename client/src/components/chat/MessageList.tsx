@@ -38,6 +38,21 @@ export default function MessageList({ channelId }: MessageListProps) {
     }
   }, [channelId, wsMessages.length]);
 
+  // Filter out thread replies and combine messages
+  const allMessages = [
+    ...(initialMessages?.filter(msg => !msg.parent_id) || []),
+    ...wsMessages.filter(
+      wsMsg => {
+        const isRelevant = 
+          wsMsg.channel_id?.toString() === channelId?.toString() && 
+          !wsMsg.parent_id &&
+          wsMsg.content !== null;
+        const isDuplicate = initialMessages?.some(initMsg => initMsg.id === wsMsg.id);
+        return isRelevant && !isDuplicate;
+      }
+    ),
+  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
   // Debug effect for tracking message updates
   useEffect(() => {
     console.log('[MessageList] Message state updated:', {
@@ -47,11 +62,6 @@ export default function MessageList({ channelId }: MessageListProps) {
       channelId
     });
   }, [initialMessages, wsMessages, allMessages.length, channelId]);
-
-  
-
-  // Filter out thread replies and combine messages
-  const allMessages = [
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(
       wsMsg => {

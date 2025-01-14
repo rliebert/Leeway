@@ -82,8 +82,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       try {
         const loc = window.location;
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
-        const wsHost = loc.host || (loc.hostname + (loc.port ? `:${loc.port}` : ''));
-        const wsUrl = `${wsProtocol}//${wsHost}/ws`;
+        const wsUrl = `${wsProtocol}//${loc.host}/ws`;
 
         debugLogger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
 
