@@ -11,8 +11,11 @@ import { Separator } from "@/components/ui/separator";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Message } from "@db/schema";
 import ChatInput from "./ChatInput";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWS } from "@/lib/ws";
+import { Pencil, Check, X } from "lucide-react";
+import { useUser } from "@/hooks/use-user";
+import { Textarea } from "@/components/ui/textarea";
 
 interface ThreadModalProps {
   open: boolean;
@@ -31,7 +34,24 @@ export default function ThreadModal({
 }: ThreadModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
-  const { messages: wsMessages } = useWS();
+  const { messages: wsMessages, send } = useWS();
+  const { user } = useUser();
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+
+  const handleEditMessage = (messageId: string) => {
+    if (!editContent.trim()) return;
+    
+    send({
+      type: 'message_edited',
+      messageId,
+      content: editContent,
+      channelId: parentMessage.channel_id
+    });
+
+    setEditingMessageId(null);
+    setEditContent('');
+  };
 
   const { data: replies = [] } = useQuery<(Message & {
     author?: { username: string; avatar_url?: string | null };
@@ -112,13 +132,70 @@ export default function ThreadModal({
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 group">
                       <span className="font-semibold">{reply.author?.username}</span>
                       <span className="text-xs text-muted-foreground">
                         {formatTimestamp(reply.created_at)}
                       </span>
+                      {reply.user_id === user?.id && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                            onClick={() => {
+                              setEditingMessageId(reply.id);
+                              setEditContent(reply.content);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm mt-1">{reply.content}</p>
+                    {editingMessageId === reply.id ? (
+                      <div className="mt-1 space-y-2">
+                        <Textarea
+                          value={editContent}
+                          onChange={(e) => setEditContent(e.target.value)}
+                          className="min-h-[60px] text-sm"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleEditMessage(reply.id);
+                            }
+                            if (e.key === "Escape") {
+                              setEditingMessageId(null);
+                              setEditContent('');
+                            }
+                          }}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="h-7"
+                            onClick={() => handleEditMessage(reply.id)}
+                          >
+                            <Check className="h-3 w-3 mr-1" />
+                            Save
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => {
+                              setEditingMessageId(null);
+                              setEditContent('');
+                            }}
+                          >
+                            <X className="h-3 w-3 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm mt-1">{reply.content}</p>
+                    )}
                   </div>
                 </div>
               ))}
