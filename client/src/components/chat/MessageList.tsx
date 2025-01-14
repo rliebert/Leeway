@@ -28,10 +28,25 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   useEffect(() => {
     if (channelId && channelId !== "0") {
+      console.log('[MessageList] Subscribing to channel:', channelId);
+      console.log('[MessageList] Initial WS messages:', wsMessages.length);
       subscribe(channelId);
-      return () => unsubscribe(channelId);
+      return () => {
+        console.log('[MessageList] Unsubscribing from channel:', channelId);
+        unsubscribe(channelId);
+      };
     }
-  }, [channelId]);
+  }, [channelId, wsMessages.length]);
+
+  // Debug effect for tracking message updates
+  useEffect(() => {
+    console.log('[MessageList] Message state updated:', {
+      initialMessages: initialMessages?.length || 0,
+      wsMessages: wsMessages.length,
+      combinedMessages: allMessages.length,
+      channelId
+    });
+  }, [initialMessages, wsMessages, allMessages.length, channelId]);
 
   
 
