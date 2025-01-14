@@ -99,6 +99,7 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
               return (
                 <div
                   key={user.id}
+                  onClick={() => createDMMutation.mutate(user.id)}
                   className={cn(
                     "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
                     selectedDM === user.id && "bg-accent"

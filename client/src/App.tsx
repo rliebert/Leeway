@@ -39,8 +39,8 @@ function AuthenticatedApp() {
           <Route path="/">
             <Home selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
           </Route>
-          <Route path="/dm/:userId">
-            {(params) => <DirectMessageView userId={params.userId} />}
+          <Route path="/dm/:channelId">
+            {(params) => <DirectMessageView channelId={params.channelId} />}
           </Route>
           <Route component={NotFound} />
         </Switch>
