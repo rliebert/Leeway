@@ -18,7 +18,11 @@ export default function MessageList({ channelId }: MessageListProps) {
     let isActive = true;
 
     if (channelId && channelId !== "0") {
-      console.log('MessageList: Subscribing to channel:', channelId);
+      console.log('MessageList: Managing subscription for channel:', channelId, {
+        isActive,
+        hasInitialMessages: !!initialMessages,
+        wsMessageCount: wsMessages.length
+      });
       if (isActive) {
         subscribe(channelId);
       }
@@ -34,8 +38,18 @@ export default function MessageList({ channelId }: MessageListProps) {
   }, [channelId]);
 
   useEffect(() => {
-    console.log('MessageList: Received WS messages:', wsMessages);
-  }, [wsMessages]);
+    console.log('MessageList: Message State', {
+      initialMessages: initialMessages?.length || 0,
+      wsMessages: wsMessages.length,
+      filtered: wsMessages.filter(
+        wsMsg => 
+          wsMsg.channel_id?.toString() === channelId?.toString() && 
+          !wsMsg.parent_id &&
+          !initialMessages?.some(initMsg => initMsg.id === wsMsg.id)
+      ).length,
+      channelId
+    });
+  }, [wsMessages, initialMessages, channelId]);
 
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
@@ -52,13 +66,20 @@ export default function MessageList({ channelId }: MessageListProps) {
   const allMessages = [
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(
-      wsMsg => 
-        wsMsg.channel_id?.toString() === channelId?.toString() && 
-        !wsMsg.parent_id && // Only show top-level messages
-        !initialMessages?.some(initMsg => initMsg.id === wsMsg.id) &&
-        wsMsg.content !== null // Filter out deleted messages
+      wsMsg => {
+        const isRelevant = 
+          wsMsg.channel_id?.toString() === channelId?.toString() && 
+          !wsMsg.parent_id &&
+          wsMsg.content !== null;
+        const isDuplicate = initialMessages?.some(initMsg => initMsg.id === wsMsg.id);
+        return isRelevant && !isDuplicate;
+      }
     ),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+  useEffect(() => {
+    console.log('MessageList: Final message count:', allMessages.length);
+  }, [allMessages.length]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
