@@ -250,14 +250,20 @@ export function setupWebSocketServer(server: Server) {
 
             // Check if message is a question and trigger AI response
             const { isQuestion, handleAIResponse } = require('./services/rag');
+            debug.info('Checking if message is a question:', message.content);
             if (isQuestion(message.content)) {
               debug.info('Question detected, generating AI response');
-              const aiResponse = await handleAIResponse(message.content);
-              if (aiResponse) {
-                // Get AI bot user
-                const aiBot = await db.query.users.findFirst({
-                  where: eq(users.username, 'ai.rob')
-                });
+              try {
+                const aiResponse = await handleAIResponse(message.content);
+                debug.info('AI response generated:', aiResponse);
+                
+                if (aiResponse) {
+                  // Get AI bot user
+                  const aiBot = await db.query.users.findFirst({
+                    where: eq(users.username, 'ai.rob')
+                  });
+                  
+                  debug.info('AI bot user found:', aiBot);
 
                 if (aiBot) {
                   // Create AI response message
@@ -278,12 +284,19 @@ export function setupWebSocketServer(server: Server) {
                   });
 
                   if (messageWithAuthor) {
+                    debug.info('Broadcasting AI response');
                     broadcastToChannel(message.channelId, {
                       type: 'message',
                       message: normalizeMessageForClient(messageWithAuthor)
                     });
+                  } else {
+                    debug.error('Failed to fetch AI message with author');
                   }
+                } else {
+                  debug.error('AI bot user not found');
                 }
+              } catch (error) {
+                debug.error('Error generating AI response:', error);
               }
             }
             debug.info('WebSocket packet received:', {
