@@ -35,10 +35,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // For new messages, add them to the state immediately
+    // For new messages, track the optimistic version with content as key
     if (data.type === 'message') {
       const tempId = crypto.randomUUID();
-      optimisticMessages.add(tempId);
+      const key = `${data.content}-${data.channelId}-${user?.id}`;
+      optimisticMessages.add(key);
       
       const optimisticMessage = {
         id: tempId,
@@ -49,7 +50,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
         author: {
           username: user?.username,
           avatar_url: user?.avatar_url
-        }
+        },
+        isOptimistic: true
       };
 
       setMessages(prev => [...prev, optimisticMessage]);
@@ -120,23 +122,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            // Find any matching optimistic message and replace it
-            const updated = prev.map(msg => {
-              if (optimisticMessages.has(msg.id) &&
+            const key = `${data.message.content}-${data.message.channel_id}-${data.message.user_id}`;
+            // Remove any optimistic version of this message
+            const filtered = prev.filter(msg => {
+              if (msg.isOptimistic && 
                   msg.content === data.message.content && 
                   msg.channel_id === data.message.channel_id && 
                   msg.user_id === data.message.user_id) {
-                optimisticMessages.delete(msg.id);
-                return data.message;
+                optimisticMessages.delete(key);
+                return false;
               }
-              return msg;
+              return true;
             });
-
-            // If no optimistic message was found, add the new message
-            if (updated.every(msg => msg.id !== data.message.id)) {
-              return [...updated, data.message];
-            }
-            return updated;
+            
+            return [...filtered, data.message];
           });
           break;
         case 'message_edited':
