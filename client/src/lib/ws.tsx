@@ -308,10 +308,18 @@ export function WSProvider({ children }: { children: ReactNode }) {
                   return updatedMessages;
                 });
 
-                // Force re-render of message list
-                queryClient.invalidateQueries({ 
-                  queryKey: [`/api/channels/${data.channelId}/messages`] 
+                // Force immediate state update for deleted message
+                const queryKey = [`/api/channels/${data.channelId}/messages`];
+                queryClient.setQueryData(queryKey, (oldData: any) => {
+                  if (!oldData) return [];
+                  return oldData.filter((msg: any) => 
+                    msg.id?.toString() !== data.messageId?.toString() &&
+                    msg.parent_id?.toString() !== data.messageId?.toString()
+                  );
                 });
+                
+                // Then invalidate to refetch
+                queryClient.invalidateQueries({ queryKey });
                 break;
             }
             debugLogger.endGroup();
