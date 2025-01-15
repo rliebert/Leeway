@@ -29,7 +29,7 @@ interface MessageProps {
   };
 }
 
-const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
+const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref): JSX.Element => {
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
