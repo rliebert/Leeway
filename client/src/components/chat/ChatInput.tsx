@@ -193,10 +193,7 @@ export default function ChatInput({
                 id="file-upload"
                 multiple
                 className="hidden"
-                onChange={(e) => {
-                  const selectedFiles = Array.from(e.target.files || []);
-                  handleFileSelect(selectedFiles);
-                }}
+                onChange={handleFileSelect}
                 accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt"
               />
               <Button
