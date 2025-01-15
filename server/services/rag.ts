@@ -33,6 +33,25 @@ interface PineconeMatch {
   };
 }
 
+// Export the handleAIResponse function
+export async function handleAIResponse(question: string): Promise<string | null> {
+  try {
+    console.log('Finding similar messages for question:', question);
+    const similarMessages = await findSimilarMessages(question, 5);
+
+    if (similarMessages.length === 0) {
+      console.log('No similar messages found, generating response without context');
+      return generateAIResponse(question, []);
+    }
+
+    console.log(`Found ${similarMessages.length} similar messages`);
+    return generateAIResponse(question, similarMessages);
+  } catch (error) {
+    console.error('Error handling AI response:', error);
+    return null;
+  }
+}
+
 export async function initializePinecone() {
   try {
     pinecone = new Pinecone({
@@ -207,7 +226,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",  // Updated to use gpt-4o-mini
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         messages: [
           {
             role: "system",

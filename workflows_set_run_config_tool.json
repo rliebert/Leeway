@@ -9,7 +9,8 @@
         "PORT": "5000",
         "OPENAI_API_KEY": "${OPENAI_API_KEY}",
         "PINECONE_API_KEY": "${PINECONE_API_KEY}",
-        "DATABASE_URL": "${DATABASE_URL}"
+        "DATABASE_URL": "${DATABASE_URL}",
+        "AI_BOT_USER_ID": "${AI_BOT_USER_ID}"
       }
     }
   ]

@@ -6,7 +6,7 @@ import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
-import { handleAIResponse } from "./services/rag";
+import { handleAIResponse, isQuestion as ragIsQuestion } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -43,7 +43,6 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
         debug.info(`Successfully sent to client ${client.userId}`);
       } catch (error) {
         debug.error(`Failed to send to client: ${error}`);
-        // Remove failed clients from subscriptions
         subscribers.delete(client);
       }
     }
@@ -259,22 +258,23 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
+                // Broadcast the message immediately
                 debug.info('Broadcasting new message to channel');
-                // Broadcast the message immediately after creation
                 broadcastToChannel(message.channelId, {
                   type: 'message',
                   message: normalizeMessageForClient(messageWithAuthor)
                 });
 
-                // Check if this is a question and generate AI response if needed
-                if (await isQuestion(message.content)) {
+                // Check if this is a question and generate AI response
+                if (ragIsQuestion(message.content)) {
                   debug.info('Question detected, generating AI response');
                   try {
                     const aiResponse = await handleAIResponse(message.content);
-                    if (aiResponse) {
+                    if (aiResponse && process.env.AI_BOT_USER_ID) {
+                      debug.info('Creating AI response message');
                       const [aiMessage] = await db.insert(messages).values({
                         channel_id: message.channelId,
-                        user_id: process.env.AI_BOT_USER_ID!,
+                        user_id: process.env.AI_BOT_USER_ID,
                         content: aiResponse,
                         parent_id: newMessage.id,
                       }).returning();
@@ -294,6 +294,8 @@ export function setupWebSocketServer(server: Server) {
                           message: normalizeMessageForClient(aiMessageWithAuthor)
                         });
                       }
+                    } else {
+                      debug.warn('AI response generated but AI_BOT_USER_ID not set');
                     }
                   } catch (error) {
                     debug.error('Error generating AI response:', error);
@@ -351,7 +353,7 @@ export function setupWebSocketServer(server: Server) {
 }
 
 async function isQuestion(content: string): Promise<boolean> {
-  return content.trim().endsWith('?');
+  return ragIsQuestion(content);
 }
 
 function normalizeMessageForClient(msg: any) {
