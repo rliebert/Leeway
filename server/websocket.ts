@@ -99,7 +99,7 @@ function normalizeMessageForClient(message: any) {
 
 export function setupWebSocketServer(server: Server) {
   debug.info('Setting up WebSocket server');
-
+  
   const wss = new WebSocketServer({
     server,
     path: '/ws',
@@ -120,7 +120,7 @@ export function setupWebSocketServer(server: Server) {
       try {
         const cookies = parseCookie(req.headers.cookie || '');
         const sessionId = cookies['connect.sid'];
-
+        
         if (!sessionId) {
           debug.error('No session cookie found');
           done(false, 401, 'No session cookie');
@@ -246,58 +246,6 @@ export function setupWebSocketServer(server: Server) {
             if (!message.channelId || !message.content) {
               debug.warn('Invalid message data:', { channelId: message.channelId, hasContent: !!message.content });
               return;
-            }
-
-            // Check if message is a question and trigger AI response
-            const { isQuestion, handleAIResponse } = require('./services/rag');
-            debug.info('Checking if message is a question:', message.content);
-            if (isQuestion(message.content)) {
-              debug.info('Question detected, generating AI response');
-              try {
-                const aiResponse = await handleAIResponse(message.content);
-                debug.info('AI response generated:', aiResponse);
-                
-                if (aiResponse) {
-                  // Get AI bot user
-                  const aiBot = await db.query.users.findFirst({
-                    where: eq(users.username, 'ai.rob')
-                  });
-                  
-                  debug.info('AI bot user found:', aiBot);
-
-                  if (aiBot) {
-                    // Create AI response message
-                    const [aiMessage] = await db.insert(messages)
-                      .values({
-                        content: aiResponse,
-                        channel_id: message.channelId,
-                        user_id: aiBot.id,
-                      })
-                      .returning();
-
-                  const messageWithAuthor = await db.query.messages.findFirst({
-                    where: eq(messages.id, aiMessage.id),
-                    with: {
-                      author: true,
-                      attachments: true,
-                    },
-                  });
-
-                  if (messageWithAuthor) {
-                    debug.info('Broadcasting AI response');
-                    broadcastToChannel(message.channelId, {
-                      type: 'message',
-                      message: normalizeMessageForClient(messageWithAuthor)
-                    });
-                  } else {
-                    debug.error('Failed to fetch AI message with author');
-                  }
-                } else {
-                  debug.error('AI bot user not found');
-                }
-              } catch (error) {
-                debug.error('Error generating AI response:', error);
-              }
             }
             debug.info('WebSocket packet received:', {
               type: message.type,
