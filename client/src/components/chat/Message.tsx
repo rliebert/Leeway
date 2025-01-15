@@ -106,11 +106,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   const replyCount = allReplies.length;
 
-  const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
-
   const normalizeFileUrl = (attachment: FileAttachment): string => {
     if (!attachment) return '';
-
+    
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
       return attachment.file_url || attachment.url || '';
     }
@@ -119,33 +117,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     let fileUrl = attachment.file_url || attachment.url || '';
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
-
-        setUploadedFiles([...uploadedFiles, {
-          id: data.id,
-          url: data.url,
-          originalName: file.name,
-          mimetype: file.type,
-          file_size: file.size,
-        }]);
-      } catch (error) {
-        console.error('Upload error:', error);
-      }
-    }
-    e.target.value = '';
   };
 
   const isImageFile = (mimetype?: string): boolean => {
@@ -236,24 +207,11 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
-        // Make API request to update the message
-        const response = await fetch(`/api/messages/${message.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: editContent.trim(),
-            deletedAttachments: deletedAttachments,
-            attachments: uploadedFiles
-          }),
-        });
+      // Check if this is an optimistic message
+      const isOptimisticMessage = message.id.length === 36;
 
-        if (!response.ok) {
-          throw new Error('Failed to update message');
-        }
-
-        // Update local cache
+      if (isOptimisticMessage) {
+        // For optimistic messages, just update the cache and notify via WebSocket
         queryClient.setQueryData(
           [`/api/channels/${message.channel_id}/messages`],
           (oldData: any) => {
@@ -266,14 +224,12 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           }
         );
 
-        // Notify others via WebSocket
         send({
           type: "message_edited",
           channelId: message.channel_id || '',
           messageId: message.id,
           content: editContent.trim(),
-          deletedAttachments: deletedAttachments,
-          attachments: uploadedFiles
+          deletedAttachments: deletedAttachments
         });
 
         setIsEditing(false);
@@ -281,9 +237,26 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         return;
       }
 
-
       // For real messages, proceed with normal edit
-      
+      queryClient.setQueryData(
+        [`/api/channels/${message.channel_id}/messages`],
+        (oldData: any) => {
+          if (!oldData) return [];
+          return oldData.map((msg: any) => 
+            msg.id === message.id 
+              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
+              : msg
+          );
+        }
+      );
+
+      send({
+        type: "message_edited",
+        channelId: message.channel_id || '',
+        messageId: message.id,
+        content: editContent.trim(),
+        deletedAttachments: deletedAttachments
+      });
 
       setIsEditing(false);
       toast({ description: "Message updated" });
@@ -409,19 +382,20 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       e.target.value = '';
                     }}
                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                    onChange={handleFileUpload}
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      document.getElementById(`file-upload-edit-${message.id}`)?.click();
-                    }}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
+                  {(!message.attachments?.length || deletedAttachments.length === message.attachments?.length) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        document.getElementById(`file-upload-edit-${message.id}`)?.click();
+                      }}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button
