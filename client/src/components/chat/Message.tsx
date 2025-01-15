@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Pencil, Check, X, Smile } from "lucide-react";
+import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Pencil, Check, X, Smile, Paperclip } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import EmojiPicker from "emoji-picker-react";
 import type { Message as MessageType } from "@db/schema";
@@ -388,7 +388,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         document.getElementById(`file-upload-edit-${message.id}`)?.click();
                       }}
                     >
-                      <FileIcon className="h-4 w-4" />
+                      <Paperclip className="h-4 w-4" />
                     </Button>
                   )}
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
@@ -502,7 +502,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
                         >
-                          <FileIcon className="h-4 w-4" />
+                          <Paperclip className="h-4 w-4" />
                           <span className="truncate max-w-[200px]">
                             {file.originalName || file.file_name}
                           </span>
@@ -660,7 +660,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
                                 >
-                                  <FileIcon className="h-4 w-4" />
+                                  <Paperclip className="h-4 w-4" />
                                   {file.originalName || file.file_name}
                                   <ExternalLink className="h-3 w-3" />
                                 </a>
