@@ -37,11 +37,24 @@
 - [x] Track last training timestamp
 - [x] Implement optimized retraining checks
 - [ ] Add monitoring for embedding storage growth
+- [ ] Add response quality tracking
+- [ ] Implement fallback responses
 
-## Next Actions:
-1. Run initial training on rliebert's message history
-2. Test the question detection and response generation
-3. Monitor and adjust response quality
+## Next Actions (Priority Order):
+1. Run initial training:
+   - Execute training script on rliebert's message history
+   - Verify embeddings are stored correctly
+   - Check vector search functionality
+
+2. Test end-to-end functionality:
+   - Test question detection accuracy
+   - Verify AI responses match rliebert's style
+   - Check WebSocket integration for responses
+
+3. Add monitoring and quality control:
+   - Implement storage monitoring
+   - Add response quality metrics
+   - Set up automatic retraining triggers
 
 ## Admin Features:
 - [x] Add WebSocket command for manual retraining
