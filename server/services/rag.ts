@@ -302,18 +302,18 @@ function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
   }, interval);
 }
 
+// Export functions alphabetically for better organization
+export {
+  generateAIResponse,
+  handleAIResponse,
+  initializePinecone,  // Added back to exports
+  isQuestion,
+  startPeriodicRetraining,
+  trainOnUserMessages
+};
+
 // Initialize Pinecone when the module loads
 initializePinecone().catch(error => {
   console.error('Failed to initialize Pinecone:', error);
   process.exit(1);
 });
-
-// Export all functions at once
-export {
-  handleAIResponse,
-  trainOnUserMessages,
-  generateAIResponse,
-  isQuestion,
-  startPeriodicRetraining,
-  initializePinecone
-};

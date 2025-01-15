@@ -10,7 +10,7 @@
         "OPENAI_API_KEY": "${OPENAI_API_KEY}",
         "PINECONE_API_KEY": "${PINECONE_API_KEY}",
         "DATABASE_URL": "${DATABASE_URL}",
-        "AI_BOT_USER_ID": "${AI_BOT_USER_ID}"
+        "AI_BOT_USER_ID": "5c6f10f4-eaf1-4a8f-a927-136e080fa683"
       }
     }
   ]
