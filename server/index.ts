@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeSessionStore } from "./config/session";
+import { initializePinecone, startPeriodicRetraining } from "./services/rag";
 import path from "path";
 
 const app = express();
@@ -57,6 +58,15 @@ app.get("/health", (_req, res) => {
     app.use(sessionMiddleware);
     log("Session store initialized successfully");
 
+    // Wait for Pinecone initialization before starting server
+    try {
+      await initializePinecone();
+      log("Pinecone service initialized successfully");
+    } catch (error) {
+      console.error("Error initializing Pinecone service:", error);
+      // Continue server startup even if Pinecone fails
+    }
+
     const server = registerRoutes(app);
 
     // Global error handler
@@ -80,6 +90,7 @@ app.get("/health", (_req, res) => {
         server.listen(port, "0.0.0.0")
           .once('listening', () => {
             log(`Server started successfully on port ${port}`);
+            startPeriodicRetraining(); // Start periodic retraining after server is up
             resolve();
           })
           .once('error', (err: any) => {

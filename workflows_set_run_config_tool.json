@@ -1,0 +1,15 @@
+{
+  "workflows": [
+    {
+      "name": "Start application",
+      "command": "npm run dev",
+      "restart_on": ["server/**/*", "client/**/*"],
+      "environment": {
+        "NODE_ENV": "development",
+        "PORT": "5000",
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "PINECONE_API_KEY": "${PINECONE_API_KEY}"
+      }
+    }
+  ]
+}

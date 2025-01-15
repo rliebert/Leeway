@@ -23,11 +23,20 @@ console.log('Initializing Pinecone client...');
 let pinecone: Pinecone;
 let index: any;
 
-async function initializePinecone() {
+interface PineconeMatch {
+  id: string;
+  score: number;
+  metadata: {
+    userId: string;
+    content: string;
+    timestamp: string;
+  };
+}
+
+export async function initializePinecone() {
   try {
     pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!,
-      environment: 'us-east-1'  // Adding environment specification for proper initialization
+      apiKey: process.env.PINECONE_API_KEY!
     });
     console.log('Pinecone client initialized successfully');
 
@@ -170,7 +179,7 @@ export async function findSimilarMessages(query: string, limit = 5) {
     });
 
     console.log(`Found ${queryResponse.matches.length} similar messages`);
-    return queryResponse.matches.map(match => ({
+    return queryResponse.matches.map((match: PineconeMatch) => ({
       ...match.metadata,
       similarity: match.score
     }));
@@ -281,7 +290,7 @@ export function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
   }, interval);
 }
 
-// Initialize Pinecone
+// Initialize Pinecone when the module loads
 initializePinecone().catch(error => {
   console.error('Failed to initialize Pinecone:', error);
   process.exit(1);
