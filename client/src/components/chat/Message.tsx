@@ -290,9 +290,11 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
     } finally {
         setDeletedAttachments([]); // Reset after save
     }
-      console.error('Error editing message:', error);
-      toast({ 
-        variant: "destructive",
+  };
+
+  const handleAttachmentDelete = (attachmentId: string) => {
+    setDeletedAttachments([...deletedAttachments, attachmentId]);
+  };
         description: "Failed to update message"
       });
       setIsEditing(false);
