@@ -72,6 +72,7 @@ function normalizeMessageForClient(message: any) {
     channel_id: message.channel_id,
     user_id: message.user_id,
     parent_id: message.parent_id,
+    tempId: message.tempId, // Include tempId in normalized message
     author: message.author ? {
       id: message.author.id,
       username: message.author.username,
@@ -222,10 +223,14 @@ export function setupWebSocketServer(server: Server) {
 
               if (messageWithAuthor) {
                 debug.info('Broadcasting message with tempId:', message.tempId);
+                const normalizedMessage = normalizeMessageForClient({
+                  ...messageWithAuthor,
+                  tempId: message.tempId
+                });
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizeMessageForClient(messageWithAuthor),
-                  tempId: message.tempId // Pass through tempId from client
+                  message: normalizedMessage,
+                  tempId: message.tempId
                 });
               }
             } catch (error) {
