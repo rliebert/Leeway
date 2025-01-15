@@ -376,14 +376,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 </div>
                 <div className="flex justify-end gap-2">
                   <Button
-                    size="sm"
-                    className="h-7"
-                    onClick={handleEditMessage}
-                  >
-                    <Check className="h-3 w-3 mr-1" />
-                    Save
-                  </Button>
-                  <Button
                     variant="ghost"
                     size="sm"
                     className="h-7"
@@ -395,6 +387,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   >
                     <X className="h-3 w-3 mr-1" />
                     Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7"
+                    onClick={handleEditMessage}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Save
                   </Button>
                 </div>
               </div>
