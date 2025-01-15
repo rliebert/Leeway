@@ -1,0 +1,104 @@
+7:00:15 AM [express] Pinecone service initialized successfully
+[7:00:15 AM] [DEBUG] [WebSocket] Server debug logging enabled
+7:00:15 AM [express] Server started successfully on port 5000
+Starting periodic retraining service
+7:00:20 AM [express] GET /api/user 304 in 52ms :: {"id":"1120df3e-2a36-4772-b21c-dde059ba2a70","emai…
+7:00:20 AM [express] GET /api/user 304 in 49ms :: {"id":"1120df3e-2a36-4772-b21c-dde059ba2a70","emai…
+7:00:20 AM [express] GET /api/channels 200 in 74ms :: [{"id":"592a3c6f-072b-4b24-ba22-0b0d6ff72463",…
+7:00:20 AM [express] GET /api/channels/74a66855-49af-41b1-92a2-c06ea4319c40/messages 200 in 78ms :: …
+7:00:20 AM [express] GET /api/users 200 in 110ms :: [{"id":"70fe3072-9cc0-4dfd-a8b6-4e6e86177bed","e…
+7:00:20 AM [express] GET /api/sections 200 in 118ms :: [{"id":"772a02fd-7843-4c37-8b0c-8a0da872e0fa"…
+[7:00:20 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:20 AM] [INFO] [WebSocket] WebSocket closed for user:
+7:00:20 AM [express] GET /api/channels 304 in 71ms :: [{"id":"592a3c6f-072b-4b24-ba22-0b0d6ff72463",…
+7:00:20 AM [express] GET /api/channels/74a66855-49af-41b1-92a2-c06ea4319c40/messages 304 in 66ms :: …
+7:00:20 AM [express] GET /api/users 304 in 69ms :: [{"id":"70fe3072-9cc0-4dfd-a8b6-4e6e86177bed","em…
+7:00:20 AM [express] GET /api/sections 304 in 70ms :: [{"id":"772a02fd-7843-4c37-8b0c-8a0da872e0fa",…
+7:00:21 AM [express] GET /api/messages/298cf068-474d-498d-96d9-7129cd16edce/replies 304 in 76ms :: []
+[7:00:21 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:21 AM] [INFO] [WebSocket] WebSocket closed for user:
+7:00:21 AM [express] GET /api/messages/298cf068-474d-498d-96d9-7129cd16edce/replies 304 in 80ms :: []
+[7:00:21 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:21 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:21 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:21 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:22 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:23 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:23 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:24 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:26 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:29 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:29 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:30 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:00:35 AM] [INFO] [WebSocket] WebSocket closed for user:
+7:01:11 AM [express] POST /api/dm/channels 200 in 235ms
+7:01:13 AM [express] GET /api/channels/592a3c6f-072b-4b24-ba22-0b0d6ff72463/messages 200 in 255ms ::…
+7:01:13 AM [express] GET /api/messages/d0b2ee16-c3a9-4667-98cb-ac7a9a47fb2e/replies 200 in 91ms :: […
+7:01:13 AM [express] GET /api/messages/64def421-0188-4c33-89d0-3d5c11a8d00b/replies 304 in 133ms :: …
+7:01:14 AM [express] GET /api/messages/6bb10d75-3280-4288-82a4-c8410a08b920/replies 200 in 217ms :: …
+7:01:14 AM [express] GET /api/messages/1a5e3984-5d0b-4428-b398-658fc8a568df/replies 304 in 276ms :: …
+7:01:14 AM [express] GET /api/messages/3913db3a-6345-4aeb-9f86-180d8cf496fc/replies 304 in 158ms :: …
+7:01:14 AM [express] GET /api/messages/c9dcada3-8020-4775-a586-e8e0f78bba05/replies 304 in 300ms :: …
+7:01:14 AM [express] GET /api/messages/c6cc78d2-02df-4cd2-83d4-644faf2c31ca/replies 304 in 160ms :: …
+7:01:14 AM [express] GET /api/messages/64a16c5e-74cf-4c7a-a72d-a04e4f9ce9d6/replies 304 in 256ms :: …
+7:01:14 AM [express] GET /api/messages/9bd11b01-a845-4b16-b5af-eb767222f1c2/replies 304 in 85ms :: []
+7:01:14 AM [express] GET /api/messages/1df84025-a264-4c93-ba0b-4e293078afac/replies 304 in 81ms :: []
+7:01:14 AM [express] GET /api/messages/089575c7-3c34-489d-ac98-a51a81396606/replies 304 in 89ms :: []
+7:01:14 AM [express] GET /api/messages/64fde5c8-25d1-4d12-a761-22f076423280/replies 304 in 97ms :: []
+7:01:14 AM [express] GET /api/messages/f0f15bea-8166-4ada-80cf-495fb4062362/replies 304 in 100ms :: …
+7:01:14 AM [express] GET /api/messages/e50409ca-f12a-4f99-b4bc-6f43eeea1edd/replies 304 in 97ms :: []
+7:01:25 AM [express] GET /api/user 304 in 60ms :: {"id":"1120df3e-2a36-4772-b21c-dde059ba2a70","emai…
+7:01:25 AM [express] GET /api/channels 304 in 74ms :: [{"id":"592a3c6f-072b-4b24-ba22-0b0d6ff72463",…
+7:01:25 AM [express] GET /api/sections 304 in 75ms :: [{"id":"772a02fd-7843-4c37-8b0c-8a0da872e0fa",…
+7:01:25 AM [express] GET /api/channels/74a66855-49af-41b1-92a2-c06ea4319c40/messages 304 in 79ms :: …
+7:01:25 AM [express] GET /api/users 304 in 112ms :: [{"id":"70fe3072-9cc0-4dfd-a8b6-4e6e86177bed","e…
+7:01:25 AM [express] GET /api/messages/298cf068-474d-498d-96d9-7129cd16edce/replies 304 in 78ms :: []
+[7:01:26 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:26 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:29 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:29 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:30 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:30 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:32 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:32 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:35 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:35 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:38 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:38 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:39 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:39 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:44 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:44 AM] [INFO] [WebSocket] WebSocket closed for user:
+[7:01:45 AM] [INFO] [WebSocket] WebSocket connected for user:
+[7:01:45 AM] [INFO] [WebSocket] WebSocket closed for user:
