@@ -144,22 +144,6 @@ export function setupWebSocketServer(server: Server) {
                     );
 
                     if (aiResponse && process.env.AI_BOT_USER_ID) {
-
-                if (completeMessage) {
-                  // Update with permanent message
-                  broadcastToChannel(message.channelId, {
-                    type: "message",
-                    message: normalizeMessageForClient(completeMessage),
-                  });
-
-                  // Check for question and generate AI response
-                  if (ragIsQuestion(message.content)) {
-                    const aiResponse = await generateAIResponse(
-                      message.content,
-                      [],
-                    );
-
-                    if (aiResponse && process.env.AI_BOT_USER_ID) {
                       const [aiMessage] = await db
                         .insert(messages)
                         .values({
