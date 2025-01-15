@@ -38,32 +38,40 @@ export default function MessageList({ channelId }: MessageListProps) {
   }, [channelId]); // Remove wsMessages.length dependency
 
   // Filter out thread replies and combine messages
-  // Get unique messages by id, preferring WebSocket messages over initial messages
   const messageMap = new Map();
   
-  // Add initial messages first
-  initialMessages?.filter(msg => !msg.parent_id)?.forEach(msg => {
-    messageMap.set(msg.id, msg);
-  });
+  // Track deleted message IDs
+  const deletedMessageIds = new Set(
+    wsMessages
+      .filter(msg => msg.type === 'message_deleted')
+      .map(msg => msg.messageId?.toString())
+  );
 
-  // Add or update with WebSocket messages
-  wsMessages.forEach(wsMsg => {
-    if (wsMsg.type === 'message_deleted') {
-      messageMap.delete(wsMsg.messageId);
-      // Also remove any child messages
-      for (const [key, msg] of messageMap.entries()) {
-        if (msg.parent_id?.toString() === wsMsg.messageId?.toString()) {
-          messageMap.delete(key);
-        }
-      }
-    } else if (
-      wsMsg.channel_id?.toString() === channelId?.toString() && 
-      !wsMsg.parent_id &&
-      wsMsg.content !== null
-    ) {
-      messageMap.set(wsMsg.id, wsMsg);
+  // Add initial messages that haven't been deleted
+  initialMessages
+    ?.filter(msg => !msg.parent_id && !deletedMessageIds.has(msg.id?.toString()))
+    ?.forEach(msg => {
+      messageMap.set(msg.id, msg);
+    });
+
+  // Add WebSocket messages that haven't been deleted
+  wsMessages
+    .filter(msg => 
+      msg.channel_id?.toString() === channelId?.toString() &&
+      !msg.parent_id &&
+      msg.content !== null &&
+      !deletedMessageIds.has(msg.id?.toString())
+    )
+    .forEach(msg => {
+      messageMap.set(msg.id, msg);
+    });
+
+  // Remove any child messages of deleted messages
+  for (const [key, msg] of messageMap.entries()) {
+    if (deletedMessageIds.has(msg.parent_id?.toString())) {
+      messageMap.delete(key);
     }
-  });
+  }
 
   const allMessages = Array.from(messageMap.values())
   .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
