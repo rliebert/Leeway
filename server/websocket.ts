@@ -195,17 +195,46 @@ export function setupWebSocketServer(server: Server) {
         // Check if message is a question and should trigger AI response
         if (message.type === 'message' && message.content && isQuestion(message.content)) {
           try {
+            // First broadcast the user's message
+            const [userMessage] = await db.insert(messages).values({
+              channel_id: message.channelId,
+              user_id: ws.userId,
+              content: message.content,
+              parent_id: message.parentId || null,
+            }).returning();
+
+            // Get user message with author details
+            const userMessageWithAuthor = await db.query.messages.findFirst({
+              where: eq(messages.id, userMessage.id),
+              with: {
+                author: true,
+                attachments: true,
+              }
+            });
+
+            if (userMessageWithAuthor) {
+              broadcastToChannel(message.channelId, {
+                type: 'message',
+                message: normalizeMessageForClient(userMessageWithAuthor)
+              });
+            }
+
+            // Then generate and send AI response
+            debug.log('Processing AI response for question:', message.content);
             const aiRobUser = await db.query.users.findFirst({
               where: eq(users.username, 'ai.rob'),
             });
 
             if (!aiRobUser) {
-              console.error('AI bot user not found');
+              debug.error('AI bot user not found');
               return;
             }
 
             const similarMessages = await findSimilarMessages(message.content);
+            debug.log('Found similar messages:', similarMessages.length);
+
             const aiResponse = await generateAIResponse(message.content, similarMessages);
+            debug.log('Generated AI response:', aiResponse);
 
             // Send AI response as ai.rob
             const [aiMessage] = await db.insert(messages).values({
@@ -224,18 +253,44 @@ export function setupWebSocketServer(server: Server) {
             });
 
             if (messageWithAuthor) {
+              debug.log('Broadcasting AI response');
               broadcastToChannel(message.channelId, {
                 type: 'message',
                 message: normalizeMessageForClient(messageWithAuthor)
               });
             }
           } catch (error) {
-            console.error('Error generating AI response:', error);
-            ws.send(JSON.stringify({
-              type: 'error',
-              message: 'Failed to generate AI response'
-            }));
+            debug.error('Error generating AI response:', error);
+            // Only send error message to the channel if AI processing fails
+            const aiRobUser = await db.query.users.findFirst({
+              where: eq(users.username, 'ai.rob'),
+            });
+
+            if (aiRobUser) {
+              const [errorMessage] = await db.insert(messages).values({
+                channel_id: message.channelId,
+                user_id: aiRobUser.id,
+                content: "I apologize, but I encountered a temporary error while processing your request. Please try asking your question again.",
+                parent_id: null,
+              }).returning();
+
+              const messageWithAuthor = await db.query.messages.findFirst({
+                where: eq(messages.id, errorMessage.id),
+                with: {
+                  author: true,
+                  attachments: true,
+                }
+              });
+
+              if (messageWithAuthor) {
+                broadcastToChannel(message.channelId, {
+                  type: 'message',
+                  message: normalizeMessageForClient(messageWithAuthor)
+                });
+              }
+            }
           }
+          return; // Exit after handling AI response
         }
 
         switch (message.type) {
