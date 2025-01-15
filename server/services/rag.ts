@@ -1,3 +1,12 @@
+// Add env var check at the top of the file
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is not set');
+}
+
+if (!process.env.PINECONE_API_KEY) {
+  throw new Error('PINECONE_API_KEY environment variable is not set');
+}
+
 let isPineconeInitialized = false;
 
 import { OpenAIEmbeddings } from "@langchain/openai";
@@ -6,7 +15,29 @@ import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { Pinecone } from '@pinecone-database/pinecone';
 
-export const initializePinecone = async () => {
+// Initialize OpenAI embeddings
+console.log('Initializing OpenAI embeddings...');
+const embeddings = new OpenAIEmbeddings({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  modelName: "text-embedding-3-small" 
+});
+
+// Initialize Pinecone client
+console.log('Initializing Pinecone client...');
+let pinecone: Pinecone;
+let index: any;
+
+interface PineconeMatch {
+  id: string;
+  score: number;
+  metadata: {
+    userId: string;
+    content: string;
+    timestamp: string;
+  };
+}
+
+async function initializePinecone() {
   if (isPineconeInitialized) {
     return true;
   }
@@ -69,10 +100,9 @@ export const initializePinecone = async () => {
     isPineconeInitialized = false;
     throw error;
   }
-};
+}
 
-// Update handleAIResponse to check initialization
-export async function handleAIResponse(question: string): Promise<string | null> {
+async function handleAIResponse(question: string): Promise<string | null> {
   if (!isPineconeInitialized) {
     console.log('Attempting to initialize Pinecone...');
     try {
@@ -99,7 +129,6 @@ export async function handleAIResponse(question: string): Promise<string | null>
     return null;
   }
 }
-
 
 let lastTrainingTimestamp: Date | null = null;
 const RETRAINING_INTERVAL = 1000 * 60 * 60; 
@@ -279,7 +308,7 @@ initializePinecone().catch(error => {
   process.exit(1);
 });
 
-// Export all functions as a single object
+// Export all functions at once
 export {
   handleAIResponse,
   trainOnUserMessages,
@@ -288,33 +317,3 @@ export {
   startPeriodicRetraining,
   initializePinecone
 };
-
-// Add env var check at the top of the file
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY environment variable is not set');
-}
-
-if (!process.env.PINECONE_API_KEY) {
-  throw new Error('PINECONE_API_KEY environment variable is not set');
-}
-
-console.log('Initializing OpenAI embeddings...');
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small" 
-});
-
-// Initialize Pinecone client with error handling
-console.log('Initializing Pinecone client...');
-let pinecone: Pinecone;
-let index: any;
-
-interface PineconeMatch {
-  id: string;
-  score: number;
-  metadata: {
-    userId: string;
-    content: string;
-    timestamp: string;
-  };
-}
