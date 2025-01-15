@@ -64,13 +64,15 @@ export default function ThreadModal({
 
   // Combine initial replies with new WebSocket messages
   const allReplies = [
-    ...replies,
+    ...(replies || []),
     ...wsMessages.filter(
       msg => 
-        msg.parent_id === parentMessage.id &&
-        !replies.some(reply => reply.id === msg.id)
+        msg.parent_id?.toString() === parentMessage?.id?.toString() &&
+        !(replies || []).some(reply => reply?.id === msg?.id)
     ),
-  ];
+  ].sort((a, b) => 
+    new Date(a?.created_at || '').getTime() - new Date(b?.created_at || '').getTime()
+  );
 
   useEffect(() => {
     if (open) {
@@ -205,7 +207,7 @@ export default function ThreadModal({
           <ScrollArea className="flex-1 p-4">
             <div className="flex flex-col gap-4">
               {allReplies.map((reply) => (
-                <div key={reply.id} className="flex gap-4">
+                <div key={reply?.tempId || reply?.id} className="flex gap-4">
                   <Avatar>
                     <AvatarImage src={reply.author?.avatar_url || undefined} />
                     <AvatarFallback>
