@@ -250,7 +250,8 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Message not found" });
       }
 
-      if (message.user_id !== (req.user as User).id) {
+      const user = req.user as User;
+      if (message.user_id !== user.id && !user.is_admin) {
         return res.status(403).json({ error: "Not authorized to delete this message" });
       }
 
