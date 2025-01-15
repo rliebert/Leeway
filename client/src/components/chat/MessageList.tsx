@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
 import Message from "@/components/chat/Message";
 import type { Message as MessageType } from "@/lib/types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -19,10 +19,12 @@ export default function MessageList({ channelId }: MessageListProps) {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
+  const currentChannelRef = useRef<string | null>(null);
 
-  const { data: initialMessages } = useQuery<MessageType[]>({
+  const { data: initialMessages, isLoading } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
     queryFn: async () => {
+      if (!channelId || channelId === "0") return [];
       const response = await fetch(`/api/channels/${channelId}/messages`, {
         credentials: 'include'
       });
@@ -34,16 +36,31 @@ export default function MessageList({ channelId }: MessageListProps) {
     enabled: !!channelId && channelId !== "0",
   });
 
+  // Handle channel subscription with debouncing
   useEffect(() => {
-    if (channelId && channelId !== "0") {
-      console.log('[MessageList] Subscribing to channel:', channelId);
-      subscribe(channelId);
-      return () => {
-        console.log('[MessageList] Unsubscribing from channel:', channelId);
-        unsubscribe(channelId);
-      };
+    if (!channelId || channelId === "0" || isLoading) return;
+
+    // Prevent duplicate subscriptions
+    if (currentChannelRef.current === channelId) return;
+
+    const previousChannel = currentChannelRef.current;
+    currentChannelRef.current = channelId;
+
+    // Clean up previous subscription if exists
+    if (previousChannel) {
+      unsubscribe(previousChannel);
     }
-  }, [channelId, subscribe, unsubscribe]);
+
+    // Subscribe to new channel
+    subscribe(channelId);
+
+    // Cleanup on unmount or channel change
+    return () => {
+      if (channelId) {
+        unsubscribe(channelId);
+      }
+    };
+  }, [channelId, subscribe, unsubscribe, isLoading]);
 
   // Combine and deduplicate messages
   const messageMap = new Map<string, MessageType>();
@@ -70,15 +87,20 @@ export default function MessageList({ channelId }: MessageListProps) {
   const allMessages = Array.from(messageMap.values())
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     setUnreadCount(0);
     setShowScrollButton(false);
-  };
+  }, []);
 
   // Set up intersection observer
   useEffect(() => {
     if (!lastMessageRef.current) return;
+
+    // Clean up previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
 
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
@@ -89,7 +111,7 @@ export default function MessageList({ channelId }: MessageListProps) {
           setShowScrollButton(true);
         }
       },
-      { threshold: 1 }
+      { threshold: 0.5 }
     );
 
     observerRef.current.observe(lastMessageRef.current);
@@ -99,7 +121,7 @@ export default function MessageList({ channelId }: MessageListProps) {
         observerRef.current.disconnect();
       }
     };
-  }, []);
+  }, [allMessages.length]); // Recreate observer when messages change
 
   // Auto scroll for new messages
   useEffect(() => {
@@ -111,12 +133,20 @@ export default function MessageList({ channelId }: MessageListProps) {
     } else if (lastMessage) {
       setUnreadCount(prev => prev + 1);
     }
-  }, [allMessages.length, user?.id, showScrollButton]);
+  }, [allMessages.length, user?.id, showScrollButton, scrollToBottom]);
 
   if (!channelId || channelId === "0") {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
         Select a channel to view messages
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        Loading messages...
       </div>
     );
   }

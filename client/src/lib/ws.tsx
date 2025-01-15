@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import type { Message, WSMessage } from "@/lib/types";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { debugLogger } from "./debug";
 import { queryClient } from "@/lib/queryClient";
+import { useDebouncedCallback } from "use-debounce";
 
 interface WSContextType {
   messages: WSMessage[];
@@ -36,6 +38,11 @@ const WSContext = createContext<WSContextType>({
   isDebugEnabled: false,
 });
 
+const INITIAL_RECONNECT_DELAY = 1000;
+const MAX_RECONNECT_DELAY = 30000;
+const HEARTBEAT_INTERVAL = 15000;
+const CONNECTION_TIMEOUT = 10000;
+
 export function WSProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [messages, setMessages] = useState<WSMessage[]>([]);
@@ -46,6 +53,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [debugEnabled, setDebugEnabled] = useState(() => {
     return localStorage.getItem("debug_mode") === "true";
   });
+  const reconnectAttempts = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
   const { toast } = useToast();
   const { user, isLoading } = useUser();
 
@@ -53,7 +63,21 @@ export function WSProvider({ children }: { children: ReactNode }) {
     debugEnabled ? debugLogger.enable() : debugLogger.disable();
   }, [debugEnabled]);
 
-  const connect = useCallback(async () => {
+  const clearReconnectTimeout = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = undefined;
+    }
+  }, []);
+
+  const clearHeartbeatInterval = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = undefined;
+    }
+  }, []);
+
+  const connect = useDebouncedCallback(async () => {
     if (!user || isLoading) {
       debugLogger.info("No user logged in or still loading, skipping WebSocket connection");
       return;
@@ -68,24 +92,26 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       const ws = new WebSocket(wsUrl);
-      let connectionTimeout = setTimeout(() => {
+      let connectionTimeoutId = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
           debugLogger.error("WebSocket connection timeout");
           ws.close();
           setError("Connection timeout");
         }
-      }, 10000);
+      }, CONNECTION_TIMEOUT);
 
       ws.onopen = () => {
         debugLogger.info("WebSocket connection established");
-        clearTimeout(connectionTimeout);
+        clearTimeout(connectionTimeoutId);
+        reconnectAttempts.current = 0;
 
         // Set up heartbeat
-        const heartbeatInterval = setInterval(() => {
+        clearHeartbeatInterval();
+        heartbeatIntervalRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "ping" }));
           }
-        }, 15000);
+        }, HEARTBEAT_INTERVAL);
 
         // Process queued messages
         messageQueue.forEach(msg => {
@@ -98,13 +124,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
         setConnected(true);
         setError(null);
         setSocket(ws);
-
-        // Clean up heartbeat on unmount
-        return () => clearInterval(heartbeatInterval);
       };
 
       ws.onclose = (event) => {
         debugLogger.info(`WebSocket closed with code: ${event.code}`);
+        clearTimeout(connectionTimeoutId);
+        clearHeartbeatInterval();
         setConnected(false);
         setSocket(null);
 
@@ -120,9 +145,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
         }
 
         if (shouldReconnect && user) {
-          const delay = 3000;
-          debugLogger.info(`Reconnecting in ${delay}ms...`);
-          setTimeout(connect, delay);
+          const delay = Math.min(
+            INITIAL_RECONNECT_DELAY * Math.pow(1.5, reconnectAttempts.current),
+            MAX_RECONNECT_DELAY
+          );
+          debugLogger.info(`Reconnecting in ${delay}ms... (attempt ${reconnectAttempts.current + 1})`);
+          clearReconnectTimeout();
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectAttempts.current++;
+            connect();
+          }, delay);
         }
       };
 
@@ -179,19 +211,22 @@ export function WSProvider({ children }: { children: ReactNode }) {
       debugLogger.error("Error creating WebSocket connection:", error);
       setError("Failed to create connection");
     }
-  }, [user, isLoading, messageQueue, socket, shouldReconnect, toast]);
+  }, 300); // 300ms debounce
 
   // Connect when user is available
   useEffect(() => {
     if (user && !isLoading && shouldReconnect) {
       connect();
     }
+
     return () => {
+      clearReconnectTimeout();
+      clearHeartbeatInterval();
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close(1000, "Component unmounting");
       }
     };
-  }, [user, isLoading, shouldReconnect, connect, socket]);
+  }, [user, isLoading, shouldReconnect, connect, socket, clearReconnectTimeout, clearHeartbeatInterval]);
 
   const send = useCallback((data: WSMessage) => {
     if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -215,23 +250,22 @@ export function WSProvider({ children }: { children: ReactNode }) {
   }, [socket, toast]);
 
   const subscribe = useCallback((channelId: string) => {
-    if (channelId) {
-      debugLogger.info("Subscribing to channel:", channelId);
-      setMessages([]); // Clear previous messages
-      send({ type: "subscribe", channelId });
-    }
+    if (!channelId) return;
+    debugLogger.info("Subscribing to channel:", channelId);
+    setMessages([]); // Clear previous messages
+    send({ type: "subscribe", channelId });
   }, [send]);
 
   const unsubscribe = useCallback((channelId: string) => {
-    if (channelId) {
-      debugLogger.info("Unsubscribing from channel:", channelId);
-      send({ type: "unsubscribe", channelId });
-    }
+    if (!channelId) return;
+    debugLogger.info("Unsubscribing from channel:", channelId);
+    send({ type: "unsubscribe", channelId });
   }, [send]);
 
   const toggleDebug = useCallback(() => {
     const newState = !debugEnabled;
     setDebugEnabled(newState);
+    localStorage.setItem("debug_mode", String(newState));
     send({ type: "debug_mode", enabled: newState });
 
     toast({

@@ -14,6 +14,7 @@ import {
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
   isAlive: boolean;
+  subscriptions: Set<string>;
 }
 
 interface WSMessage {
@@ -40,6 +41,7 @@ interface WSMessage {
 }
 
 const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
+const activeConnections = new Map<string, AuthenticatedWebSocket>();
 
 function broadcastToChannel(
   channelId: string,
@@ -62,6 +64,11 @@ function broadcastToChannel(
         broadcastCount++;
       } catch (error) {
         debug.error(`Failed to send to client ${client.userId}:`, error);
+        // Clean up dead connections
+        subscribers.delete(client);
+        if (client.userId) {
+          activeConnections.delete(client.userId);
+        }
       }
     }
   });
@@ -69,6 +76,77 @@ function broadcastToChannel(
   debug.info(
     `Broadcast complete: ${broadcastCount} clients received the message`,
   );
+}
+
+async function handleAuthentication(ws: AuthenticatedWebSocket, request: IncomingMessage): Promise<boolean> {
+  try {
+    // Parse session cookie
+    const cookies = parseCookie(request.headers.cookie || '');
+    const sessionId = cookies['connect.sid'];
+
+    if (!sessionId) {
+      debug.warn("No session ID found in cookies");
+      ws.close(1008, "Unauthorized");
+      return false;
+    }
+
+    // Clean session ID (remove s: prefix and possible signature)
+    const cleanSessionId = sessionId.split('.')[0].replace('s:', '');
+
+    // Fetch session data
+    const session = await db.query.sessions.findFirst({
+      where: eq(sessions.sid, cleanSessionId)
+    });
+
+    if (!session?.sess) {
+      debug.warn("No session found in database");
+      ws.close(1008, "Invalid session");
+      return false;
+    }
+
+    // Parse session data
+    let sessionData;
+    try {
+      sessionData = typeof session.sess === 'string' ? 
+        JSON.parse(session.sess) : 
+        session.sess;
+    } catch (e) {
+      debug.error("Failed to parse session data:", e);
+      ws.close(1008, "Invalid session");
+      return false;
+    }
+
+    // Validate user data
+    if (!sessionData?.passport?.user) {
+      debug.warn("No user ID found in session passport");
+      ws.close(1008, "Unauthorized");
+      return false;
+    }
+
+    const userId = sessionData.passport.user.toString();
+
+    // Close existing connection if it exists
+    const existingConnection = activeConnections.get(userId);
+    if (existingConnection && existingConnection !== ws) {
+      debug.info(`Closing existing connection for user: ${userId}`);
+      existingConnection.close(1000, "New connection established");
+    }
+
+    // Set socket properties
+    ws.userId = userId;
+    ws.isAlive = true;
+    ws.subscriptions = new Set();
+    activeConnections.set(userId, ws);
+    debug.info("WebSocket connected for user:", userId);
+
+    // Send connection acknowledgment
+    ws.send(JSON.stringify({ type: "connected" }));
+    return true;
+  } catch (error) {
+    debug.error("Error authenticating WebSocket connection:", error);
+    ws.close(1008, "Unauthorized");
+    return false;
+  }
 }
 
 export function setupWebSocketServer(server: Server) {
@@ -88,63 +166,8 @@ export function setupWebSocketServer(server: Server) {
         return;
       }
 
-      try {
-        // Parse session cookie
-        const cookies = parseCookie(request.headers.cookie || '');
-        const sessionId = cookies['connect.sid'];
-
-        if (!sessionId) {
-          debug.warn("No session ID found in cookies");
-          ws.close(1008, "Unauthorized");
-          return;
-        }
-
-        // Clean session ID (remove s: prefix and possible signature)
-        const cleanSessionId = sessionId.split('.')[0].replace('s:', '');
-
-        // Fetch session data
-        const session = await db.query.sessions.findFirst({
-          where: eq(sessions.sid, cleanSessionId)
-        });
-
-        if (!session?.sess) {
-          debug.warn("No session found in database");
-          ws.close(1008, "Invalid session");
-          return;
-        }
-
-        // Parse session data
-        let sessionData;
-        try {
-          sessionData = typeof session.sess === 'string' ? 
-            JSON.parse(session.sess) : 
-            session.sess;
-        } catch (e) {
-          debug.error("Failed to parse session data:", e);
-          ws.close(1008, "Invalid session");
-          return;
-        }
-
-        // Validate user data
-        if (!sessionData?.passport?.user) {
-          debug.warn("No user ID found in session passport");
-          ws.close(1008, "Unauthorized");
-          return;
-        }
-
-        // Set socket properties
-        ws.userId = sessionData.passport.user.toString();
-        ws.isAlive = true;
-        debug.info("WebSocket connected for user:", ws.userId);
-
-        // Send connection acknowledgment
-        ws.send(JSON.stringify({ type: "connected" }));
-
-      } catch (error) {
-        debug.error("Error authenticating WebSocket connection:", error);
-        ws.close(1008, "Unauthorized");
-        return;
-      }
+      const authenticated = await handleAuthentication(ws, request);
+      if (!authenticated) return;
 
       ws.on("message", async (data: string) => {
         if (!ws.userId) {
@@ -198,7 +221,7 @@ export function setupWebSocketServer(server: Server) {
                     type: "message",
                     channelId: message.channelId,
                     message: normalizeMessageForClient(completeMessage),
-                  });
+                  }, ws);
 
                   // Process attachments if any
                   if (message.attachments?.length > 0) {
@@ -249,7 +272,11 @@ export function setupWebSocketServer(server: Server) {
               if (!channelSubscriptions.has(message.channelId)) {
                 channelSubscriptions.set(message.channelId, new Set());
               }
-              channelSubscriptions.get(message.channelId)?.add(ws);
+
+              const subscribers = channelSubscriptions.get(message.channelId)!;
+              subscribers.add(ws);
+              ws.subscriptions.add(message.channelId);
+
               debug.info(
                 `User ${ws.userId} subscribed to channel ${message.channelId}`,
               );
@@ -275,7 +302,11 @@ export function setupWebSocketServer(server: Server) {
 
             case "unsubscribe": {
               if (!message.channelId) break;
-              channelSubscriptions.get(message.channelId)?.delete(ws);
+              const subscribers = channelSubscriptions.get(message.channelId);
+              if (subscribers) {
+                subscribers.delete(ws);
+                ws.subscriptions.delete(message.channelId);
+              }
               debug.info(
                 `User ${ws.userId} unsubscribed from channel ${message.channelId}`,
               );
@@ -302,9 +333,15 @@ export function setupWebSocketServer(server: Server) {
       ws.on("close", () => {
         debug.info("WebSocket closed for user:", ws.userId);
         // Clean up subscriptions
-        channelSubscriptions.forEach((subscribers) => {
-          subscribers.delete(ws);
-        });
+        if (ws.userId) {
+          activeConnections.delete(ws.userId);
+          ws.subscriptions.forEach(channelId => {
+            const subscribers = channelSubscriptions.get(channelId);
+            if (subscribers) {
+              subscribers.delete(ws);
+            }
+          });
+        }
       });
 
       ws.on("error", (error) => {
@@ -313,11 +350,14 @@ export function setupWebSocketServer(server: Server) {
     },
   );
 
-  // Heartbeat to keep connections alive
+  // Heartbeat to keep connections alive and clean up dead connections
   const interval = setInterval(() => {
     wss.clients.forEach((ws) => {
       const extWs = ws as AuthenticatedWebSocket;
       if (!extWs.isAlive) {
+        if (extWs.userId) {
+          activeConnections.delete(extWs.userId);
+        }
         ws.terminate();
         return;
       }

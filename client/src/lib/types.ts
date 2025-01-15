@@ -16,6 +16,8 @@ export interface Message {
   parent_id: string | null;
   created_at: string;
   updated_at: string;
+  pinned_by: string | null;
+  pinned_at: string | null;
   author?: User;
   attachments?: FileAttachment[];
   type?: 'message' | 'message_deleted' | 'message_edited';
@@ -23,7 +25,7 @@ export interface Message {
 }
 
 export interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited' | 'debug_mode';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'pong' | 'connected' | 'message_deleted' | 'message_edited' | 'debug_mode' | 'message_ack' | 'message_history' | 'error';
   channelId?: string;
   content?: string;
   parentId?: string;
@@ -31,4 +33,5 @@ export interface WSMessage {
   attachments?: FileAttachment[];
   enabled?: boolean;
   message?: Message;
+  messages?: Message[];
 }
