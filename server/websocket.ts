@@ -109,7 +109,7 @@ export function setupWebSocketServer(server: Server) {
               }
 
               try {
-                // Then save to database first
+                // Save to database
                 const [newMessage] = await db
                   .insert(messages)
                   .values({
@@ -130,14 +130,21 @@ export function setupWebSocketServer(server: Server) {
                 });
 
                 if (completeMessage) {
-                  // Broadcast the complete message
+                  // Broadcast the message
                   broadcastToChannel(message.channelId, {
                     type: "message",
                     message: normalizeMessageForClient(completeMessage),
                   });
 
-                // Then save to database
-                const [newMessage] = await db
+                  // Check for question and generate AI response
+                  if (ragIsQuestion(message.content)) {
+                    const aiResponse = await generateAIResponse(
+                      message.content,
+                      [],
+                    );
+
+                    if (aiResponse && process.env.AI_BOT_USER_ID) {
+                      const [aiMessage] = await db
                   .insert(messages)
                   .values({
                     channel_id: message.channelId,
