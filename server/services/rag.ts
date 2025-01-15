@@ -1,3 +1,4 @@
+
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { db } from "@db";
 import { messages, users } from "@db/schema";
@@ -12,9 +13,6 @@ if (!process.env.OPENAI_API_KEY) {
 if (!process.env.PINECONE_API_KEY) {
   throw new Error('PINECONE_API_KEY environment variable is not set');
 }
-
-// Export functions that are used by websocket.ts
-export { generateAIResponse, isQuestion, trainOnUserMessages, startPeriodicRetraining };
 
 console.log('Initializing OpenAI embeddings...');
 const embeddings = new OpenAIEmbeddings({
@@ -37,8 +35,7 @@ interface PineconeMatch {
   };
 }
 
-// Export the handleAIResponse function
-export async function handleAIResponse(question: string): Promise<string | null> {
+async function handleAIResponse(question: string): Promise<string | null> {
   try {
     console.log('Finding similar messages for question:', question);
     const similarMessages = await findSimilarMessages(question, 5);
@@ -56,7 +53,7 @@ export async function handleAIResponse(question: string): Promise<string | null>
   }
 }
 
-export async function initializePinecone() {
+async function initializePinecone() {
   try {
     pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!
@@ -132,8 +129,7 @@ export async function initializePinecone() {
 let lastTrainingTimestamp: Date | null = null;
 const RETRAINING_INTERVAL = 1000 * 60 * 60; 
 
-// Store message embedding in Pinecone
-export async function storeMessageEmbedding(messageId: string, userId: string, content: string) {
+async function storeMessageEmbedding(messageId: string, userId: string, content: string) {
   try {
     console.log('Generating embedding for message:', messageId);
     const embeddingVector = await embeddings.embedQuery(content);
@@ -157,8 +153,7 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
   }
 }
 
-// Train on existing messages from a specific user
-export async function trainOnUserMessages(userId: string, since?: Date) {
+async function trainOnUserMessages(userId: string, since?: Date) {
   try {
     console.log('Starting training on user messages for user:', userId);
     const whereClause = since
@@ -188,8 +183,7 @@ export async function trainOnUserMessages(userId: string, since?: Date) {
   }
 }
 
-// Find similar messages using Pinecone similarity search
-export async function findSimilarMessages(query: string, limit = 5) {
+async function findSimilarMessages(query: string, limit = 5) {
   try {
     console.log('Generating query embedding');
     const queryEmbedding = await embeddings.embedQuery(query);
@@ -212,8 +206,7 @@ export async function findSimilarMessages(query: string, limit = 5) {
   }
 }
 
-// Generate AI response using retrieved context
-export async function generateAIResponse(query: string, similarMessages: any[]) {
+async function generateAIResponse(query: string, similarMessages: any[]) {
   try {
     const context = similarMessages
       .map(m => `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`)
@@ -230,7 +223,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o", 
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -269,7 +262,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
   }
 }
 
-export function isQuestion(message: string): boolean {
+function isQuestion(message: string): boolean {
   const message_trimmed = message.trim().toLowerCase();
 
   // Enhanced question detection
@@ -283,8 +276,7 @@ export function isQuestion(message: string): boolean {
   return questionPatterns.some(pattern => pattern.test(message_trimmed));
 }
 
-// Start periodic retraining
-export function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
+function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
   console.log('Starting periodic retraining service');
   setInterval(async () => {
     console.log('Running periodic retraining check...');
@@ -311,3 +303,12 @@ initializePinecone().catch(error => {
   console.error('Failed to initialize Pinecone:', error);
   process.exit(1);
 });
+
+// Export all functions as a single object
+export {
+  handleAIResponse,
+  trainOnUserMessages,
+  generateAIResponse,
+  isQuestion,
+  startPeriodicRetraining
+};
