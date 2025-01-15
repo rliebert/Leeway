@@ -194,30 +194,47 @@ export function setupWebSocketServer(server: Server) {
 
         // Check if message is a question and should trigger AI response
         if (message.type === 'message' && message.content && isQuestion(message.content)) {
-          const similarMessages = await findSimilarMessages(message.content);
-          const aiResponse = await generateAIResponse(message.content, similarMessages);
-
-          // Send AI response as ai.rob
-          const [aiMessage] = await db.insert(messages).values({
-            channel_id: message.channelId,
-            user_id: 'ai.rob', // Assuming ai.rob user ID is created
-            content: aiResponse,
-            parent_id: null,
-          }).returning();
-
-          const messageWithAuthor = await db.query.messages.findFirst({
-            where: eq(messages.id, aiMessage.id),
-            with: {
-              author: true,
-              attachments: true,
-            }
-          });
-
-          if (messageWithAuthor) {
-            broadcastToChannel(message.channelId, {
-              type: 'message',
-              message: normalizeMessageForClient(messageWithAuthor)
+          try {
+            const aiRobUser = await db.query.users.findFirst({
+              where: eq(users.username, 'ai.rob'),
             });
+
+            if (!aiRobUser) {
+              console.error('AI bot user not found');
+              return;
+            }
+
+            const similarMessages = await findSimilarMessages(message.content);
+            const aiResponse = await generateAIResponse(message.content, similarMessages);
+
+            // Send AI response as ai.rob
+            const [aiMessage] = await db.insert(messages).values({
+              channel_id: message.channelId,
+              user_id: aiRobUser.id,  // Use the actual UUID
+              content: aiResponse,
+              parent_id: null,
+            }).returning();
+
+            const messageWithAuthor = await db.query.messages.findFirst({
+              where: eq(messages.id, aiMessage.id),
+              with: {
+                author: true,
+                attachments: true,
+              }
+            });
+
+            if (messageWithAuthor) {
+              broadcastToChannel(message.channelId, {
+                type: 'message',
+                message: normalizeMessageForClient(messageWithAuthor)
+              });
+            }
+          } catch (error) {
+            console.error('Error generating AI response:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Failed to generate AI response'
+            }));
           }
         }
 
