@@ -265,8 +265,8 @@ export function setupWebSocketServer(server: Server) {
                   
                   debug.info('AI bot user found:', aiBot);
 
-                if (aiBot) {
-                  // Create AI response message
+                  if (aiBot) {
+                    // Create AI response message
                   const [aiMessage] = await db.insert(messages)
                     .values({
                       content: aiResponse,
