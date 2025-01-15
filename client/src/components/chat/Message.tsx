@@ -290,16 +290,69 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
     } finally {
         setDeletedAttachments([]); // Reset after save
     }
+  const handleEditMessage = async () => {
+    if (editContent.trim() === message.content && deletedAttachments.length === 0) {
+      setIsEditing(false);
+      return;
+    }
+
+    try {
+      // Make API request to update the message
+      const response = await fetch(`/api/messages/${message.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: editContent.trim(),
+          deletedAttachments: deletedAttachments,
+          attachments: uploadedFiles
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update message');
+      }
+
+      // Update local cache and notify via WebSocket
+      queryClient.setQueryData(
+        [`/api/channels/${message.channel_id}/messages`],
+        (oldData: any) => {
+          if (!oldData) return [];
+          return oldData.map((msg: any) => 
+            msg.id === message.id 
+              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
+              : msg
+          );
+        }
+      );
+
+      send({
+        type: "message_edited",
+        channelId: message.channel_id || '',
+        messageId: message.id,
+        content: editContent.trim(),
+        deletedAttachments: deletedAttachments,
+        attachments: uploadedFiles
+      });
+
+      setIsEditing(false);
+      toast({ description: "Message updated" });
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to update message"
+      });
+      setIsEditing(false);
+    } finally {
+      setDeletedAttachments([]);
+    }
   };
 
   const handleAttachmentDelete = (attachmentId: string) => {
     setDeletedAttachments([...deletedAttachments, attachmentId]);
   };
-        description: "Failed to update message"
-      });
-      setIsEditing(false);
-    }
-    setDeletedAttachments([]); // Reset after save
   };
 
   const handleAttachmentDelete = (attachmentId: string) => {
