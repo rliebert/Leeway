@@ -1,5 +1,6 @@
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
+import { WebSocketServer } from "ws";
 import { serverDebugLogger as debug } from "./debug";
 //import { generateAIResponse, isQuestion } from "./services/rag";
 
