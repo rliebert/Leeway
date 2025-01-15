@@ -92,9 +92,35 @@ export function setupWebSocketServer(server: Server) {
         return;
       }
 
-      ws.userId = (request as any).userId?.toString();
-      ws.isAlive = true;
-      debug.info("WebSocket connected for user:", ws.userId);
+      // Parse session cookie to get user ID
+      const cookies = parseCookie(request.headers.cookie || '');
+      const sessionId = cookies['connect.sid'];
+
+      if (!sessionId) {
+        debug.warn("No session ID found in cookies");
+        ws.close(1008, "Unauthorized");
+        return;
+      }
+
+      try {
+        const session = await db.query.sessions.findFirst({
+          where: eq(sessions.sid, sessionId)
+        });
+
+        if (!session?.sess?.userId) {
+          debug.warn("No user ID found in session");
+          ws.close(1008, "Unauthorized");
+          return;
+        }
+
+        ws.userId = session.sess.userId.toString();
+        ws.isAlive = true;
+        debug.info("WebSocket connected for user:", ws.userId);
+      } catch (error) {
+        debug.error("Error authenticating WebSocket connection:", error);
+        ws.close(1008, "Unauthorized");
+        return;
+      }
 
       ws.on("message", async (data: string) => {
         try {
