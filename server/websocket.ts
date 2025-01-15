@@ -222,7 +222,8 @@ export function setupWebSocketServer(server: Server) {
               if (messageWithAuthor) {
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizeMessageForClient(messageWithAuthor),
+                  message: normalizeMessageForClient(newMessage),
+                  tempId: message.tempId
                 });
               }
             } catch (error) {
@@ -276,6 +277,59 @@ export function setupWebSocketServer(server: Server) {
               ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Failed to edit message'
+              }));
+            }
+            break;
+          }
+          case 'message_deleted': {
+            if (!message.channelId || !message.messageId) {
+              debug.warn('Invalid message_deleted data:', message);
+              break;
+            }
+
+            try {
+              const targetMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId)
+              });
+
+              debug.info('Delete request for message:', {
+                messageId: message.messageId,
+                targetMessage,
+                userId: ws.userId
+              });
+
+              // If message doesn't exist (optimistic), just broadcast the delete
+              if (!targetMessage) {
+                broadcastToChannel(message.channelId, {
+                  type: 'message_deleted',
+                  messageId: message.messageId,
+                  channelId: message.channelId,
+                });
+                break;
+              }
+
+              if (targetMessage.user_id !== ws.userId) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Not authorized to delete this message'
+                }));
+                break;
+              }
+
+              await db.delete(messages)
+                .where(eq(messages.id, message.messageId));
+
+              broadcastToChannel(message.channelId, {
+                type: 'message_deleted',
+                messageId: message.messageId,
+                channelId: message.channelId,
+              });
+
+            } catch (error) {
+              debug.error('Error deleting message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to delete message'
               }));
             }
             break;

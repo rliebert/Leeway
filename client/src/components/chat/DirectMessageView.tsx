@@ -45,7 +45,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     },
   });
 
-  const otherUser = channel?.participants?.find(p => p.id !== user?.id);
+  const otherUser = channel?.participants?.find((p: Participant) => p.id !== user?.id);
 
   useEffect(() => {
     if (!channelId) return;

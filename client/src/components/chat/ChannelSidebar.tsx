@@ -218,7 +218,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     }
   };
 
-  const channelsBySection = channels?.reduce((acc, channel) => {
+  const channelsBySection = channels?.reduce((acc: any, channel: Channel) => {
     const sectionId = channel.section_id || 'uncategorized';
     if (!acc[sectionId]) {
       acc[sectionId] = [];

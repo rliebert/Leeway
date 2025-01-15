@@ -50,7 +50,7 @@ export default function MessageList({ channelId }: MessageListProps) {
     });
 
   // Add or update with WebSocket messages
-  wsMessages.forEach((wsMsg) => {
+  wsMessages.forEach((wsMsg: WSMessage) => {
     if (wsMsg.type === "message_deleted") {
       messageMap.delete(wsMsg.messageId);
       // Also remove any child messages
@@ -58,6 +58,11 @@ export default function MessageList({ channelId }: MessageListProps) {
         if (msg.parent_id?.toString() === wsMsg.messageId?.toString()) {
           messageMap.delete(key);
         }
+      }
+    } else if (wsMsg.type === "message_edited") {
+      const existingMsg = messageMap.get(wsMsg.messageId);
+      if (existingMsg) {
+        messageMap.set(wsMsg.messageId, { ...existingMsg, content: wsMsg.content });
       }
     } else if (
       wsMsg.channel_id?.toString() === channelId?.toString() &&
@@ -147,6 +152,18 @@ export default function MessageList({ channelId }: MessageListProps) {
       }
     );
   }, [channelId, queryClient]);
+
+  // When a new message arrives
+  useEffect(() => {
+    if (wsMessages.length > 0) {
+      // Debounce the refresh to avoid too many requests
+      const timer = setTimeout(() => {
+        queryClient.invalidateQueries([`/api/channels/${channelId}/messages`]);
+      }, 1000); // Wait 1 second after last message
+      
+      return () => clearTimeout(timer);
+    }
+  }, [wsMessages.length, channelId]);
 
   if (!channelId || channelId === "0") {
     return (

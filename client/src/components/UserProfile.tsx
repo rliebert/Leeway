@@ -41,7 +41,7 @@ export default function UserProfile() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="w-full justify-start gap-2 px-2">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={user.avatar_url} />
               <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="flex flex-col items-start">

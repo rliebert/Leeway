@@ -39,53 +39,34 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const handleDeleteMessage = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this message?')) return;
-
+  const handleDeleteMessage = async () => {
     try {
-      console.log('Initiating message deletion:', message.id);
-
-      // Step 1: Optimistically update UI
-      queryClient.setQueryData(
-        [`/api/channels/${message.channel_id}/messages`],
-        (oldData: any) => {
-          console.log('Updating query cache, removing message:', message.id);
-          if (!oldData) return [];
-          return oldData.filter((msg: any) => msg.id !== message.id);
-        }
-      );
-
-      // Step 2: Send delete request to server
       const response = await fetch(`/api/messages/${message.id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        console.log('Message deleted successfully, sending WebSocket notification');
+        // Immediately remove from UI
+        queryClient.setQueryData(
+          [`/api/channels/${message.channel_id}/messages`],
+          (oldData: any) => oldData?.filter((msg: any) => msg.id !== message.id)
+        );
 
-        // Step 3: Invalidate queries to ensure fresh data
-        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
-
-        // Step 4: Broadcast deletion to other clients
+        // Notify others via WebSocket
         send({
-          type: 'message_deleted',
+          type: "message_deleted",
           channelId: message.channel_id || '',
           messageId: message.id
         });
-
+        
         toast({ description: "Message deleted" });
       } else {
-        console.error('Server returned error on delete');
-        // Rollback optimistic update on error
-        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
-        throw new Error('Failed to delete message');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete message');
       }
     } catch (error) {
       console.error('Error deleting message:', error);
-      // Ensure UI is consistent on error
-      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
-      toast({ 
+      toast({
         variant: "destructive",
         description: "Failed to delete message"
       });
@@ -199,10 +180,47 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
-      console.log('Sending edit message:', {
-        messageId: message.id,
-        content: editContent.trim()
-      });
+      // Check if this is an optimistic message
+      const isOptimisticMessage = message.id.length === 36;
+
+      if (isOptimisticMessage) {
+        // For optimistic messages, just update the cache and notify via WebSocket
+        queryClient.setQueryData(
+          [`/api/channels/${message.channel_id}/messages`],
+          (oldData: any) => {
+            if (!oldData) return [];
+            return oldData.map((msg: any) => 
+              msg.id === message.id 
+                ? { ...msg, content: editContent.trim() }
+                : msg
+            );
+          }
+        );
+
+        send({
+          type: "message_edited",
+          channelId: message.channel_id || '',
+          messageId: message.id,
+          content: editContent.trim()
+        });
+
+        setIsEditing(false);
+        toast({ description: "Message updated" });
+        return;
+      }
+
+      // For real messages, proceed with normal edit
+      queryClient.setQueryData(
+        [`/api/channels/${message.channel_id}/messages`],
+        (oldData: any) => {
+          if (!oldData) return [];
+          return oldData.map((msg: any) => 
+            msg.id === message.id 
+              ? { ...msg, content: editContent.trim() }
+              : msg
+          );
+        }
+      );
 
       send({
         type: "message_edited",
@@ -215,6 +233,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       toast({ description: "Message updated" });
 
     } catch (error) {
+      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
       console.error('Error editing message:', error);
       toast({ 
         variant: "destructive",
@@ -326,7 +345,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
               <div className="mt-2 space-y-2">
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => isImageFile(file.mimetype || file.file_type))
+                    .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
                     .map((file, index) => (
                       <a 
                         key={index}
@@ -473,7 +492,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         <div className="mt-2 space-y-2">
                           <div className="flex flex-wrap gap-2">
                             {reply.attachments
-                              .filter(file => isImageFile(file.mimetype || file.file_type))
+                              .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
                               .map((file, index) => (
                                 <a 
                                   key={index}
