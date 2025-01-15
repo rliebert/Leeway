@@ -139,20 +139,28 @@ export function WSProvider({ children }: { children: ReactNode }) {
               tempId: data.tempId,
               found: hasOptimistic,
               optimisticContent: optimisticMsg?.content,
+              hasAttachments: !!data.message?.attachments?.length,
               existingMessages: prev.map(m => ({ id: m.id, tempId: m.tempId, content: m.content }))
             });
             
             if (hasOptimistic) {
               optimisticMessages.delete(data.tempId);
-              // Replace optimistic with real message, preserving tempId for tracking
+              // Replace optimistic with real message, preserving tempId and merging attachments
               return prev.map(msg => 
                 msg.tempId === data.tempId ? 
-                { ...data.message, tempId: data.tempId } : 
+                { 
+                  ...data.message, 
+                  tempId: data.tempId,
+                  attachments: data.message.attachments || msg.attachments
+                } : 
                 msg
               );
             }
-            // No optimistic message found, add as new
-            return [...prev, data.message];
+            // No optimistic message found, add as new with attachments
+            return [...prev, {
+              ...data.message,
+              attachments: data.message.attachments || []
+            }];
           });
           break;
         case 'message_edited':
