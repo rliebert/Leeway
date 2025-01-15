@@ -29,8 +29,7 @@ interface MessageProps {
   };
 }
 
-const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (props, ref) => {
-  const { message } = props;
+const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -108,10 +107,10 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
   const replyCount = allReplies.length;
 
   const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
-
+  
   const normalizeFileUrl = (attachment: FileAttachment): string => {
     if (!attachment) return '';
-
+    
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
       return attachment.file_url || attachment.url || '';
     }
@@ -127,14 +126,14 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
     if (file) {
       const formData = new FormData();
       formData.append('file', file);
-
+      
       try {
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
         const data = await response.json();
-
+        
         setUploadedFiles([...uploadedFiles, {
           id: data.id,
           url: data.url,
@@ -237,24 +236,11 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
     }
 
     try {
-        // Make API request to update the message
-        const response = await fetch(`/api/messages/${message.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: editContent.trim(),
-            deletedAttachments: deletedAttachments,
-            attachments: uploadedFiles
-          }),
-        });
+      // Check if this is an optimistic message
+      const isOptimisticMessage = message.id.length === 36;
 
-        if (!response.ok) {
-          throw new Error('Failed to update message');
-        }
-
-        // Update local cache
+      if (isOptimisticMessage) {
+        // For optimistic messages, just update the cache and notify via WebSocket
         queryClient.setQueryData(
           [`/api/channels/${message.channel_id}/messages`],
           (oldData: any) => {
@@ -267,7 +253,6 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
           }
         );
 
-        // Notify others via WebSocket
         send({
           type: "message_edited",
           channelId: message.channel_id || '',
@@ -279,42 +264,10 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
 
         setIsEditing(false);
         toast({ description: "Message updated" });
-    } catch (error) {
-        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
-        console.error('Error editing message:', error);
-        toast({ 
-          variant: "destructive",
-          description: "Failed to update message"
-        });
-        setIsEditing(false);
-    } finally {
-        setDeletedAttachments([]); // Reset after save
-    }
-  const handleEditMessage = async () => {
-    if (editContent.trim() === message.content && deletedAttachments.length === 0) {
-      setIsEditing(false);
-      return;
-    }
-
-    try {
-      // Make API request to update the message
-      const response = await fetch(`/api/messages/${message.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: editContent.trim(),
-          deletedAttachments: deletedAttachments,
-          attachments: uploadedFiles
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update message');
+        return;
       }
 
-      // Update local cache and notify via WebSocket
+      // For real messages, proceed with normal edit
       queryClient.setQueryData(
         [`/api/channels/${message.channel_id}/messages`],
         (oldData: any) => {
@@ -332,27 +285,22 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
         channelId: message.channel_id || '',
         messageId: message.id,
         content: editContent.trim(),
-        deletedAttachments: deletedAttachments,
-        attachments: uploadedFiles
+        deletedAttachments: deletedAttachments
       });
 
       setIsEditing(false);
       toast({ description: "Message updated" });
+
     } catch (error) {
+      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
       console.error('Error editing message:', error);
       toast({ 
         variant: "destructive",
         description: "Failed to update message"
       });
       setIsEditing(false);
-    } finally {
-      setDeletedAttachments([]);
     }
-  };
-
-  const handleAttachmentDelete = (attachmentId: string) => {
-    setDeletedAttachments([...deletedAttachments, attachmentId]);
-  };
+    setDeletedAttachments([]); // Reset after save
   };
 
   const handleAttachmentDelete = (attachmentId: string) => {
@@ -772,7 +720,7 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
       />
     </>
   );
-};
+});
 
 Message.displayName = "Message";
 
