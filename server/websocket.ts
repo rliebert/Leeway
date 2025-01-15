@@ -255,6 +255,7 @@ export function setupWebSocketServer(server: Server) {
             });
 
             try {
+              // Create message and handle attachments
               const [newMessage] = await db.insert(messages)
                 .values({
                   content: message.content,
@@ -263,6 +264,18 @@ export function setupWebSocketServer(server: Server) {
                   parent_id: message.parentId || null,
                 })
                 .returning();
+
+              // If there are attachments, insert them
+              if (message.attachments && message.attachments.length > 0) {
+                await db.insert(file_attachments)
+                  .values(message.attachments.map(attachment => ({
+                    message_id: newMessage.id,
+                    file_url: attachment.url,
+                    file_name: attachment.originalName,
+                    file_type: attachment.mimetype,
+                    file_size: attachment.file_size
+                  })));
+              }
 
               const messageWithAuthor = await db.query.messages.findFirst({
                 where: eq(messages.id, newMessage.id),

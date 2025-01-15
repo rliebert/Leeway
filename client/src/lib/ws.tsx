@@ -53,6 +53,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
           username: user?.username,
           avatar_url: user?.avatar_url
         },
+        attachments: data.attachments || [],
         isOptimistic: true
       };
 
