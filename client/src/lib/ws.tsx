@@ -89,8 +89,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        let wsUrl;
+        if (process.env.NODE_ENV === 'development') {
+          wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        } else {
+          wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        }
 
         // Add retry delay if there was a previous connection attempt
         if (socket?.readyState === WebSocket.CLOSED) {

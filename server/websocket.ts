@@ -78,9 +78,12 @@ export function setupWebSocketServer(server: Server) {
     perMessageDeflate: false,
     clientTracking: true,
     handleProtocols: (protocols) => {
-      if (!protocols || !Array.isArray(protocols) || protocols.length === 0) return false;
-      if (protocols.indexOf('chat') !== -1) return 'chat';
-      if (protocols.indexOf('vite-hmr') !== -1) return 'vite-hmr';
+      if (protocols === 'chat' || (Array.isArray(protocols) && protocols.includes('chat'))) {
+        return 'chat';
+      }
+      if (protocols === 'vite-hmr' || (Array.isArray(protocols) && protocols.includes('vite-hmr'))) {
+        return 'vite-hmr';
+      }
       return false;
     }
   });
