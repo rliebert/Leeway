@@ -1,12 +1,11 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments, sessions, users } from "@db/schema";
+import { messages, file_attachments, channels, users, sessions } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
-import { trainOnUserMessages, startPeriodicRetraining, isQuestion, findSimilarMessages, generateAIResponse } from './services/rag';
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -14,14 +13,16 @@ interface AuthenticatedWebSocket extends WebSocket {
 }
 
 interface WSMessage {
-  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited' | 'debug_mode' | 'retrain_ai';
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited';
   channelId?: string;
   content?: string;
   parentId?: string;
   messageId?: string;
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
-  enabled?: boolean;
 }
+
+// Initialize channelSubscriptions at the module level
+const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
 function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
   const subscribers = channelSubscriptions.get(channelId);
@@ -32,18 +33,26 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
 
   const data = JSON.stringify(message);
   let broadcastCount = 0;
-  subscribers.forEach(client => {
+  debug.info(`Broadcasting to channel ${channelId}:`, message);
+
+  subscribers.forEach((client: AuthenticatedWebSocket) => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-      client.send(data);
-      broadcastCount++;
+      try {
+        client.send(data);
+        broadcastCount++;
+        debug.info(`Successfully sent to client ${client.userId}`);
+      } catch (error) {
+        debug.error(`Failed to send to client: ${error}`);
+      }
     }
   });
+
   debug.info(`Broadcast complete: ${broadcastCount} clients received the message`);
 }
 
 export function setupWebSocketServer(server: Server) {
-  // Start with debug logging disabled
-  debug.disable();
+  // Enhance debug logging
+  debug.enable();
 
   const wss = new WebSocketServer({
     server,
@@ -103,46 +112,6 @@ export function setupWebSocketServer(server: Server) {
     }
   });
 
-  const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
-
-  const interval = setInterval(() => {
-    wss.clients.forEach((ws: AuthenticatedWebSocket) => {
-      if (!ws.isAlive) {
-        debug.log('Terminating inactive connection for user:', ws.userId);
-        return ws.terminate();
-      }
-      ws.isAlive = false;
-      ws.ping();
-    });
-  }, 15000);
-
-  const normalizeMessageForClient = (msg: any) => {
-    debug.startGroup('Normalizing message');
-    debug.debug('Input message:', msg);
-
-    const normalized = {
-      id: msg.id?.toString(),
-      channel_id: msg.channel_id?.toString(),
-      user_id: msg.user_id?.toString(),
-      content: msg.content || '',
-      created_at: msg.created_at || new Date().toISOString(),
-      updated_at: msg.updated_at || msg.created_at || new Date().toISOString(),
-      parent_id: msg.parent_id?.toString() || null,
-      author: msg.author,
-      attachments: msg.attachments?.map((attachment: any) => ({
-        id: attachment.id?.toString(),
-        url: attachment.file_url || attachment.url || '',
-        originalName: attachment.file_name || attachment.originalName || '',
-        mimetype: attachment.file_type || attachment.mimetype || '',
-        file_size: Number(attachment.file_size) || 0
-      })) || []
-    };
-
-    debug.debug('Normalized output:', normalized);
-    debug.endGroup();
-    return normalized;
-  };
-
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
     if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
       return;
@@ -152,244 +121,120 @@ export function setupWebSocketServer(server: Server) {
     ws.isAlive = true;
     debug.info('WebSocket connected for user:', ws.userId);
 
-    ws.send(JSON.stringify({
-      type: 'connected',
-      userId: ws.userId
-    }));
-
-    ws.on('pong', () => {
-      ws.isAlive = true;
-    });
-
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
+        debug.info(`Received message of type: ${message.type}`, message);
 
-        // Handle debug mode toggle messages
-        if (message.type === 'debug_mode') {
-          if (message.enabled) {
-            debug.enable();
-          } else {
-            debug.disable();
-          }
-          return;
-        }
+        switch (message.type) {
+          case 'message_deleted': {
+            if (!message.channelId || !message.messageId) {
+              debug.warn('Invalid message_deleted event:', { message });
+              break;
+            }
 
-        // Handle retrain_ai command (admin only)
-        if (message.type === 'retrain_ai') {
-          const user = await db.query.users.findFirst({
-            where: eq(users.id, ws.userId)
-          });
-
-          if (!user?.is_admin) {
-            ws.send(JSON.stringify({
-              type: 'error',
-              message: 'Only administrators can trigger AI retraining'
-            }));
-            return;
-          }
-
-          const result = await trainOnUserMessages(user.id);
-          ws.send(JSON.stringify({
-            type: 'retrain_ai_status',
-            success: result.success,
-            message: result.success
-              ? `Successfully processed ${result.newMessagesProcessed} messages`
-              : `Training failed: ${result.error}`
-          }));
-          return;
-        }
-
-
-        if (message.type === 'message_deleted') {
-          if (!message.channelId || !message.messageId) {
-            debug.warn('Invalid message_deleted event:', { message });
-            return;
-          }
-
-          try {
-            debug.info('Processing message deletion request:', {
-              messageId: message.messageId,
-              channelId: message.channelId,
-              userId: ws.userId
-            });
-
-            // Broadcast deletion to all clients in channel
-            const deleteNotification = {
-              type: 'message_deleted',
-              messageId: message.messageId,
-              channelId: message.channelId
-            };
-
-            debug.info('Broadcasting deletion notification:', deleteNotification);
-            broadcastToChannel(message.channelId, deleteNotification);
-            debug.info('Deletion notification broadcast complete');
-          } catch (error) {
-            debug.error('Error handling message deletion broadcast:', error);
-            ws.send(JSON.stringify({
-              type: 'error',
-              message: 'Failed to broadcast message deletion'
-            }));
-          }
-        }
-
-        debug.startGroup(`Processing message type: ${message.type}`);
-        debug.debug('Received message:', message);
-
-        if (message.type === 'ping') {
-          ws.send(JSON.stringify({ type: 'pong' }));
-          debug.endGroup();
-          return;
-        }
-
-        // Check if message is a question and should trigger AI response
-        if (message.type === 'message' && message.content && isQuestion(message.content)) {
-          try {
-            // First broadcast the user's message
-            const [userMessage] = await db.insert(messages).values({
-              channel_id: message.channelId,
-              user_id: ws.userId,
-              content: message.content,
-              parent_id: message.parentId || null,
-            }).returning();
-
-            // Get user message with author details
-            const userMessageWithAuthor = await db.query.messages.findFirst({
-              where: eq(messages.id, userMessage.id),
-              with: {
-                author: true,
-                attachments: true,
-              }
-            });
-
-            if (userMessageWithAuthor) {
-              broadcastToChannel(message.channelId, {
-                type: 'message',
-                message: normalizeMessageForClient(userMessageWithAuthor)
+            try {
+              debug.info('Processing message deletion request:', {
+                messageId: message.messageId,
+                channelId: message.channelId,
+                userId: ws.userId
               });
-            }
 
-            // Then generate and send AI response
-            debug.log('Processing AI response for question:', message.content);
-            const aiRobUser = await db.query.users.findFirst({
-              where: eq(users.username, 'ai.rob'),
-            });
-
-            if (!aiRobUser) {
-              debug.error('AI bot user not found');
-              return;
-            }
-
-            const similarMessages = await findSimilarMessages(message.content);
-            debug.log('Found similar messages:', similarMessages.length);
-
-            const aiResponse = await generateAIResponse(message.content, similarMessages);
-            debug.log('Generated AI response:', aiResponse);
-
-            // Send AI response as ai.rob
-            const [aiMessage] = await db.insert(messages).values({
-              channel_id: message.channelId,
-              user_id: aiRobUser.id,
-              content: aiResponse,
-              parent_id: null,
-            }).returning();
-
-            const messageWithAuthor = await db.query.messages.findFirst({
-              where: eq(messages.id, aiMessage.id),
-              with: {
-                author: true,
-                attachments: true,
-              }
-            });
-
-            if (messageWithAuthor) {
-              debug.log('Broadcasting AI response');
-              broadcastToChannel(message.channelId, {
-                type: 'message',
-                message: normalizeMessageForClient(messageWithAuthor)
-              });
-            }
-          } catch (error) {
-            debug.error('Error generating AI response:', error);
-            // Only send error message to the channel if AI processing fails
-            const aiRobUser = await db.query.users.findFirst({
-              where: eq(users.username, 'ai.rob'),
-            });
-
-            if (aiRobUser) {
-              const [errorMessage] = await db.insert(messages).values({
-                channel_id: message.channelId,
-                user_id: aiRobUser.id,
-                content: "I apologize, but I encountered a temporary error while processing your request. Please try asking your question again.",
-                parent_id: null,
-              }).returning();
-
-              const messageWithAuthor = await db.query.messages.findFirst({
-                where: eq(messages.id, errorMessage.id),
+              // First check if message exists and get its details
+              const targetMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId),
                 with: {
-                  author: true,
-                  attachments: true,
+                  author: true
                 }
               });
 
-              if (messageWithAuthor) {
-                broadcastToChannel(message.channelId, {
-                  type: 'message',
-                  message: normalizeMessageForClient(messageWithAuthor)
-                });
+              if (!targetMessage) {
+                debug.warn('Message not found for deletion:', message.messageId);
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Message not found'
+                }));
+                break;
               }
-            }
-          }
-          return; // Exit after handling AI response
-        }
 
-        switch (message.type) {
+              // Check permissions
+              const user = await db.query.users.findFirst({
+                where: eq(users.id, ws.userId!)
+              });
+
+              const isAdmin = user?.is_admin || false;
+              const isOwnMessage = targetMessage.user_id === ws.userId;
+
+              if (!user || (!isAdmin && !isOwnMessage)) {
+                debug.warn('Unauthorized deletion attempt');
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Not authorized to delete this message'
+                }));
+                break;
+              }
+
+              // Delete message from database
+              await db.delete(messages).where(eq(messages.id, message.messageId));
+              debug.info('Message deleted from database:', message.messageId);
+
+              // Broadcast deletion to all clients in the channel
+              const deleteNotification = {
+                type: 'message_deleted',
+                messageId: message.messageId,
+                channelId: message.channelId
+              };
+
+              debug.info('Broadcasting deletion notification:', deleteNotification);
+              broadcastToChannel(message.channelId, deleteNotification);
+              debug.info('Deletion notification broadcast complete');
+
+            } catch (error) {
+              debug.error('Error handling message deletion:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to delete message'
+              }));
+            }
+            break;
+          }
+
           case 'subscribe': {
             if (!message.channelId) break;
-            const isDirectMessage = message.channelId.startsWith('dm_');
 
             if (!channelSubscriptions.has(message.channelId)) {
               channelSubscriptions.set(message.channelId, new Set());
             }
             channelSubscriptions.get(message.channelId)?.add(ws);
-            debug.log(`User ${ws.userId} subscribed to ${isDirectMessage ? 'DM' : 'channel'} ${message.channelId}`);
+            debug.info(`User ${ws.userId} subscribed to channel ${message.channelId}`);
 
-            try {
-              debug.log('Fetching existing messages for channel:', message.channelId);
-              const messageTable = isDirectMessage ? 'direct_messages' : 'messages';
-              const existingMessages = await db.query[messageTable].findMany({
-                where: eq(messages.channel_id, isDirectMessage ? message.channelId.replace('dm_', '') : message.channelId),
-                with: {
-                  author: true,
-                  attachments: true,
-                },
-                orderBy: [asc(messages.created_at)],
-              });
+            // Send existing messages
+            const existingMessages = await db.query.messages.findMany({
+              where: eq(messages.channel_id, message.channelId),
+              with: {
+                author: true,
+                attachments: true,
+              },
+              orderBy: [asc(messages.created_at)],
+            });
 
-              debug.log('Found messages:', existingMessages.length);
-              existingMessages.forEach(msg => {
-                ws.send(JSON.stringify({
-                  type: 'message',
-                  message: normalizeMessageForClient(msg)
-                }));
-              });
-            } catch (error) {
-              debug.error('Error fetching message history:', error);
-            }
-            break;
-          }
-
-          case 'unsubscribe': {
-            if (!message.channelId) break;
-            channelSubscriptions.get(message.channelId)?.delete(ws);
-            debug.log(`User ${ws.userId} unsubscribed from channel ${message.channelId}`);
+            existingMessages.forEach(msg => {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: normalizeMessageForClient(msg)
+              }));
+            });
             break;
           }
 
           case 'message': {
-            if (!message.channelId || !message.content || !ws.userId) break;
+            if (!message.channelId || !message.content || !ws.userId) {
+              debug.warn('Invalid message data:', message);
+              break;
+            }
 
             try {
+              debug.info('Creating new message in database');
               const [newMessage] = await db.insert(messages).values({
                 channel_id: message.channelId,
                 user_id: ws.userId,
@@ -407,7 +252,6 @@ export function setupWebSocketServer(server: Server) {
                 }));
 
                 await db.insert(file_attachments).values(attachmentRecords);
-                debug.log('Created attachment records:', attachmentRecords);
               }
 
               const messageWithAuthor = await db.query.messages.findFirst({
@@ -419,16 +263,14 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
-                const normalizedMessage = normalizeMessageForClient(messageWithAuthor);
-                debug.log('Broadcasting new message:', normalizedMessage);
-
+                debug.info('Broadcasting new message to channel');
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizedMessage
+                  message: normalizeMessageForClient(messageWithAuthor)
                 });
               }
             } catch (error) {
-              debug.error('Error handling message:', error);
+              debug.error('Error handling new message:', error);
               ws.send(JSON.stringify({
                 type: 'error',
                 message: 'Failed to send message'
@@ -436,126 +278,8 @@ export function setupWebSocketServer(server: Server) {
             }
             break;
           }
-
-          case 'message_edited': {
-            if (!message.channelId || !message.messageId || !message.content || !ws.userId) break;
-
-            try {
-              debug.startGroup('Processing message edit');
-              debug.debug('Edit request:', {
-                messageId: message.messageId,
-                content: message.content,
-                channelId: message.channelId
-              });
-
-              await db
-                .update(messages)
-                .set({
-                  content: message.content,
-                  updated_at: new Date()
-                })
-                .where(eq(messages.id, message.messageId));
-
-              const updatedMessage = await db.query.messages.findFirst({
-                where: eq(messages.id, message.messageId),
-                with: {
-                  author: true,
-                  attachments: true,
-                }
-              });
-
-              if (updatedMessage) {
-                debug.debug('Message before normalization:', updatedMessage);
-                const normalizedMessage = normalizeMessageForClient(updatedMessage);
-                debug.debug('Broadcasting normalized edited message:', normalizedMessage);
-
-                broadcastToChannel(message.channelId, {
-                  type: 'message_edited',
-                  message: normalizedMessage
-                });
-              } else {
-                debug.warn('Message not found after update');
-              }
-              debug.endGroup();
-            } catch (error) {
-              debug.error('Error handling message edit:', error);
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Failed to edit message'
-              }));
-            }
-            break;
-          }
-
-          case 'message_deleted': {
-            if (!message.channelId || !message.messageId) break;
-
-            try {
-              debug.info('Processing message deletion request:', {
-                messageId: message.messageId,
-                channelId: message.channelId,
-                userId: ws.userId
-              });
-
-              // First, get the message and check permissions
-              const targetMessage = await db.query.messages.findFirst({
-                where: eq(messages.id, message.messageId),
-                with: {
-                  author: true
-                }
-              });
-
-              if (!targetMessage) {
-                debug.warn('Message not found for deletion:', message.messageId);
-                ws.send(JSON.stringify({
-                  type: 'error',
-                  message: 'Message not found'
-                }));
-                break;
-              }
-
-              // Check if user has permission to delete this message
-              const user = await db.query.users.findFirst({
-                where: eq(users.id, ws.userId)
-              });
-
-              // Check permissions:
-              // 1. Allow if user is an admin (can delete any message)
-              // 2. Allow if user is deleting their own message
-              const isAdmin = user?.is_admin || false;
-              const isOwnMessage = targetMessage.user_id === ws.userId;
-
-              if (!user || (!isAdmin && !isOwnMessage)) {
-                debug.warn('Unauthorized deletion attempt:', {
-                  userId: ws.userId,
-                  messageId: message.messageId,
-                  isAdmin,
-                  isOwnMessage
-                });
-                ws.send(JSON.stringify({
-                  type: 'error',
-                  message: 'You do not have permission to delete this message'
-                }));
-                break;
-              }
-
-              debug.info(`Message deletion by ${isAdmin ? 'admin' : 'owner'}`);
-
-              await db.delete(messages).where(eq(messages.id, message.messageId));
-              debug.info('Message deleted from database:', message.messageId);
-
-
-            } catch (error) {
-              debug.error('Error handling message deletion:', error);
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Failed to delete message'
-              }));
-            }
-            break;
-          }
+          // Add other message type handlers here
         }
-        debug.endGroup();
       } catch (error) {
         debug.error('Error processing WebSocket message:', error);
         ws.send(JSON.stringify({
@@ -566,8 +290,7 @@ export function setupWebSocketServer(server: Server) {
     });
 
     ws.on('close', () => {
-      ws.isAlive = false;
-      debug.log('WebSocket closed for user:', ws.userId);
+      debug.info('WebSocket closed for user:', ws.userId);
       channelSubscriptions.forEach(subscribers => {
         subscribers.delete(ws);
       });
@@ -578,12 +301,42 @@ export function setupWebSocketServer(server: Server) {
     });
   });
 
-  // Start periodic retraining when server starts
-  startPeriodicRetraining();
+  // Ping/Pong heartbeat
+  const interval = setInterval(() => {
+    wss.clients.forEach((ws: AuthenticatedWebSocket) => {
+      if (!ws.isAlive) {
+        debug.info('Terminating inactive connection for user:', ws.userId);
+        return ws.terminate();
+      }
+      ws.isAlive = false;
+      ws.ping();
+    });
+  }, 30000);
 
   wss.on('close', () => {
     clearInterval(interval);
   });
 
   return wss;
+}
+
+// Helper function to normalize message data
+function normalizeMessageForClient(msg: any) {
+  return {
+    id: msg.id?.toString(),
+    channel_id: msg.channel_id?.toString(),
+    user_id: msg.user_id?.toString(),
+    content: msg.content || '',
+    created_at: msg.created_at || new Date().toISOString(),
+    updated_at: msg.updated_at || msg.created_at || new Date().toISOString(),
+    parent_id: msg.parent_id?.toString() || null,
+    author: msg.author,
+    attachments: msg.attachments?.map((attachment: any) => ({
+      id: attachment.id?.toString(),
+      url: attachment.file_url || attachment.url || '',
+      originalName: attachment.file_name || attachment.originalName || '',
+      mimetype: attachment.file_type || attachment.mimetype || '',
+      file_size: Number(attachment.file_size) || 0
+    })) || []
+  };
 }

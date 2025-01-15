@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws.tsx";
 import Message from "@/components/chat/Message";
@@ -20,7 +19,7 @@ export default function MessageList({ channelId }: MessageListProps) {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
-  
+
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
     enabled: !!channelId && channelId !== "0", // Only fetch if we have a valid channelId
@@ -39,17 +38,19 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   // Filter out thread replies and combine messages
   const messageMap = new Map();
-  
+
   // Track deleted message IDs
   const deletedMessageIds = new Set(
     wsMessages
       .filter(msg => msg.type === 'message_deleted')
-      .map(msg => msg.messageId?.toString())
+      .map(msg => msg.messageId)
   );
+
+  console.log('[MessageList] Deleted message IDs:', Array.from(deletedMessageIds));
 
   // Add initial messages that haven't been deleted
   initialMessages
-    ?.filter(msg => !msg.parent_id && !deletedMessageIds.has(msg.id?.toString()))
+    ?.filter(msg => !msg.parent_id && !deletedMessageIds.has(msg.id))
     ?.forEach(msg => {
       messageMap.set(msg.id, msg);
     });
@@ -57,10 +58,11 @@ export default function MessageList({ channelId }: MessageListProps) {
   // Add WebSocket messages that haven't been deleted
   wsMessages
     .filter(msg => 
-      msg.channel_id?.toString() === channelId?.toString() &&
+      msg.type === 'message' &&
+      msg.channel_id === channelId &&
       !msg.parent_id &&
       msg.content !== null &&
-      !deletedMessageIds.has(msg.id?.toString())
+      !deletedMessageIds.has(msg.id)
     )
     .forEach(msg => {
       messageMap.set(msg.id, msg);
@@ -68,13 +70,13 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   // Remove any child messages of deleted messages
   for (const [key, msg] of messageMap.entries()) {
-    if (deletedMessageIds.has(msg.parent_id?.toString())) {
+    if (deletedMessageIds.has(msg.parent_id)) {
       messageMap.delete(key);
     }
   }
 
   const allMessages = Array.from(messageMap.values())
-  .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   // Debug effect for tracking message updates
   useEffect(() => {
@@ -82,9 +84,10 @@ export default function MessageList({ channelId }: MessageListProps) {
       initialMessages: initialMessages?.length || 0,
       wsMessages: wsMessages.length,
       combinedMessages: allMessages.length,
-      channelId
+      channelId,
+      deletedCount: deletedMessageIds.size
     });
-  }, [initialMessages, wsMessages, allMessages.length, channelId]);
+  }, [initialMessages, wsMessages, allMessages.length, channelId, deletedMessageIds.size]);
 
   useEffect(() => {
     console.log('MessageList: Final message count:', allMessages.length);

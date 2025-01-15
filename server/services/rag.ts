@@ -15,7 +15,7 @@ if (!process.env.PINECONE_API_KEY) {
 console.log('Initializing OpenAI embeddings...');
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: "text-embedding-ada-002"
+  modelName: "text-embedding-3-small" 
 });
 
 // Initialize Pinecone client with error handling
@@ -56,12 +56,12 @@ export async function initializePinecone() {
       try {
         await pinecone.createIndex({
           name: indexName,
-          dimension: 1536, // OpenAI ada-002 embedding dimension
+          dimension: 1536, 
           metric: 'cosine',
           spec: {
             serverless: {
               cloud: 'aws',
-              region: 'us-east-1'  // Using us-east-1 for free plan compatibility
+              region: 'us-east-1'  
             }
           }
         });
@@ -73,7 +73,7 @@ export async function initializePinecone() {
         const maxRetries = 10;
 
         while (!isReady && retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between checks
+          await new Promise(resolve => setTimeout(resolve, 5000)); 
           const description = await pinecone.describeIndex(indexName);
           isReady = description.status.ready;
           if (!isReady) {
@@ -107,7 +107,7 @@ export async function initializePinecone() {
 }
 
 let lastTrainingTimestamp: Date | null = null;
-const RETRAINING_INTERVAL = 1000 * 60 * 60; // 1 hour
+const RETRAINING_INTERVAL = 1000 * 60 * 60; 
 
 // Store message embedding in Pinecone
 export async function storeMessageEmbedding(messageId: string, userId: string, content: string) {
@@ -207,7 +207,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o-mini",  // Updated to use gpt-4o-mini
         messages: [
           {
             role: "system",
@@ -242,7 +242,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
 
   } catch (err) {
     console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
-    throw err; // Let the WebSocket handler handle the error gracefully
+    throw err; 
   }
 }
 
@@ -251,10 +251,10 @@ export function isQuestion(message: string): boolean {
 
   // Enhanced question detection
   const questionPatterns = [
-    /\?$/,  // Ends with question mark
-    /^(what|how|why|when|where|who|which|could|can|will|should|may|might)/,  // Starts with question words
-    /^(is|are|was|were|do|does|did|have|has|had)\s/,  // Starts with auxiliary verbs
-    /tell me (about|how|why|when|where)/i  // Indirect questions
+    /\?$/,  
+    /^(what|how|why|when|where|who|which|could|can|will|should|may|might)/,  
+    /^(is|are|was|were|do|does|did|have|has|had)\s/,  
+    /tell me (about|how|why|when|where)/i  
   ];
 
   return questionPatterns.some(pattern => pattern.test(message_trimmed));
