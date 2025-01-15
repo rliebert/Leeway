@@ -104,17 +104,27 @@ export function setupWebSocketServer(server: Server) {
 
       try {
         const session = await db.query.sessions.findFirst({
-          where: eq(sessions.sid, sessionId)
+          where: eq(sessions.sid, sessionId.replace('s:', ''))
         });
 
-        const sessionData = session?.sess ? JSON.parse(session.sess as string) : null;
-        if (!sessionData?.user?.id) {
-          debug.warn("No user ID found in session");
+        let sessionData;
+        try {
+          sessionData = session?.sess ? 
+            (typeof session.sess === 'string' ? JSON.parse(session.sess) : session.sess) : 
+            null;
+        } catch (e) {
+          debug.error("Failed to parse session data:", e);
+          ws.close(1008, "Invalid session");
+          return;
+        }
+
+        if (!sessionData?.passport?.user) {
+          debug.warn("No user ID found in session passport");
           ws.close(1008, "Unauthorized");
           return;
         }
 
-        ws.userId = sessionData.user.id.toString();
+        ws.userId = sessionData.passport.user.toString();
         ws.isAlive = true;
         debug.info("WebSocket connected for user:", ws.userId);
       } catch (error) {
