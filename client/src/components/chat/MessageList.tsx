@@ -38,29 +38,28 @@ export default function MessageList({ channelId }: MessageListProps) {
   }, [channelId]); // Remove wsMessages.length dependency
 
   // Filter out thread replies and combine messages
-  const allMessages = [
-    ...(initialMessages?.filter(msg => !msg.parent_id) || []),
-    ...wsMessages.filter(wsMsg => {
-      // Skip deleted messages
-      if (wsMsg.type === 'message_deleted') {
-        return false;
-      }
-      
-      const isRelevant = 
-        wsMsg.channel_id?.toString() === channelId?.toString() && 
-        !wsMsg.parent_id &&
-        wsMsg.content !== null;
+  // Get unique messages by id, preferring WebSocket messages over initial messages
+  const messageMap = new Map();
+  
+  // Add initial messages first
+  initialMessages?.filter(msg => !msg.parent_id)?.forEach(msg => {
+    messageMap.set(msg.id, msg);
+  });
 
-      return isRelevant;
-    })
-  ].filter(msg => {
-    // Filter out any messages that have been marked as deleted
-    const isDeleted = wsMessages.some(wsMsg => 
-      wsMsg.type === 'message_deleted' && 
-      wsMsg.messageId === msg.id
-    );
-    return !isDeleted;
-  })
+  // Add or update with WebSocket messages
+  wsMessages.forEach(wsMsg => {
+    if (wsMsg.type === 'message_deleted') {
+      messageMap.delete(wsMsg.messageId);
+    } else if (
+      wsMsg.channel_id?.toString() === channelId?.toString() && 
+      !wsMsg.parent_id &&
+      wsMsg.content !== null
+    ) {
+      messageMap.set(wsMsg.id, wsMsg);
+    }
+  });
+
+  const allMessages = Array.from(messageMap.values())
   .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
   // Debug effect for tracking message updates

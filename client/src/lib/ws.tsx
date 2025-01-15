@@ -298,13 +298,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
               case "message_deleted":
                 debugLogger.debug('Processing message deletion', data);
-                setMessages((prevMessages) =>
-                  prevMessages.filter(
+                setMessages((prevMessages) => {
+                  const updatedMessages = prevMessages.filter(
                     (msg) =>
                       msg.id?.toString() !== data.messageId?.toString() &&
                       msg.parent_id?.toString() !== data.messageId?.toString()
-                  )
-                );
+                  );
+                  debugLogger.debug('Messages after deletion:', updatedMessages);
+                  return updatedMessages;
+                });
+
+                // Force re-render of message list
+                queryClient.invalidateQueries({ 
+                  queryKey: [`/api/channels/${data.channelId}/messages`] 
+                });
                 break;
             }
             debugLogger.endGroup();
