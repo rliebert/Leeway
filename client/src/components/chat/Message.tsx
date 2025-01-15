@@ -332,55 +332,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             {isEditing ? (
               <div className="mt-1 space-y-2">
-                {message.attachments && message.attachments.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {message.attachments
-                        .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
-                        .map((file, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={normalizeFileUrl(file)}
-                              alt={file.originalName || file.file_name}
-                              className="rounded-md max-h-48 object-cover"
-                            />
-                            { !deletedAttachments.includes(file.id) && <Button
-                              variant="destructive"
-                              size="icon"
-                              className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleAttachmentDelete(file.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>}
-                          </div>
-                        ))}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {message.attachments
-                        .filter(file => !isImageFile(file.mimetype || file.file_type))
-                        .map((file, index) => (
-                          <div key={index} className="relative group">
-                            <div className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors">
-                              <FileIcon className="h-4 w-4" />
-                              <span className="truncate max-w-[200px]">
-                                {file.originalName || file.file_name}
-                              </span>
-                              <ExternalLink className="h-3 w-3" />
-                            </div>
-                            {!deletedAttachments.includes(file.id) && <Button
-                              variant="destructive"
-                              size="icon"
-                              className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => handleAttachmentDelete(file.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
                 <div className="flex gap-2">
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
@@ -457,19 +408,21 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   {message.attachments
                     .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
                     .map((file, index) => (
-                      <a 
-                        key={index}
-                        href={normalizeFileUrl(file)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block max-w-xs hover:opacity-90 transition-opacity"
-                      >
+                      <div key={index} className="relative group">
                         <img
                           src={normalizeFileUrl(file)}
                           alt={file.originalName || file.file_name}
                           className="rounded-md max-h-48 object-cover"
                         />
-                      </a>
+                        {!deletedAttachments.includes(file.id) && <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleAttachmentDelete(file.id)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>}
+                      </div>
                     ))}
                 </div>
 
@@ -477,17 +430,23 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   {message.attachments
                     .filter(file => !isImageFile(file.mimetype || file.file_type))
                     .map((file, index) => (
-                      <a
-                        key={index}
-                        href={normalizeFileUrl(file)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
-                      >
-                        <FileIcon className="h-4 w-4" />
-                        {file.originalName || file.file_name}
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <div key={index} className="relative group">
+                        <div className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors">
+                          <FileIcon className="h-4 w-4" />
+                          <span className="truncate max-w-[200px]">
+                            {file.originalName || file.file_name}
+                          </span>
+                          <ExternalLink className="h-3 w-3" />
+                          {!deletedAttachments.includes(file.id) && <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-6 w-6 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleAttachmentDelete(file.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>}
+                        </div>
+                      </div>
                     ))}
                 </div>
               </div>
