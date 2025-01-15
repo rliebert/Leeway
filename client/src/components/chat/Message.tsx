@@ -772,8 +772,10 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
       />
     </>
   );
-});
+};
 
 Message.displayName = "Message";
+
+export default Message;
 
 export default Message;
