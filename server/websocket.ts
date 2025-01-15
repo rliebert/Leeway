@@ -6,6 +6,7 @@ import { serverDebugLogger as debug } from "./debug";
 import { db } from "@db";
 import { sessions, messages, users, file_attachments } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
+import { handleAIResponse, isQuestion } from "./services/rag";
 
 // Constants
 const HEARTBEAT_INTERVAL = 30000;
@@ -20,22 +21,25 @@ interface AuthenticatedWebSocket extends WebSocket {
   isAlive: boolean;
 }
 
+// Add WSMessage interface tempId property
 interface WSMessage {
   type: 'subscribe' | 'unsubscribe' | 'message' | 'ping' | 'message_deleted' | 'message_edited';
   channelId?: string;
   content?: string;
   parentId?: string;
+  tempId?: string;
   attachments?: Array<{
     id: string;
-    file_url: string;
-    file_name: string;
-    file_type: string;
+    url: string;
+    originalName: string;
+    mimetype: string;
     file_size: number;
   }>;
   messageId?: string;
 }
 
 // Track channel subscriptions
+// Fix the generic type for Set<WebSocket>
 const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
 function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
@@ -97,9 +101,56 @@ function normalizeMessageForClient(message: any) {
   };
 }
 
+async function sendAIResponse(channelId: string, messageContent: string) {
+  try {
+    // Find ai.rob user
+    const aiRobUser = await db.query.users.findFirst({
+      where: eq(users.username, 'ai.rob'),
+    });
+
+    if (!aiRobUser) {
+      debug.error('AI bot user (ai.rob) not found');
+      return;
+    }
+
+    const aiResponse = await handleAIResponse(messageContent);
+    if (!aiResponse) {
+      debug.error('Failed to generate AI response');
+      return;
+    }
+
+    // Create the AI response message
+    const [newMessage] = await db.insert(messages)
+      .values({
+        content: aiResponse,
+        channel_id: channelId,
+        user_id: aiRobUser.id,
+      })
+      .returning();
+
+    const messageWithAuthor = await db.query.messages.findFirst({
+      where: eq(messages.id, newMessage.id),
+      with: {
+        author: true,
+        attachments: true,
+      },
+    });
+
+    if (messageWithAuthor) {
+      const normalizedMessage = normalizeMessageForClient(messageWithAuthor);
+      broadcastToChannel(channelId, {
+        type: 'message',
+        message: normalizedMessage
+      });
+    }
+  } catch (error) {
+    debug.error('Error sending AI response:', error);
+  }
+}
+
 export function setupWebSocketServer(server: Server) {
   debug.info('Setting up WebSocket server');
-  
+
   const wss = new WebSocketServer({
     server,
     path: '/ws',
@@ -120,7 +171,7 @@ export function setupWebSocketServer(server: Server) {
       try {
         const cookies = parseCookie(req.headers.cookie || '');
         const sessionId = cookies['connect.sid'];
-        
+
         if (!sessionId) {
           debug.error('No session cookie found');
           done(false, 401, 'No session cookie');
@@ -144,8 +195,8 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
-        const sessionData = typeof session.sess === 'string' 
-          ? JSON.parse(session.sess) 
+        const sessionData = typeof session.sess === 'string'
+          ? JSON.parse(session.sess)
           : session.sess;
 
         if (!sessionData?.passport?.user) {
@@ -172,8 +223,10 @@ export function setupWebSocketServer(server: Server) {
   });
 
   // Clean up dead connections periodically
+  // Fix cleanupInterval callback type
   const cleanupInterval = setInterval(() => {
-    wss.clients.forEach((ws: AuthenticatedWebSocket) => {
+    const clients = Array.from(wss.clients) as AuthenticatedWebSocket[];
+    clients.forEach(ws => {
       if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
         channelSubscriptions.forEach(subscribers => subscribers.delete(ws));
       }
@@ -303,6 +356,12 @@ export function setupWebSocketServer(server: Server) {
                 };
                 debug.info('Broadcasting packet:', broadcastPacket);
                 broadcastToChannel(message.channelId, broadcastPacket);
+
+                // Check if the message is a question and trigger AI response
+                if (isQuestion(message.content)) {
+                  debug.info('Question detected, generating AI response');
+                  await sendAIResponse(message.channelId, message.content);
+                }
               }
             } catch (error) {
               debug.error('Error adding message:', error);
