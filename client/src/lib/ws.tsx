@@ -9,6 +9,7 @@ import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { debugLogger } from './debug';
+import { queryClient } from '@/utils/queryClient';
 
 interface WSContextType {
   messages: Message[];
@@ -83,7 +84,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         const loc = window.location;
         const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${wsProtocol}//${loc.host}/ws`;
-        
+
         // Add retry delay if there was a previous connection attempt
         if (socket?.readyState === WebSocket.CLOSED) {
           await new Promise(resolve => setTimeout(resolve, 1000));
@@ -298,32 +299,29 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
               case "message_deleted":
                 debugLogger.debug('Processing message deletion', data);
-                
+
                 // Update WebSocket messages state
                 setMessages((prevMessages) => {
-                  const updatedMessages = prevMessages.filter(
+                  debugLogger.debug('Current messages before deletion:', prevMessages);
+                  return prevMessages.filter(
                     (msg) =>
                       msg.id?.toString() !== data.messageId?.toString() &&
                       msg.parent_id?.toString() !== data.messageId?.toString()
                   );
-                  debugLogger.debug('Messages after deletion:', updatedMessages);
-                  return updatedMessages;
                 });
 
                 // Force immediate UI update via React Query
                 const queryKey = [`/api/channels/${data.channelId}/messages`];
                 queryClient.setQueryData(queryKey, (oldData: any) => {
                   if (!oldData) return [];
-                  const filteredData = oldData.filter((msg: any) => 
+                  return oldData.filter((msg: any) => 
                     msg.id?.toString() !== data.messageId?.toString() &&
                     msg.parent_id?.toString() !== data.messageId?.toString()
                   );
-                  debugLogger.debug('Query cache after deletion:', filteredData);
-                  return filteredData;
                 });
 
-                // Add deletion to WebSocket message history
-                setMessages(prev => [...prev, data]);
+                // Invalidate queries to ensure consistency
+                queryClient.invalidateQueries({ queryKey });
                 break;
             }
             debugLogger.endGroup();
