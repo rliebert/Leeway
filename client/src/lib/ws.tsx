@@ -123,11 +123,21 @@ export function WSProvider({ children }: { children: ReactNode }) {
       const data = JSON.parse(event.data);
       switch (data.type) {
         case 'message':
-          console.log('Received message from server with tempId:', data.tempId);
+          console.log('Received message from server:', {
+            messageId: data.message?.id,
+            tempId: data.tempId,
+            content: data.message?.content
+          });
           setMessages(prev => {
             // Only look for tempId match, ignore message.id
             const hasOptimistic = prev.some(msg => msg.tempId === data.tempId);
-            console.log('Found matching optimistic message:', hasOptimistic);
+            const optimisticMsg = prev.find(msg => msg.tempId === data.tempId);
+            console.log('Optimistic message check:', {
+              tempId: data.tempId,
+              found: hasOptimistic,
+              optimisticContent: optimisticMsg?.content,
+              existingMessages: prev.map(m => ({ id: m.id, tempId: m.tempId, content: m.content }))
+            });
             
             if (hasOptimistic) {
               optimisticMessages.delete(data.tempId);
