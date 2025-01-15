@@ -51,8 +51,10 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
   subscribers.forEach((client: AuthenticatedWebSocket) => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
       try {
+        debug.info('Sending message to client:', { userId: client.userId });
         client.send(data);
         broadcastCount++;
+        debug.info('Successfully sent message to client');
       } catch (error) {
         debug.error(`Failed to send to client: ${error}`);
         subscribers.delete(client); // Remove failed client
@@ -194,7 +196,14 @@ export function setupWebSocketServer(server: Server) {
 
     ws.on('message', async (data: string) => {
       try {
+        debug.info('Raw WebSocket message received:', data);
         const message = JSON.parse(data) as WSMessage;
+        debug.info('Parsed WebSocket message:', {
+          type: message.type,
+          channelId: message.channelId,
+          tempId: message.tempId,
+          content: message.content?.substring(0, 50) // Log first 50 chars of content
+        });
         switch (message.type) {
           case 'message': {
             if (!message.channelId || !message.content) {
