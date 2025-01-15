@@ -107,12 +107,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const replyCount = allReplies.length;
 
   const normalizeFileUrl = (attachment: FileAttachment): string => {
+    if (!attachment) return '';
+    
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
-      return attachment.file_url || attachment.url;
+      return attachment.file_url || attachment.url || '';
     }
 
     const baseUrl = window.location.origin;
-    let fileUrl = attachment.file_url || attachment.url;
+    let fileUrl = attachment.file_url || attachment.url || '';
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
   };
@@ -372,25 +374,15 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                                 );
                               }
                             );
+                          })
+                          .catch(error => {
+                            console.error('Upload error:', error);
                           });
                       }
                       e.target.value = '';
                     }}
                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
                   />
-                  {(!message.attachments?.length || deletedAttachments.length === message.attachments?.length) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        document.getElementById(`file-upload-edit-${message.id}`)?.click();
-                      }}
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                  )}
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button
@@ -414,6 +406,19 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       />
                     </PopoverContent>
                   </Popover>
+                  {(!message.attachments?.length || deletedAttachments.length === message.attachments?.length) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        document.getElementById(`file-upload-edit-${message.id}`)?.click();
+                      }}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Textarea
                     ref={textareaRef}
                     value={editContent}
