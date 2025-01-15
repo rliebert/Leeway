@@ -120,8 +120,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            // Remove any optimistic messages with matching content
-            const filtered = prev.filter(msg => {
+            // Find and replace optimistic message with real one
+            let optimisticFound = false;
+            const updated = prev.map(msg => {
               if (optimisticMessages.has(msg.id)) {
                 const isMatch = 
                   msg.content === data.message.content && 
@@ -130,13 +131,15 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 
                 if (isMatch) {
                   optimisticMessages.delete(msg.id);
-                  return false;
+                  optimisticFound = true;
+                  return data.message;
                 }
               }
-              return true;
+              return msg;
             });
             
-            return [...filtered, data.message];
+            // If no optimistic message was found to replace, append the new message
+            return optimisticFound ? updated : [...prev, data.message];
           });
           break;
         case 'message_edited':
