@@ -203,7 +203,7 @@ export default function MessageList({ channelId }: MessageListProps) {
       <div className="flex flex-col gap-1 p-4">
         {allMessages.map((message, index) => (
           <Message
-            key={message.tempId || message.id}
+            key={message.id}
             message={message}
             ref={index === allMessages.length - 1 ? lastMessageRef : undefined}
           />
