@@ -200,6 +200,7 @@ export function setupWebSocketServer(server: Server) {
               debug.warn('Invalid message data:', { channelId: message.channelId, hasContent: !!message.content });
               return;
             }
+            debug.info('Received message with tempId:', message.tempId);
 
             try {
               const [newMessage] = await db.insert(messages)
@@ -220,6 +221,7 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
+                debug.info('Broadcasting message with tempId:', message.tempId);
                 broadcastToChannel(message.channelId, {
                   type: 'message',
                   message: normalizeMessageForClient(messageWithAuthor),
