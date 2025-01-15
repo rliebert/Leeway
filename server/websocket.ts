@@ -222,8 +222,8 @@ export function setupWebSocketServer(server: Server) {
               if (messageWithAuthor) {
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizeMessageForClient(newMessage),
-                  tempId: message.tempId
+                  message: normalizeMessageForClient(messageWithAuthor),
+                  tempId: message.tempId // Pass through tempId from client
                 });
               }
             } catch (error) {

@@ -35,11 +35,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // For new messages, track the optimistic version with content as key
+    // For new messages, track optimistic message with a tempId
     if (data.type === 'message') {
       const tempId = crypto.randomUUID();
-      const key = `${data.content}-${data.channelId}-${user?.id}`;
-      optimisticMessages.add(key);
+      optimisticMessages.add(tempId);
       
       const optimisticMessage = {
         id: tempId,
@@ -47,6 +46,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
         channel_id: data.channelId!,
         created_at: new Date().toISOString(),
         user_id: user?.id,
+        tempId, // Store tempId for later matching
         author: {
           username: user?.username,
           avatar_url: user?.avatar_url
@@ -55,6 +55,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       };
 
       setMessages(prev => [...prev, optimisticMessage]);
+      data.tempId = tempId; // Add tempId to outgoing message
     }
 
     socket.send(JSON.stringify(data));
@@ -122,19 +123,14 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            const key = `${data.message.content}-${data.message.channel_id}-${data.message.user_id}`;
-            // Remove any optimistic version of this message
+            // Remove optimistic message using tempId
             const filtered = prev.filter(msg => {
-              if (msg.isOptimistic && 
-                  msg.content === data.message.content && 
-                  msg.channel_id === data.message.channel_id && 
-                  msg.user_id === data.message.user_id) {
-                optimisticMessages.delete(key);
+              if (msg.isOptimistic && msg.tempId === data.tempId) {
+                optimisticMessages.delete(msg.tempId);
                 return false;
               }
               return true;
             });
-            
             return [...filtered, data.message];
           });
           break;
