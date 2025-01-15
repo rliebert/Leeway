@@ -120,23 +120,23 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            // Clean up any optimistic messages with matching content
-            const filtered = prev.filter(msg => {
-              if (optimisticMessages.has(msg.id)) {
-                const isMatch = 
+            // Find any matching optimistic message and replace it
+            const updated = prev.map(msg => {
+              if (optimisticMessages.has(msg.id) &&
                   msg.content === data.message.content && 
                   msg.channel_id === data.message.channel_id && 
-                  msg.user_id === data.message.user_id;
-                
-                if (isMatch) {
-                  optimisticMessages.delete(msg.id);
-                  return false;
-                }
+                  msg.user_id === data.message.user_id) {
+                optimisticMessages.delete(msg.id);
+                return data.message;
               }
-              return true;
+              return msg;
             });
-            
-            return [...filtered, data.message];
+
+            // If no optimistic message was found, add the new message
+            if (updated.every(msg => msg.id !== data.message.id)) {
+              return [...updated, data.message];
+            }
+            return updated;
           });
           break;
         case 'message_edited':
