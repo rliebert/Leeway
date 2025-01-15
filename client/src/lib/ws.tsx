@@ -105,7 +105,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
           socket.close();
         }
 
-        const ws = new WebSocket(wsUrl, ["chat"]);
+        const ws = new WebSocket(wsUrl, "chat");
 
         let connectionTimeout: NodeJS.Timeout;
         connectionTimeout = setTimeout(() => {

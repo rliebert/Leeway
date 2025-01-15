@@ -77,6 +77,15 @@ export function setupWebSocketServer(server: Server) {
     path: "/ws",
     perMessageDeflate: false,
     clientTracking: true,
+    verifyClient: ({ req }, done) => {
+      // Allow both chat and vite-hmr protocols
+      const protocol = req.headers['sec-websocket-protocol'];
+      if (!protocol || (protocol !== 'chat' && protocol !== 'vite-hmr')) {
+        done(false, 400, 'Unsupported protocol');
+        return;
+      }
+      done(true);
+    }
   });
 
   wss.on(
