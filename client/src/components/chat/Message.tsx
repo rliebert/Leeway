@@ -106,6 +106,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   const replyCount = allReplies.length;
 
+  const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
+  
   const normalizeFileUrl = (attachment: FileAttachment): string => {
     if (!attachment) return '';
     
@@ -117,6 +119,33 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     let fileUrl = attachment.file_url || attachment.url || '';
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await response.json();
+        
+        setUploadedFiles([...uploadedFiles, {
+          id: data.id,
+          url: data.url,
+          originalName: file.name,
+          mimetype: file.type,
+          file_size: file.size,
+        }]);
+      } catch (error) {
+        console.error('Upload error:', error);
+      }
+    }
+    e.target.value = '';
   };
 
   const isImageFile = (mimetype?: string): boolean => {
@@ -229,7 +258,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           channelId: message.channel_id || '',
           messageId: message.id,
           content: editContent.trim(),
-          deletedAttachments: deletedAttachments
+          deletedAttachments: deletedAttachments,
+          attachments: uploadedFiles
         });
 
         setIsEditing(false);
@@ -382,20 +412,19 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       e.target.value = '';
                     }}
                     accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                    onChange={handleFileUpload}
                   />
-                  {(!message.attachments?.length || deletedAttachments.length === message.attachments?.length) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => {
-                        document.getElementById(`file-upload-edit-${message.id}`)?.click();
-                      }}
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      document.getElementById(`file-upload-edit-${message.id}`)?.click();
+                    }}
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </Button>
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button
