@@ -123,15 +123,16 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            // Remove optimistic message using tempId
-            const filtered = prev.filter(msg => {
-              if (msg.isOptimistic && msg.tempId === data.tempId) {
-                optimisticMessages.delete(msg.tempId);
-                return false;
-              }
-              return true;
-            });
-            return [...filtered, data.message];
+            // Find and replace optimistic message
+            const found = prev.find(msg => msg.isOptimistic && msg.tempId === data.tempId);
+            if (found) {
+              optimisticMessages.delete(data.tempId);
+              return prev.map(msg => 
+                (msg.isOptimistic && msg.tempId === data.tempId) ? 
+                { ...data.message, tempId: data.tempId } : msg
+              );
+            }
+            return prev;
           });
           break;
         case 'message_edited':
