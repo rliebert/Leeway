@@ -4,7 +4,7 @@ import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Penci
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import EmojiPicker from "emoji-picker-react";
 import type { Message as MessageType } from "@db/schema";
-import { forwardRef, useState, useEffect } from "react";
+import { forwardRef, useState, useEffect, useRef } from "react";
 import ThreadModal from "./ThreadModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWS } from "@/lib/ws";
@@ -40,6 +40,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { messages: wsMessages, send } = useWS();
   const { user } = useUser();
   const { toast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleDeleteMessage = async () => {
     try {
@@ -60,7 +61,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           channelId: message.channel_id || '',
           messageId: message.id
         });
-        
+
         toast({ description: "Message deleted" });
       } else {
         const errorData = await response.json();
@@ -157,7 +158,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           [`/api/messages/${message.id}/replies`],
           (oldReplies: any) => oldReplies?.filter((reply: any) => reply.id !== replyId)
         );
-        
+
         send({
           type: 'message_deleted',
           channelId: message.channel_id || '',
@@ -177,26 +178,26 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   };
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-const onEmojiClick = (emojiData: any) => {
-  const textarea = textareaRef.current;
-  if (!textarea) return;
 
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const newValue = editContent.substring(0, start) + emojiData.emoji + editContent.substring(end);
-  setEditContent(newValue);
+  const onEmojiClick = (emojiData: any) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
-  setTimeout(() => {
-    if (textarea) {
-      textarea.focus();
-      textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
-    }
-  }, 0);
-};
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newValue = editContent.substring(0, start) + emojiData.emoji + editContent.substring(end);
+    setEditContent(newValue);
 
-const handleEditMessage = async () => {
+    setTimeout(() => {
+      if (textarea) {
+        textarea.focus();
+        textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
+      }
+    }, 0);
+  };
+
+  const handleEditMessage = async () => {
     if (editContent.trim() === message.content) {
       setIsEditing(false);
       return;
@@ -351,17 +352,18 @@ const handleEditMessage = async () => {
                     value={editContent}
                     onChange={(e) => setEditContent(e.target.value)}
                     className="min-h-[60px] text-sm"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleEditMessage();
-                    }
-                    if (e.key === "Escape") {
-                      setIsEditing(false);
-                      setEditContent(message.content);
-                    }
-                  }}
-                />
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleEditMessage();
+                      }
+                      if (e.key === "Escape") {
+                        setIsEditing(false);
+                        setEditContent(message.content);
+                      }
+                    }}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
