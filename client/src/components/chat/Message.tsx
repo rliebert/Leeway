@@ -174,7 +174,27 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
   };
 
-  const handleEditMessage = async () => {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+const onEmojiClick = (emojiData: any) => {
+  const textarea = textareaRef.current;
+  if (!textarea) return;
+
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const newValue = editContent.substring(0, start) + emojiData.emoji + editContent.substring(end);
+  setEditContent(newValue);
+
+  setTimeout(() => {
+    if (textarea) {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + emojiData.emoji.length;
+    }
+  }, 0);
+};
+
+const handleEditMessage = async () => {
     if (editContent.trim() === message.content) {
       setIsEditing(false);
       return;
@@ -300,10 +320,35 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             {isEditing ? (
               <div className="mt-1 space-y-2">
-                <Textarea
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[60px] text-sm"
+                <div className="flex gap-2">
+                  <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                      >
+                        <Smile className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-full p-0"
+                      side="top"
+                      align="start"
+                    >
+                      <EmojiPicker
+                        onEmojiClick={onEmojiClick}
+                        width="100%"
+                        height="350px"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Textarea
+                    ref={textareaRef}
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    className="min-h-[60px] text-sm"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
