@@ -324,20 +324,21 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             {isEditing ? (
               <div className="mt-1 space-y-2">
                 {message.attachments && message.attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 p-2 bg-muted/50 rounded-md">
-                    {message.attachments.map((file, index) => (
-                      <div key={index} className="relative group">
-                        {isImageFile(file.mimetype || file.file_type) ? (
-                          <div className="relative">
+                  <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {message.attachments
+                        .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
+                        .map((file, index) => (
+                          <div key={index} className="relative group">
                             <img
                               src={normalizeFileUrl(file)}
                               alt={file.originalName || file.file_name}
-                              className="h-16 w-16 object-cover rounded-md"
+                              className="rounded-md max-h-48 object-cover"
                             />
                             <Button
                               variant="destructive"
                               size="icon"
-                              className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={async () => {
                                 const response = await fetch(`/api/attachments/${file.id}`, {
                                   method: 'DELETE',
@@ -357,13 +358,20 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
-                        ) : (
-                          <div className="relative">
-                            <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-md">
+                        ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {message.attachments
+                        .filter(file => !isImageFile(file.mimetype || file.file_type))
+                        .map((file, index) => (
+                          <div key={index} className="relative group">
+                            <div className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors">
                               <FileIcon className="h-4 w-4" />
-                              <span className="text-xs truncate max-w-[100px]">
+                              <span className="truncate max-w-[200px]">
                                 {file.originalName || file.file_name}
                               </span>
+                              <ExternalLink className="h-3 w-3" />
                             </div>
                             <Button
                               variant="destructive"
@@ -388,9 +396,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        ))}
+                    </div>
                   </div>
                 )}
                 <div className="flex gap-2">
