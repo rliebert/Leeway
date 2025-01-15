@@ -213,6 +213,27 @@ export function setupWebSocketServer(server: Server) {
           content: message.content?.substring(0, 50),
           timestamp: new Date().toLocaleTimeString()
         });
+
+        // Handle subscriptions first
+        if (message.type === 'subscribe' && message.channelId) {
+          let subscribers = channelSubscriptions.get(message.channelId);
+          if (!subscribers) {
+            subscribers = new Set();
+            channelSubscriptions.set(message.channelId, subscribers);
+          }
+          subscribers.add(ws);
+          debug.info(`Client subscribed to channel ${message.channelId}`);
+          return;
+        }
+
+        if (message.type === 'unsubscribe' && message.channelId) {
+          const subscribers = channelSubscriptions.get(message.channelId);
+          if (subscribers) {
+            subscribers.delete(ws);
+            debug.info(`Client unsubscribed from channel ${message.channelId}`);
+          }
+          return;
+        }
         debug.info('Parsed WebSocket message:', {
           type: message.type,
           channelId: message.channelId,
