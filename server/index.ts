@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { initializeSessionStore } from "./config/session";
 import { initializePinecone, startPeriodicRetraining } from "./services/rag";
 import path from "path";
+import cors from "cors";
 
 const app = express();
 app.use(express.json());
@@ -50,6 +51,15 @@ app.get("/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'development' 
+    ? ['http://localhost:5173', 'http://localhost:5000'] 
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+}));
 
 (async () => {
   try {

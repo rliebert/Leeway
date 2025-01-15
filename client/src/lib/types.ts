@@ -35,3 +35,7 @@ export interface WSMessage {
   message?: Message;
   messages?: Message[];
 }
+
+interface WSContextType {
+  connectionQuality: number;
+}

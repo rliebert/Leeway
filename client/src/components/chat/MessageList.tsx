@@ -6,13 +6,15 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { useQueryClient } from "@tanstack/react-query";
+import { debugLogger } from "@/lib/debug";
 
 interface MessageListProps {
   channelId: string;
 }
 
 export default function MessageList({ channelId }: MessageListProps) {
-  const { messages: wsMessages, subscribe, unsubscribe } = useWS();
+  const { messages: wsMessages, subscribe, unsubscribe, connected } = useWS();
   const { user } = useUser();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -20,6 +22,7 @@ export default function MessageList({ channelId }: MessageListProps) {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const lastMessageRef = useRef<HTMLDivElement>(null);
   const currentChannelRef = useRef<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: initialMessages, isLoading } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
@@ -118,6 +121,33 @@ export default function MessageList({ channelId }: MessageListProps) {
     }
   }, [allMessages.length, user?.id, showScrollButton, scrollToBottom]);
 
+  // Add connection quality indicator
+  const { connectionQuality } = useWS();
+
+  // Subscribe to channel when mounted or changed
+  useEffect(() => {
+    if (connected && channelId) {
+      debugLogger.info("MessageList: Subscribing to channel", channelId);
+      subscribe(channelId);
+      
+      return () => {
+        debugLogger.info("MessageList: Unsubscribing from channel", channelId);
+        unsubscribe(channelId);
+      };
+    }
+  }, [channelId, connected, subscribe, unsubscribe]);
+
+  // Optimistic UI updates for new messages
+  const handleNewMessage = useCallback((message: MessageType) => {
+    queryClient.setQueryData(
+      [`/api/channels/${channelId}/messages`],
+      (old: MessageType[] | undefined) => {
+        if (!old) return [message];
+        return [...old, message];
+      }
+    );
+  }, [channelId, queryClient]);
+
   if (!channelId || channelId === "0") {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -136,6 +166,13 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   return (
     <div className="relative flex-1">
+      {/* Add connection quality indicator */}
+      {connectionQuality < 3 && (
+        <div className="sticky top-0 bg-yellow-500/10 text-yellow-500 px-4 py-2 text-sm">
+          Poor connection quality. Some messages may be delayed.
+        </div>
+      )}
+      
       <div className="flex flex-col gap-1 p-4">
         {allMessages.map((message, index) => (
           <Message
