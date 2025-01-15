@@ -107,13 +107,14 @@ export function setupWebSocketServer(server: Server) {
           where: eq(sessions.sid, sessionId)
         });
 
-        if (!session?.sess?.userId) {
+        const sessionData = session?.sess ? JSON.parse(session.sess as string) : null;
+        if (!sessionData?.user?.id) {
           debug.warn("No user ID found in session");
           ws.close(1008, "Unauthorized");
           return;
         }
 
-        ws.userId = session.sess.userId.toString();
+        ws.userId = sessionData.user.id.toString();
         ws.isAlive = true;
         debug.info("WebSocket connected for user:", ws.userId);
       } catch (error) {
