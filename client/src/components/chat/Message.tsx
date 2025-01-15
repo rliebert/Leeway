@@ -1,6 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Pencil, Check, X } from "lucide-react";
+import { Reply, ChevronDown, ChevronRight, FileIcon, ExternalLink, Trash2, Pencil, Check, X, Smile } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import EmojiPicker from "emoji-picker-react";
 import type { Message as MessageType } from "@db/schema";
 import { forwardRef, useState, useEffect } from "react";
 import ThreadModal from "./ThreadModal";
