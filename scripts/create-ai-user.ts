@@ -1,24 +1,43 @@
-
-import { db } from "../db";
-import { users } from "../db/schema";
+import { db } from "@db";
+import { users } from "@db/schema";
 import { eq } from "drizzle-orm";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
 
 async function createAIUser() {
-  const existingUser = await db.query.users.findFirst({
-    where: eq(users.username, "ai.rob"),
-  });
-
-  if (!existingUser) {
-    await db.insert(users).values({
-      username: "ai.rob",
-      email: "ai.rob@leeway.app",
-      display_name: "AI Rob",
-      avatar_url: "/ai-avatar.png", // You can update this with an actual avatar
-      is_bot: true,
+  try {
+    const existingUser = await db.query.users.findFirst({
+      where: eq(users.username, "ai.rob"),
     });
-    console.log("AI user created successfully");
-  } else {
-    console.log("AI user already exists");
+
+    if (!existingUser) {
+      // Generate a secure random password for the AI user
+      const password = randomBytes(32).toString("hex");
+      const hashedPassword = await hashPassword(password);
+
+      const [newUser] = await db.insert(users).values({
+        username: "ai.rob",
+        password: hashedPassword,
+        email: "ai.rob@leeway.app",
+        status: "🤖 AI Assistant",
+        is_admin: false,
+      }).returning();
+
+      console.log("AI user created successfully:", newUser.username);
+    } else {
+      console.log("AI user already exists");
+    }
+  } catch (error) {
+    console.error("Error creating AI user:", error);
+    throw error;
   }
 }
 
