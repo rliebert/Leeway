@@ -39,60 +39,59 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const handleEditReply = async (replyId: string) => {
-    if (!replyEditContent.trim()) return;
+  const handleDeleteMessage = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to delete this message?')) return;
 
     try {
-      send({
-        type: 'message_edited',
-        messageId: replyId,
-        content: replyEditContent.trim(),
-        channelId: message.channel_id || ''
-      });
+      console.log('Initiating message deletion:', message.id);
 
-      setEditingReplyId(null);
-      setReplyEditContent('');
-      toast({ description: "Reply updated" });
-    } catch (error) {
-      console.error('Error editing reply:', error);
-      toast({ 
-        variant: "destructive",
-        description: "Failed to update reply"
-      });
-    }
-  };
+      // Step 1: Optimistically update UI
+      queryClient.setQueryData(
+        [`/api/channels/${message.channel_id}/messages`],
+        (oldData: any) => {
+          console.log('Updating query cache, removing message:', message.id);
+          if (!oldData) return [];
+          return oldData.filter((msg: any) => msg.id !== message.id);
+        }
+      );
 
-  const handleDeleteReply = async (replyId: string) => {
-    try {
-      const response = await fetch(`/api/messages/${replyId}`, {
+      // Step 2: Send delete request to server
+      const response = await fetch(`/api/messages/${message.id}`, {
         method: 'DELETE',
       });
+
       if (response.ok) {
-        // Update local state immediately for optimistic UI
-        queryClient.setQueryData(
-          [`/api/messages/${message.id}/replies`],
-          (oldReplies: any) => oldReplies?.filter((reply: any) => reply.id !== replyId)
-        );
-        
+        console.log('Message deleted successfully, sending WebSocket notification');
+
+        // Step 3: Invalidate queries to ensure fresh data
+        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
+
+        // Step 4: Broadcast deletion to other clients
         send({
           type: 'message_deleted',
           channelId: message.channel_id || '',
-          messageId: replyId
+          messageId: message.id
         });
-        toast({ description: "Reply deleted" });
+
+        toast({ description: "Message deleted" });
       } else {
-        throw new Error('Failed to delete reply');
+        console.error('Server returned error on delete');
+        // Rollback optimistic update on error
+        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
+        throw new Error('Failed to delete message');
       }
     } catch (error) {
-      console.error('Error deleting reply:', error);
+      console.error('Error deleting message:', error);
+      // Ensure UI is consistent on error
+      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
       toast({ 
         variant: "destructive",
-        description: "Failed to delete reply"
+        description: "Failed to delete message"
       });
     }
   };
 
-  // Update local state when message content changes from WebSocket
   useEffect(() => {
     console.log('Message content updated:', message.content);
     setEditContent(message.content);
@@ -141,31 +140,55 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     return new Date(date).toLocaleTimeString();
   };
 
-  const handleDeleteMessage = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this message?')) {
-      try {
-        const response = await fetch(`/api/messages/${message.id}`, {
-          method: 'DELETE',
-        });
+  const handleEditReply = async (replyId: string) => {
+    if (!replyEditContent.trim()) return;
 
-        if (response.ok) {
-          toast({ description: "Message deleted" });
-          send({
-            type: 'message_deleted',
-            channelId: message.channel_id || '',
-            messageId: message.id
-          });
-        } else {
-          throw new Error('Failed to delete message');
-        }
-      } catch (error) {
-        console.error('Error deleting message:', error);
-        toast({ 
-          variant: "destructive",
-          description: "Failed to delete message"
+    try {
+      send({
+        type: 'message_edited',
+        messageId: replyId,
+        content: replyEditContent.trim(),
+        channelId: message.channel_id || ''
+      });
+
+      setEditingReplyId(null);
+      setReplyEditContent('');
+      toast({ description: "Reply updated" });
+    } catch (error) {
+      console.error('Error editing reply:', error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to update reply"
+      });
+    }
+  };
+
+  const handleDeleteReply = async (replyId: string) => {
+    try {
+      const response = await fetch(`/api/messages/${replyId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        queryClient.setQueryData(
+          [`/api/messages/${message.id}/replies`],
+          (oldReplies: any) => oldReplies?.filter((reply: any) => reply.id !== replyId)
+        );
+        
+        send({
+          type: 'message_deleted',
+          channelId: message.channel_id || '',
+          messageId: replyId
         });
+        toast({ description: "Reply deleted" });
+      } else {
+        throw new Error('Failed to delete reply');
       }
+    } catch (error) {
+      console.error('Error deleting reply:', error);
+      toast({ 
+        variant: "destructive",
+        description: "Failed to delete reply"
+      });
     }
   };
 
@@ -181,7 +204,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         content: editContent.trim()
       });
 
-      // First send the WebSocket event
       send({
         type: "message_edited",
         channelId: message.channel_id || '',

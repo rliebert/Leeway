@@ -23,6 +23,24 @@ interface WSMessage {
   enabled?: boolean;
 }
 
+function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
+  const subscribers = channelSubscriptions.get(channelId);
+  if (!subscribers) {
+    debug.warn(`No subscribers found for channel: ${channelId}`);
+    return;
+  }
+
+  const data = JSON.stringify(message);
+  let broadcastCount = 0;
+  subscribers.forEach(client => {
+    if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
+      client.send(data);
+      broadcastCount++;
+    }
+  });
+  debug.info(`Broadcast complete: ${broadcastCount} clients received the message`);
+}
+
 export function setupWebSocketServer(server: Server) {
   // Start with debug logging disabled
   debug.disable();
@@ -182,6 +200,38 @@ export function setupWebSocketServer(server: Server) {
           return;
         }
 
+
+        if (message.type === 'message_deleted') {
+          if (!message.channelId || !message.messageId) {
+            debug.warn('Invalid message_deleted event:', { message });
+            return;
+          }
+
+          try {
+            debug.info('Processing message deletion request:', {
+              messageId: message.messageId,
+              channelId: message.channelId,
+              userId: ws.userId
+            });
+
+            // Broadcast deletion to all clients in channel
+            const deleteNotification = {
+              type: 'message_deleted',
+              messageId: message.messageId,
+              channelId: message.channelId
+            };
+
+            debug.info('Broadcasting deletion notification:', deleteNotification);
+            broadcastToChannel(message.channelId, deleteNotification);
+            debug.info('Deletion notification broadcast complete');
+          } catch (error) {
+            debug.error('Error handling message deletion broadcast:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: 'Failed to broadcast message deletion'
+            }));
+          }
+        }
 
         debug.startGroup(`Processing message type: ${message.type}`);
         debug.debug('Received message:', message);
@@ -441,6 +491,12 @@ export function setupWebSocketServer(server: Server) {
             if (!message.channelId || !message.messageId) break;
 
             try {
+              debug.info('Processing message deletion request:', {
+                messageId: message.messageId,
+                channelId: message.channelId,
+                userId: ws.userId
+              });
+
               // First, get the message and check permissions
               const targetMessage = await db.query.messages.findFirst({
                 where: eq(messages.id, message.messageId),
@@ -450,6 +506,7 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (!targetMessage) {
+                debug.warn('Message not found for deletion:', message.messageId);
                 ws.send(JSON.stringify({
                   type: 'error',
                   message: 'Message not found'
@@ -467,8 +524,14 @@ export function setupWebSocketServer(server: Server) {
               // 2. Allow if user is deleting their own message
               const isAdmin = user?.is_admin || false;
               const isOwnMessage = targetMessage.user_id === ws.userId;
-              
+
               if (!user || (!isAdmin && !isOwnMessage)) {
+                debug.warn('Unauthorized deletion attempt:', {
+                  userId: ws.userId,
+                  messageId: message.messageId,
+                  isAdmin,
+                  isOwnMessage
+                });
                 ws.send(JSON.stringify({
                   type: 'error',
                   message: 'You do not have permission to delete this message'
@@ -476,14 +539,12 @@ export function setupWebSocketServer(server: Server) {
                 break;
               }
 
-              debug.log(`Message deletion by ${isAdmin ? 'admin' : 'owner'}`);
+              debug.info(`Message deletion by ${isAdmin ? 'admin' : 'owner'}`);
 
               await db.delete(messages).where(eq(messages.id, message.messageId));
-              broadcastToChannel(message.channelId, {
-                type: 'message_deleted',
-                messageId: message.messageId,
-                channelId: message.channelId
-              });
+              debug.info('Message deleted from database:', message.messageId);
+
+
             } catch (error) {
               debug.error('Error handling message deletion:', error);
               ws.send(JSON.stringify({
@@ -523,18 +584,6 @@ export function setupWebSocketServer(server: Server) {
   wss.on('close', () => {
     clearInterval(interval);
   });
-
-  function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
-    const subscribers = channelSubscriptions.get(channelId);
-    if (!subscribers) return;
-
-    const data = JSON.stringify(message);
-    subscribers.forEach(client => {
-      if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
-        client.send(data);
-      }
-    });
-  }
 
   return wss;
 }
