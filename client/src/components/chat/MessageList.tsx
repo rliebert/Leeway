@@ -55,7 +55,9 @@ export default function MessageList({ channelId }: MessageListProps) {
       .map(msg => msg.messageId)
   );
 
-  console.log('[MessageList] Deleted message IDs:', Array.from(deletedMessageIds));
+  if (deletedMessageIds.size > 0) {
+    console.log('[MessageList] Deleted message IDs:', Array.from(deletedMessageIds));
+  }
 
   // Add initial messages that haven't been deleted
   initialMessages
