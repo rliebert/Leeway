@@ -22,7 +22,16 @@ export default function MessageList({ channelId }: MessageListProps) {
 
   const { data: initialMessages } = useQuery<MessageType[]>({
     queryKey: [`/api/channels/${channelId}/messages`],
-    enabled: !!channelId && channelId !== "0", // Only fetch if we have a valid channelId
+    queryFn: async () => {
+      const response = await fetch(`/api/channels/${channelId}/messages`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch messages');
+      }
+      return response.json();
+    },
+    enabled: !!channelId && channelId !== "0",
   });
 
   useEffect(() => {
