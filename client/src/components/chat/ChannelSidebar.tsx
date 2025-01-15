@@ -45,7 +45,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const [isDMExpanded, setIsDMExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-  
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const { data: channels } = useQuery<Channel[]>({
@@ -457,6 +457,7 @@ interface ChannelItemProps {
 }
 
 function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreator }: ChannelItemProps) {
+  const { user } = useUser();
   return (
     <div
       className={`group flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 ${
@@ -469,7 +470,7 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
     >
       <Hash className="h-4 w-4 mr-2 text-gray-500" />
       <span className="flex-1 text-sm">{channel.name}</span>
-      {isCreator && (
+      {(channel.creator_id === user?.id || user?.is_admin) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

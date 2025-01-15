@@ -232,16 +232,18 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                   <Reply className="h-3 w-3 mr-1" />
                   {replyCount > 0 ? `${replyCount}` : 'Reply'}
                 </Button>
-                {message.user_id === user?.id && (
+                {(message.user_id === user?.id || user?.is_admin) && (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
-                      onClick={() => setIsEditing(true)}
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
+                    {message.user_id === user?.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-6 px-2"
+                        onClick={() => setIsEditing(true)}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
