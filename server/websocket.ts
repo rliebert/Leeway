@@ -1,7 +1,7 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments, channels, users } from "@db/schema";
+import { messages, file_attachments, channels, users, sessions } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
