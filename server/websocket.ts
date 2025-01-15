@@ -201,7 +201,12 @@ export function setupWebSocketServer(server: Server) {
               debug.warn('Invalid message data:', { channelId: message.channelId, hasContent: !!message.content });
               return;
             }
-            debug.info('Received message with tempId:', message.tempId);
+            debug.info('WebSocket packet received:', {
+              type: message.type,
+              tempId: message.tempId,
+              content: message.content,
+              channelId: message.channelId
+            });
 
             try {
               const [newMessage] = await db.insert(messages)
@@ -222,17 +227,23 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
-                debug.info('Broadcasting message with tempId:', message.tempId);
+                debug.info('Preparing broadcast message:', {
+                  originalTempId: message.tempId,
+                  messageId: messageWithAuthor.id,
+                  channelId: message.channelId
+                });
                 const normalizedMessage = normalizeMessageForClient({
                   ...messageWithAuthor,
                   tempId: message.tempId
                 });
                 debug.info('Normalized message:', { normalizedMessage });
-                broadcastToChannel(message.channelId, {
+                const broadcastPacket = {
                   type: 'message',
                   tempId: message.tempId,
                   message: normalizedMessage
-                });
+                };
+                debug.info('Broadcasting packet:', broadcastPacket);
+                broadcastToChannel(message.channelId, broadcastPacket);
               }
             } catch (error) {
               debug.error('Error adding message:', error);
