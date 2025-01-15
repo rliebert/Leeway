@@ -298,6 +298,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
               case "message_deleted":
                 debugLogger.debug('Processing message deletion', data);
+                
+                // Update WebSocket messages state
                 setMessages((prevMessages) => {
                   const updatedMessages = prevMessages.filter(
                     (msg) =>
@@ -308,18 +310,20 @@ export function WSProvider({ children }: { children: ReactNode }) {
                   return updatedMessages;
                 });
 
-                // Force immediate state update for deleted message
+                // Force immediate UI update via React Query
                 const queryKey = [`/api/channels/${data.channelId}/messages`];
                 queryClient.setQueryData(queryKey, (oldData: any) => {
                   if (!oldData) return [];
-                  return oldData.filter((msg: any) => 
+                  const filteredData = oldData.filter((msg: any) => 
                     msg.id?.toString() !== data.messageId?.toString() &&
                     msg.parent_id?.toString() !== data.messageId?.toString()
                   );
+                  debugLogger.debug('Query cache after deletion:', filteredData);
+                  return filteredData;
                 });
-                
-                // Then invalidate to refetch
-                queryClient.invalidateQueries({ queryKey });
+
+                // Add deletion to WebSocket message history
+                setMessages(prev => [...prev, data]);
                 break;
             }
             debugLogger.endGroup();

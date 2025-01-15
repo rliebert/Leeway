@@ -50,6 +50,12 @@ export default function MessageList({ channelId }: MessageListProps) {
   wsMessages.forEach(wsMsg => {
     if (wsMsg.type === 'message_deleted') {
       messageMap.delete(wsMsg.messageId);
+      // Also remove any child messages
+      for (const [key, msg] of messageMap.entries()) {
+        if (msg.parent_id?.toString() === wsMsg.messageId?.toString()) {
+          messageMap.delete(key);
+        }
+      }
     } else if (
       wsMsg.channel_id?.toString() === channelId?.toString() && 
       !wsMsg.parent_id &&
