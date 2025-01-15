@@ -90,10 +90,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
       try {
         let wsUrl;
-        if (process.env.NODE_ENV === 'development') {
-          wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+        if (process.env.NODE_ENV === "development") {
+          wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
         } else {
-          wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
+          wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
         }
 
         // Add retry delay if there was a previous connection attempt
@@ -107,7 +107,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
           debugLogger.debug("Closing existing WebSocket connection");
           socket.close();
         }
-        
+
         const ws = new WebSocket(wsUrl);
 
         let connectionTimeout: NodeJS.Timeout;

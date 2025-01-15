@@ -79,10 +79,10 @@ export function setupWebSocketServer(server: Server) {
     clientTracking: true,
     handleProtocols: (protocols) => {
       if (!protocols) return false;
-      if (typeof protocols === 'string') return protocols;
+      if (typeof protocols === "string") return protocols;
       if (Array.isArray(protocols) && protocols.length > 0) return protocols[0];
       return false;
-    }
+    },
   });
 
   wss.on(
@@ -193,7 +193,7 @@ export function setupWebSocketServer(server: Server) {
                 }
 
                 // Process attachments after sending messages
-                if (message.attachments?.length > 0) {
+                if (message.attachments && message.attachments.length > 0) {
                   const attachmentRecords = message.attachments.map(
                     (attachment) => ({
                       message_id: newMessage.id,
@@ -353,14 +353,24 @@ export function setupWebSocketServer(server: Server) {
     },
   );
 
+  interface ExtWebSocket extends WebSocket {
+    isAlive: boolean;
+  }
+
   // Heartbeat to keep connections alive
   const interval = setInterval(() => {
-    wss.clients.forEach((ws: AuthenticatedWebSocket) => {
-      if (!ws.isAlive) {
-        return ws.terminate();
+    wss.clients.forEach((ws) => {
+      const extWs = ws as ExtWebSocket;
+      if (!extWs.isAlive) {
+        ws.terminate();
+        return;
       }
-      ws.isAlive = false;
-      ws.ping();
+      extWs.isAlive = false;
+      ws.ping((err: Error | null) => {
+        if (err) {
+          ws.terminate();
+        }
+      });
     });
   }, 30000);
 
