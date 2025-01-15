@@ -290,9 +290,6 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
     } finally {
         setDeletedAttachments([]); // Reset after save
     }
-
-    } catch (error) {
-      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
       console.error('Error editing message:', error);
       toast({ 
         variant: "destructive",
