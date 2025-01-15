@@ -462,16 +462,21 @@ export function setupWebSocketServer(server: Server) {
                 where: eq(users.id, ws.userId)
               });
 
-              // Allow deletion if:
-              // 1. User is deleting their own message OR
-              // 2. User is an admin
-              if (!user || (!user.is_admin && targetMessage.user_id !== ws.userId)) {
+              // Check permissions:
+              // 1. Allow if user is an admin (can delete any message)
+              // 2. Allow if user is deleting their own message
+              const isAdmin = user?.is_admin || false;
+              const isOwnMessage = targetMessage.user_id === ws.userId;
+              
+              if (!user || (!isAdmin && !isOwnMessage)) {
                 ws.send(JSON.stringify({
                   type: 'error',
                   message: 'You do not have permission to delete this message'
                 }));
                 break;
               }
+
+              debug.log(`Message deletion by ${isAdmin ? 'admin' : 'owner'}`);
 
               await db.delete(messages).where(eq(messages.id, message.messageId));
               broadcastToChannel(message.channelId, {
