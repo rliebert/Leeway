@@ -9,7 +9,7 @@ import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { debugLogger } from './debug';
-import { queryClient } from '@/utils/queryClient';
+import { queryClient } from '@/lib/queryClient';
 
 interface WSContextType {
   messages: Message[];
