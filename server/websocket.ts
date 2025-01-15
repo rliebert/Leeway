@@ -1,7 +1,11 @@
 import type { IncomingMessage } from "http";
+import type { Server } from "http";
 import { parse as parseCookie } from "cookie";
 import { WebSocketServer } from "ws";
 import { serverDebugLogger as debug } from "./debug";
+import { db } from "@db";
+import { sessions, messages, users, file_attachments } from "@db/schema";
+import { eq, asc } from "drizzle-orm";
 //import { generateAIResponse, isQuestion } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
