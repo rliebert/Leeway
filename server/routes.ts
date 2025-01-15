@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { messages, channels, users, sections, file_attachments } from "@db/schema";
-import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
+import { eq, and, or, desc, asc, ilike, inArray } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";
@@ -321,6 +321,33 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).send("Internal server error");
+    }
+  });
+
+  app.put("/api/messages/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { content, deletedAttachments } = req.body;
+
+      await db
+        .update(messages)
+        .set({ content })
+        .where(eq(messages.id, id));
+
+      // Delete attachments if any
+      if (deletedAttachments?.length > 0) {
+        await db
+          .delete(file_attachments)
+          .where(and(
+            eq(file_attachments.message_id, id),
+            inArray(file_attachments.id, deletedAttachments)
+          ));
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating message:", error);
+      res.status(500).json({ error: "Failed to update message" });
     }
   });
 

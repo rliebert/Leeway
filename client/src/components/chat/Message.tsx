@@ -107,10 +107,10 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const replyCount = allReplies.length;
 
   const [uploadedFiles, setUploadedFiles] = useState<FileAttachment[]>([]);
-  
+
   const normalizeFileUrl = (attachment: FileAttachment): string => {
     if (!attachment) return '';
-    
+
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
       return attachment.file_url || attachment.url || '';
     }
@@ -126,14 +126,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     if (file) {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       try {
         const response = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
         const data = await response.json();
-        
+
         setUploadedFiles([...uploadedFiles, {
           id: data.id,
           url: data.url,
@@ -236,11 +236,24 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     }
 
     try {
-      // Check if this is an optimistic message
-      const isOptimisticMessage = message.id.length === 36;
+        // Make API request to update the message
+        const response = await fetch(`/api/messages/${message.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: editContent.trim(),
+            deletedAttachments: deletedAttachments,
+            attachments: uploadedFiles
+          }),
+        });
 
-      if (isOptimisticMessage) {
-        // For optimistic messages, just update the cache and notify via WebSocket
+        if (!response.ok) {
+          throw new Error('Failed to update message');
+        }
+
+        // Update local cache
         queryClient.setQueryData(
           [`/api/channels/${message.channel_id}/messages`],
           (oldData: any) => {
@@ -253,6 +266,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           }
         );
 
+        // Notify others via WebSocket
         send({
           type: "message_edited",
           channelId: message.channel_id || '',
@@ -267,26 +281,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         return;
       }
 
-      // For real messages, proceed with normal edit
-      queryClient.setQueryData(
-        [`/api/channels/${message.channel_id}/messages`],
-        (oldData: any) => {
-          if (!oldData) return [];
-          return oldData.map((msg: any) => 
-            msg.id === message.id 
-              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
-              : msg
-          );
-        }
-      );
 
-      send({
-        type: "message_edited",
-        channelId: message.channel_id || '',
-        messageId: message.id,
-        content: editContent.trim(),
-        deletedAttachments: deletedAttachments
-      });
+      // For real messages, proceed with normal edit
+      
 
       setIsEditing(false);
       toast({ description: "Message updated" });
