@@ -264,3 +264,85 @@ export function setupWebSocketServer(server: Server) {
                   type: 'message',
                   message: normalizeMessageForClient(messageWithAuthor)
                 });
+              }
+            } catch (error) {
+              debug.error('Error handling new message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to create message'
+              }));
+            }
+            break;
+          }
+
+          case 'message_edited': {
+            if (!message.channelId || !message.messageId || !message.content || !ws.userId) {
+              debug.warn('Invalid message_edited data:', message);
+              break;
+            }
+
+            try {
+              const targetMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId)
+              });
+
+              if (!targetMessage || targetMessage.user_id !== ws.userId) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Not authorized to edit this message'
+                }));
+                break;
+              }
+
+              await db.update(messages)
+                .set({ content: message.content })
+                .where(eq(messages.id, message.messageId));
+
+              const updatedMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId),
+                with: {
+                  author: true,
+                  attachments: true
+                }
+              });
+
+              if (updatedMessage) {
+                broadcastToChannel(message.channelId, {
+                  type: 'message_edited',
+                  message: normalizeMessageForClient(updatedMessage)
+                });
+              }
+            } catch (error) {
+              debug.error('Error editing message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to edit message'
+              }));
+            }
+            break;
+          }
+
+          case 'ping': {
+            ws.send(JSON.stringify({ type: 'pong' }));
+            break;
+          }
+        }
+      } catch (error) {
+        debug.error('Error processing message:', error);
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: 'Error processing message'
+        }));
+      }
+    });
+
+    ws.on('close', () => {
+      debug.info('WebSocket disconnected for user:', ws.userId);
+      channelSubscriptions.forEach((subscribers) => {
+        subscribers.delete(ws);
+      });
+    });
+  });
+
+  return wss;
+}
