@@ -300,28 +300,37 @@ export function WSProvider({ children }: { children: ReactNode }) {
               case "message_deleted":
                 debugLogger.debug('Processing message deletion', data);
 
-                // Update WebSocket messages state
+                // Update local state immediately
                 setMessages((prevMessages) => {
-                  debugLogger.debug('Current messages before deletion:', prevMessages);
-                  return prevMessages.filter(
+                  const updatedMessages = prevMessages.filter(
                     (msg) =>
                       msg.id?.toString() !== data.messageId?.toString() &&
                       msg.parent_id?.toString() !== data.messageId?.toString()
                   );
+                  debugLogger.debug('Messages after deletion:', updatedMessages);
+                  return updatedMessages;
                 });
 
-                // Force immediate UI update via React Query
+                // Force immediate cache update
                 const queryKey = [`/api/channels/${data.channelId}/messages`];
                 queryClient.setQueryData(queryKey, (oldData: any) => {
                   if (!oldData) return [];
-                  return oldData.filter((msg: any) => 
+                  const filtered = oldData.filter((msg: any) => 
                     msg.id?.toString() !== data.messageId?.toString() &&
                     msg.parent_id?.toString() !== data.messageId?.toString()
                   );
+                  debugLogger.debug('Query cache after deletion:', filtered);
+                  return filtered;
                 });
 
-                // Invalidate queries to ensure consistency
-                queryClient.invalidateQueries({ queryKey });
+                // Mark the cache as stale and trigger a background refresh
+                queryClient.invalidateQueries({ 
+                  queryKey,
+                  refetchType: "all"
+                });
+
+                // Force an immediate refetch
+                queryClient.refetchQueries({ queryKey, type: "active" });
                 break;
             }
             debugLogger.endGroup();
