@@ -69,11 +69,15 @@ export default function MessageList({ channelId }: MessageListProps) {
       !wsMsg.parent_id &&
       wsMsg.content !== null
     ) {
-      // Only add the message if it's not a duplicate
-      const existingMsg = Array.from(messageMap.values()).find(
-        msg => msg.tempId === wsMsg.tempId || msg.id === wsMsg.id
-      );
-      if (!existingMsg) {
+      // Check for duplicates by tempId first, then id
+      const existingByTempId = Array.from(messageMap.values()).find(msg => msg.tempId === wsMsg.tempId);
+      const existingById = Array.from(messageMap.values()).find(msg => msg.id === wsMsg.id);
+      
+      if (!existingByTempId && !existingById) {
+        messageMap.set(wsMsg.id, wsMsg);
+      } else if (existingByTempId && !wsMsg.isOptimistic) {
+        // Replace optimistic message with real one
+        messageMap.delete(existingByTempId.id);
         messageMap.set(wsMsg.id, wsMsg);
       }
     }
