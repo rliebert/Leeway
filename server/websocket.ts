@@ -154,20 +154,18 @@ export function setupWebSocketServer(server: Server) {
                         })
                         .returning();
 
-                      const aiMessageWithAuthor =
-                        await db.query.messages.findFirst({
-                          where: eq(messages.id, aiMessage.id),
-                          with: {
-                            author: true,
-                            attachments: true,
-                          },
-                        });
+                      const aiMessageWithAuthor = await db.query.messages.findFirst({
+                        where: eq(messages.id, aiMessage.id),
+                        with: {
+                          author: true,
+                          attachments: true,
+                        },
+                      });
 
                       if (aiMessageWithAuthor) {
                         broadcastToChannel(message.channelId, {
                           type: "message",
-                          message:
-                            normalizeMessageForClient(aiMessageWithAuthor),
+                          message: normalizeMessageForClient(aiMessageWithAuthor),
                         });
                       }
                     }

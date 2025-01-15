@@ -58,14 +58,17 @@ export default function MessageList({ channelId }: MessageListProps) {
   // Add WebSocket messages that haven't been deleted
   wsMessages
     .filter(msg => 
-      msg.type === 'message' &&
-      msg.channel_id === channelId &&
-      !msg.parent_id &&
-      msg.content !== null &&
-      !deletedMessageIds.has(msg.id)
+      (msg.type === 'message' || msg.message) &&
+      (msg.channel_id === channelId || msg.message?.channel_id === channelId) &&
+      (!msg.parent_id || !msg.message?.parent_id) &&
+      (msg.content !== null || msg.message?.content !== null) &&
+      !deletedMessageIds.has(msg.id || msg.message?.id)
     )
     .forEach(msg => {
-      messageMap.set(msg.id, msg);
+      const messageData = msg.type === 'message' ? msg : msg.message;
+      if (messageData && messageData.id) {
+        messageMap.set(messageData.id, messageData);
+      }
     });
 
   // Remove any child messages of deleted messages
