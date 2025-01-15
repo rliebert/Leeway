@@ -2,7 +2,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { db } from "@db";
 import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
-import { Pinecone, PineconeIndexStats } from '@pinecone-database/pinecone';
+import { Pinecone } from '@pinecone-database/pinecone';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is not set');
@@ -43,27 +43,41 @@ async function initializePinecone() {
     // Create index if it doesn't exist
     if (!indexExists) {
       console.log(`Creating new Pinecone index: ${indexName}`);
-      await pinecone.createIndex({
-        name: indexName,
-        dimension: 1536, // OpenAI ada-002 embedding dimension
-        metric: 'cosine',
-        spec: {
-          serverless: {
-            cloud: 'aws',
-            region: 'us-west-2'
+      try {
+        await pinecone.createIndex({
+          name: indexName,
+          dimension: 1536, // OpenAI ada-002 embedding dimension
+          metric: 'cosine',
+          spec: {
+            serverless: {
+              cloud: 'aws',
+              region: 'us-east-1'  // Changed from us-west-2 to us-east-1 for free plan compatibility
+            }
+          }
+        });
+
+        // Wait for index to be ready
+        console.log('Waiting for index to initialize...');
+        let isReady = false;
+        let retries = 0;
+        const maxRetries = 10;
+
+        while (!isReady && retries < maxRetries) {
+          const description = await pinecone.describeIndex(indexName);
+          isReady = description.status.ready;
+          if (!isReady) {
+            retries++;
+            console.log(`Index not ready, attempt ${retries}/${maxRetries}`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
-      });
 
-      // Wait for index to be ready
-      console.log('Waiting for index to initialize...');
-      let isReady = false;
-      while (!isReady) {
-        const description = await pinecone.describeIndex(indexName);
-        isReady = description.status.ready;
         if (!isReady) {
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          throw new Error('Index failed to initialize within the timeout period');
         }
+      } catch (createError) {
+        console.error('Error creating Pinecone index:', createError);
+        throw createError;
       }
     }
 
@@ -81,12 +95,6 @@ async function initializePinecone() {
     throw error;
   }
 }
-
-// Initialize Pinecone
-initializePinecone().catch(error => {
-  console.error('Failed to initialize Pinecone:', error);
-  process.exit(1);
-});
 
 let lastTrainingTimestamp: Date | null = null;
 const RETRAINING_INTERVAL = 1000 * 60 * 60; // 1 hour
@@ -189,7 +197,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o",  // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -271,3 +279,9 @@ export function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
     }
   }, interval);
 }
+
+// Initialize Pinecone
+initializePinecone().catch(error => {
+  console.error('Failed to initialize Pinecone:', error);
+  process.exit(1);
+});
