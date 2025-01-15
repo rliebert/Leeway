@@ -41,7 +41,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
       optimisticMessages.add(tempId);
       
       const optimisticMessage = {
-        id: tempId,
         content: data.content!,
         channel_id: data.channelId!,
         created_at: new Date().toISOString(),
