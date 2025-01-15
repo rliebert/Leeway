@@ -29,7 +29,7 @@ interface MessageProps {
   };
 }
 
-const Message = forwardRef<HTMLDivElement, MessageProps>((props, ref) => {
+const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (props, ref) => {
   const { message } = props;
   const [showThread, setShowThread] = useState(false);
   const [showReplies, setShowReplies] = useState(false);
