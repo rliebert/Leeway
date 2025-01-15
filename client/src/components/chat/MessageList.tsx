@@ -69,16 +69,16 @@ export default function MessageList({ channelId }: MessageListProps) {
       !wsMsg.parent_id &&
       wsMsg.content !== null
     ) {
-      // Check for duplicates by tempId first, then id
-      const existingByTempId = Array.from(messageMap.values()).find(msg => msg.tempId === wsMsg.tempId);
-      const existingById = Array.from(messageMap.values()).find(msg => msg.id === wsMsg.id);
+      // Only check for tempId match for deduplication
+      const existingMsg = Array.from(messageMap.values()).find(msg => msg.tempId === wsMsg.tempId);
       
-      if (!existingByTempId && !existingById) {
+      if (!existingMsg) {
+        // No existing message with this tempId, add it
         messageMap.set(wsMsg.id, wsMsg);
-      } else if (existingByTempId && !wsMsg.isOptimistic) {
-        // Replace optimistic message with real one
-        messageMap.delete(existingByTempId.id);
-        messageMap.set(wsMsg.id, wsMsg);
+      } else if (!wsMsg.isOptimistic) {
+        // Replace optimistic message with real one, keeping the tempId
+        messageMap.delete(existingMsg.id);
+        messageMap.set(wsMsg.id, { ...wsMsg, tempId: existingMsg.tempId });
       }
     }
   });

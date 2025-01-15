@@ -123,19 +123,19 @@ export function WSProvider({ children }: { children: ReactNode }) {
       switch (data.type) {
         case 'message':
           setMessages(prev => {
-            const optimisticMessage = prev.find(msg => 
-              msg.isOptimistic && 
-              msg.tempId === data.tempId
-            );
+            // Only look for tempId match, ignore message.id
+            const hasOptimistic = prev.some(msg => msg.tempId === data.tempId);
             
-            if (optimisticMessage) {
+            if (hasOptimistic) {
               optimisticMessages.delete(data.tempId);
+              // Replace optimistic with real message, preserving tempId for tracking
               return prev.map(msg => 
                 msg.tempId === data.tempId ? 
-                { ...data.message, tempId: data.tempId, isOptimistic: false } : 
+                { ...data.message, tempId: data.tempId } : 
                 msg
               );
             }
+            // No optimistic message found, add as new
             return [...prev, data.message];
           });
           break;
