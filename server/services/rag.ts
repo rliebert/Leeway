@@ -47,7 +47,7 @@ export async function initializePinecone() {
     console.log('Available indexes:', JSON.stringify(indexes, null, 2));
 
     // Check if our index exists in the indexes array
-    const indexExists = Array.isArray(indexes) && 
+    const indexExists = Array.isArray(indexes) &&
       indexes.some(idx => typeof idx === 'object' && idx.name === indexName);
 
     // Create index if it doesn't exist
@@ -207,7 +207,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4",  // Using gpt-4 as the stable model
+        model: "gpt-4",
         messages: [
           {
             role: "system",
@@ -215,18 +215,18 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
             1. Natural and conversational while maintaining professionalism
             2. Clear and concise
             3. Always relevant to the context provided
-            4. Formatted as a JSON object with a 'response' field containing your message
+            4. Use the context provided to inform your responses, but you can also rely on your general knowledge
 
-            When responding, consider both the direct question and any relevant context from previous messages.`
+            When responding, consider both the direct question and any relevant context from previous messages.
+            If no relevant context is found, simply answer based on your general knowledge.`
           },
           {
             role: "user",
-            content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
+            content: `Based on this context (if available):\n\n${context}\n\nRespond to this question: ${query}`
           }
         ],
         temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
+        max_tokens: 500
       })
     });
 
@@ -238,18 +238,11 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
 
     const response = await completion.json();
     console.log('Received response from OpenAI');
+    return response.choices[0].message.content || "I couldn't generate a proper response at this time.";
 
-    try {
-      const parsedResponse = JSON.parse(response.choices[0].message.content);
-      console.log('Parsed response:', parsedResponse);
-      return parsedResponse.response || "I couldn't generate a proper response at this time.";
-    } catch (parseError) {
-      console.error('Error parsing OpenAI response:', parseError);
-      return response.choices[0].message.content;
-    }
   } catch (err) {
     console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
-    return "I apologize, but I encountered an error while processing your request. Please try again later.";
+    throw err; // Let the WebSocket handler handle the error gracefully
   }
 }
 

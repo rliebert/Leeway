@@ -441,6 +441,38 @@ export function setupWebSocketServer(server: Server) {
             if (!message.channelId || !message.messageId) break;
 
             try {
+              // First, get the message and check permissions
+              const targetMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId),
+                with: {
+                  author: true
+                }
+              });
+
+              if (!targetMessage) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Message not found'
+                }));
+                break;
+              }
+
+              // Check if user has permission to delete this message
+              const user = await db.query.users.findFirst({
+                where: eq(users.id, ws.userId)
+              });
+
+              // Allow deletion if:
+              // 1. User is deleting their own message OR
+              // 2. User is an admin
+              if (!user || (!user.is_admin && targetMessage.user_id !== ws.userId)) {
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'You do not have permission to delete this message'
+                }));
+                break;
+              }
+
               await db.delete(messages).where(eq(messages.id, message.messageId));
               broadcastToChannel(message.channelId, {
                 type: 'message_deleted',
