@@ -41,6 +41,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   const { user } = useUser();
   const { toast } = useToast();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [deletedAttachments, setDeletedAttachments] = useState<string[]>([]); // Track deleted attachments
 
   const handleDeleteMessage = async () => {
     try {
@@ -198,7 +199,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   };
 
   const handleEditMessage = async () => {
-    if (editContent.trim() === message.content) {
+    if (editContent.trim() === message.content && deletedAttachments.length === 0) {
       setIsEditing(false);
       return;
     }
@@ -215,7 +216,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             if (!oldData) return [];
             return oldData.map((msg: any) => 
               msg.id === message.id 
-                ? { ...msg, content: editContent.trim() }
+                ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
                 : msg
             );
           }
@@ -225,7 +226,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           type: "message_edited",
           channelId: message.channel_id || '',
           messageId: message.id,
-          content: editContent.trim()
+          content: editContent.trim(),
+          deletedAttachments: deletedAttachments
         });
 
         setIsEditing(false);
@@ -240,7 +242,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           if (!oldData) return [];
           return oldData.map((msg: any) => 
             msg.id === message.id 
-              ? { ...msg, content: editContent.trim() }
+              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
               : msg
           );
         }
@@ -250,7 +252,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         type: "message_edited",
         channelId: message.channel_id || '',
         messageId: message.id,
-        content: editContent.trim()
+        content: editContent.trim(),
+        deletedAttachments: deletedAttachments
       });
 
       setIsEditing(false);
@@ -265,7 +268,13 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       });
       setIsEditing(false);
     }
+    setDeletedAttachments([]); // Reset after save
   };
+
+  const handleAttachmentDelete = (attachmentId: string) => {
+    setDeletedAttachments([...deletedAttachments, attachmentId]);
+  };
+
 
   return (
     <>
@@ -335,28 +344,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               alt={file.originalName || file.file_name}
                               className="rounded-md max-h-48 object-cover"
                             />
-                            <Button
+                            { !deletedAttachments.includes(file.id) && <Button
                               variant="destructive"
                               size="icon"
                               className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={async () => {
-                                const response = await fetch(`/api/attachments/${file.id}`, {
-                                  method: 'DELETE',
-                                });
-                                if (response.ok) {
-                                  queryClient.setQueryData(
-                                    [`/api/channels/${message.channel_id}/messages`],
-                                    (oldData: any) => oldData?.map((msg: any) => 
-                                      msg.id === message.id 
-                                        ? { ...msg, attachments: msg.attachments.filter((a: any) => a.id !== file.id) }
-                                        : msg
-                                    )
-                                  );
-                                }
-                              }}
+                              onClick={() => handleAttachmentDelete(file.id)}
                             >
                               <X className="h-3 w-3" />
-                            </Button>
+                            </Button>}
                           </div>
                         ))}
                     </div>
@@ -373,28 +368,14 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                               </span>
                               <ExternalLink className="h-3 w-3" />
                             </div>
-                            <Button
+                            {!deletedAttachments.includes(file.id) && <Button
                               variant="destructive"
                               size="icon"
                               className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={async () => {
-                                const response = await fetch(`/api/attachments/${file.id}`, {
-                                  method: 'DELETE',
-                                });
-                                if (response.ok) {
-                                  queryClient.setQueryData(
-                                    [`/api/channels/${message.channel_id}/messages`],
-                                    (oldData: any) => oldData?.map((msg: any) => 
-                                      msg.id === message.id 
-                                        ? { ...msg, attachments: msg.attachments.filter((a: any) => a.id !== file.id) }
-                                        : msg
-                                    )
-                                  );
-                                }
-                              }}
+                              onClick={() => handleAttachmentDelete(file.id)}
                             >
                               <X className="h-3 w-3" />
-                            </Button>
+                            </Button>}
                           </div>
                         ))}
                     </div>
@@ -437,6 +418,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       if (e.key === "Escape") {
                         setIsEditing(false);
                         setEditContent(message.content);
+                        setDeletedAttachments([]);
                       }
                     }}
                   />
@@ -457,6 +439,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                     onClick={() => {
                       setIsEditing(false);
                       setEditContent(message.content);
+                      setDeletedAttachments([]);
                     }}
                   >
                     <X className="h-3 w-3 mr-1" />
