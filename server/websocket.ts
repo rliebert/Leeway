@@ -76,7 +76,12 @@ export function setupWebSocketServer(server: Server) {
     server,
     path: "/ws",
     perMessageDeflate: false,
-    clientTracking: true
+    clientTracking: true,
+    handleProtocols: (protocols) => {
+      if (protocols?.includes('chat')) return 'chat';
+      if (protocols?.includes('vite-hmr')) return 'vite-hmr';
+      return false;
+    }
   });
 
   wss.on(
