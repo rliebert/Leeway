@@ -4,6 +4,7 @@ import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { Pinecone } from '@pinecone-database/pinecone';
 
+// Add env var check at the top of the file
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is not set');
 }
@@ -11,6 +12,9 @@ if (!process.env.OPENAI_API_KEY) {
 if (!process.env.PINECONE_API_KEY) {
   throw new Error('PINECONE_API_KEY environment variable is not set');
 }
+
+// Export functions that are used by websocket.ts
+export { generateAIResponse, isQuestion, trainOnUserMessages, startPeriodicRetraining };
 
 console.log('Initializing OpenAI embeddings...');
 const embeddings = new OpenAIEmbeddings({
@@ -226,7 +230,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-4o", 
         messages: [
           {
             role: "system",

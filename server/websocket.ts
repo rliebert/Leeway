@@ -1,12 +1,12 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { Server } from "http";
 import { db } from "@db";
-import { messages, file_attachments, channels, users, sessions } from "@db/schema";
+import { messages, file_attachments, channels, users } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
-import { handleAIResponse, isQuestion as ragIsQuestion } from "./services/rag";
+import { generateAIResponse, isQuestion as ragIsQuestion } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -33,17 +33,14 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
 
   const data = JSON.stringify(message);
   let broadcastCount = 0;
-  debug.info(`Broadcasting to channel ${channelId}:`, message);
 
   subscribers.forEach((client: AuthenticatedWebSocket) => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
       try {
         client.send(data);
         broadcastCount++;
-        debug.info(`Successfully sent to client ${client.userId}`);
       } catch (error) {
-        debug.error(`Failed to send to client: ${error}`);
-        subscribers.delete(client);
+        debug.error(`Failed to send to client ${client.userId}:`, error);
       }
     }
   });
@@ -59,57 +56,6 @@ export function setupWebSocketServer(server: Server) {
     path: '/ws',
     perMessageDeflate: false,
     clientTracking: true,
-    handleProtocols: () => 'chat',
-    verifyClient: async ({ req }, done) => {
-      try {
-        if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
-          done(true);
-          return;
-        }
-
-        const cookies = parseCookie(req.headers.cookie || '');
-        const sessionId = cookies['connect.sid'];
-
-        if (!sessionId) {
-          debug.error('WebSocket connection rejected: No session cookie');
-          done(false, 401, 'No session cookie');
-          return;
-        }
-
-        const cleanSessionId = decodeURIComponent(sessionId).split('s:')[1]?.split('.')[0];
-        if (!cleanSessionId) {
-          debug.error('WebSocket connection rejected: Invalid session format');
-          done(false, 401, 'Invalid session format');
-          return;
-        }
-
-        const session = await db.query.sessions.findFirst({
-          where: eq(sessions.sid, cleanSessionId),
-        });
-
-        if (!session?.sess) {
-          debug.error('WebSocket connection rejected: Invalid session');
-          done(false, 401, 'Invalid session');
-          return;
-        }
-
-        const sessionData = typeof session.sess === 'string'
-          ? JSON.parse(session.sess)
-          : session.sess;
-
-        if (!sessionData?.passport?.user) {
-          debug.error('WebSocket connection rejected: No user in session');
-          done(false, 401, 'Authentication failed');
-          return;
-        }
-
-        (req as any).userId = sessionData.passport.user;
-        done(true);
-      } catch (error) {
-        debug.error('WebSocket authentication error:', error);
-        done(false, 500, 'Internal server error');
-      }
-    }
   });
 
   wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
@@ -124,9 +70,108 @@ export function setupWebSocketServer(server: Server) {
     ws.on('message', async (data: string) => {
       try {
         const message = JSON.parse(data) as WSMessage;
-        debug.info(`Received message of type: ${message.type}`, message);
+        debug.info(`Received message of type: ${message.type}`);
 
         switch (message.type) {
+          case 'message': {
+            if (!message.channelId || !message.content || !ws.userId) {
+              debug.warn('Invalid message data:', message);
+              break;
+            }
+
+            try {
+              // First broadcast a temporary message for instant feedback
+              const tempMessage = {
+                id: 'temp_' + Date.now(),
+                channel_id: message.channelId,
+                user_id: ws.userId,
+                content: message.content,
+                created_at: new Date().toISOString(),
+                author: await db.query.users.findFirst({
+                  where: eq(users.id, ws.userId)
+                })
+              };
+
+              // Send temporary message immediately
+              broadcastToChannel(message.channelId, {
+                type: 'message',
+                message: normalizeMessageForClient(tempMessage)
+              });
+
+              // Then save to database
+              const [newMessage] = await db.insert(messages).values({
+                channel_id: message.channelId,
+                user_id: ws.userId,
+                content: message.content,
+                parent_id: message.parentId || null,
+              }).returning();
+
+              // Get complete message with author and attachments
+              const completeMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, newMessage.id),
+                with: {
+                  author: true,
+                  attachments: true,
+                }
+              });
+
+              if (completeMessage) {
+                // Update with permanent message
+                broadcastToChannel(message.channelId, {
+                  type: 'message',
+                  message: normalizeMessageForClient(completeMessage)
+                });
+
+                // Check for question and generate AI response
+                if (ragIsQuestion(message.content)) {
+                  const aiResponse = await generateAIResponse(message.content, []);
+
+                  if (aiResponse && process.env.AI_BOT_USER_ID) {
+                    const [aiMessage] = await db.insert(messages).values({
+                      channel_id: message.channelId,
+                      user_id: process.env.AI_BOT_USER_ID,
+                      content: aiResponse,
+                      parent_id: newMessage.id,
+                    }).returning();
+
+                    const aiMessageWithAuthor = await db.query.messages.findFirst({
+                      where: eq(messages.id, aiMessage.id),
+                      with: {
+                        author: true,
+                        attachments: true,
+                      }
+                    });
+
+                    if (aiMessageWithAuthor) {
+                      broadcastToChannel(message.channelId, {
+                        type: 'message',
+                        message: normalizeMessageForClient(aiMessageWithAuthor)
+                      });
+                    }
+                  }
+                }
+              }
+
+              // Process attachments after sending messages
+              if (message.attachments?.length > 0) {
+                const attachmentRecords = message.attachments.map(attachment => ({
+                  message_id: newMessage.id,
+                  file_url: attachment.url,
+                  file_name: attachment.originalName,
+                  file_type: attachment.mimetype,
+                  file_size: attachment.size || 0,
+                }));
+                await db.insert(file_attachments).values(attachmentRecords);
+              }
+            } catch (error) {
+              debug.error('Error handling message:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to send message'
+              }));
+            }
+            break;
+          }
           case 'message_deleted': {
             if (!message.channelId || !message.messageId) {
               debug.warn('Invalid message_deleted event:', { message });
@@ -194,7 +239,6 @@ export function setupWebSocketServer(server: Server) {
             }
             break;
           }
-
           case 'subscribe': {
             if (!message.channelId) break;
 
@@ -211,6 +255,7 @@ export function setupWebSocketServer(server: Server) {
                 attachments: true,
               },
               orderBy: [asc(messages.created_at)],
+              limit: 50,
             });
 
             existingMessages.forEach(msg => {
@@ -219,96 +264,6 @@ export function setupWebSocketServer(server: Server) {
                 message: normalizeMessageForClient(msg)
               }));
             });
-            break;
-          }
-
-          case 'message': {
-            if (!message.channelId || !message.content || !ws.userId) {
-              debug.warn('Invalid message data:', message);
-              break;
-            }
-
-            try {
-              debug.info('Creating new message in database');
-              const [newMessage] = await db.insert(messages).values({
-                channel_id: message.channelId,
-                user_id: ws.userId,
-                content: message.content,
-                parent_id: message.parentId || null,
-              }).returning();
-
-              if (message.attachments && message.attachments.length > 0) {
-                const attachmentRecords = message.attachments.map((attachment) => ({
-                  message_id: newMessage.id,
-                  file_url: attachment.url,
-                  file_name: attachment.originalName,
-                  file_type: attachment.mimetype,
-                  file_size: attachment.size || 0,
-                }));
-
-                await db.insert(file_attachments).values(attachmentRecords);
-              }
-
-              const messageWithAuthor = await db.query.messages.findFirst({
-                where: eq(messages.id, newMessage.id),
-                with: {
-                  author: true,
-                  attachments: true,
-                }
-              });
-
-              if (messageWithAuthor) {
-                // Broadcast the message immediately
-                debug.info('Broadcasting new message to channel');
-                broadcastToChannel(message.channelId, {
-                  type: 'message',
-                  message: normalizeMessageForClient(messageWithAuthor)
-                });
-
-                // Check if this is a question and generate AI response
-                if (ragIsQuestion(message.content)) {
-                  debug.info('Question detected, generating AI response');
-                  try {
-                    const aiResponse = await handleAIResponse(message.content);
-                    if (aiResponse && process.env.AI_BOT_USER_ID) {
-                      debug.info('Creating AI response message');
-                      const [aiMessage] = await db.insert(messages).values({
-                        channel_id: message.channelId,
-                        user_id: process.env.AI_BOT_USER_ID,
-                        content: aiResponse,
-                        parent_id: newMessage.id,
-                      }).returning();
-
-                      const aiMessageWithAuthor = await db.query.messages.findFirst({
-                        where: eq(messages.id, aiMessage.id),
-                        with: {
-                          author: true,
-                          attachments: true,
-                        }
-                      });
-
-                      if (aiMessageWithAuthor) {
-                        debug.info('Broadcasting AI response');
-                        broadcastToChannel(message.channelId, {
-                          type: 'message',
-                          message: normalizeMessageForClient(aiMessageWithAuthor)
-                        });
-                      }
-                    } else {
-                      debug.warn('AI response generated but AI_BOT_USER_ID not set');
-                    }
-                  } catch (error) {
-                    debug.error('Error generating AI response:', error);
-                  }
-                }
-              }
-            } catch (error) {
-              debug.error('Error handling new message:', error);
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Failed to send message'
-              }));
-            }
             break;
           }
           // Add other message type handlers here
@@ -334,10 +289,10 @@ export function setupWebSocketServer(server: Server) {
     });
   });
 
+  // Heartbeat to keep connections alive
   const interval = setInterval(() => {
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
-        debug.info('Terminating inactive connection for user:', ws.userId);
         return ws.terminate();
       }
       ws.isAlive = false;
@@ -350,10 +305,6 @@ export function setupWebSocketServer(server: Server) {
   });
 
   return wss;
-}
-
-async function isQuestion(content: string): Promise<boolean> {
-  return ragIsQuestion(content);
 }
 
 function normalizeMessageForClient(msg: any) {
