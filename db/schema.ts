@@ -1,4 +1,14 @@
-import { pgTable, text, timestamp, uuid, integer, boolean, jsonb, varchar, json } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  integer,
+  boolean,
+  jsonb,
+  varchar,
+  json,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { sql } from "drizzle-orm";
@@ -13,7 +23,7 @@ export const users = pgTable("users", {
   status: text("status"),
   last_active: timestamp("last_active"),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  role: text("role").default('user').notNull(),
+  role: text("role").default("user").notNull(),
   is_admin: boolean("is_admin").default(false).notNull(),
 });
 
@@ -43,26 +53,38 @@ export const channels = pgTable("channels", {
 
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  channel_id: uuid("channel_id").references(() => channels.id, { onDelete: 'cascade' }),
-  user_id: uuid("user_id").references(() => users.id).notNull(),
+  channel_id: uuid("channel_id")
+    .references(() => channels.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+  user_id: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   content: text("content").notNull(),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-  parent_id: uuid("parent_id").references(() => messages.id),
   pinned_by: uuid("pinned_by").references(() => users.id),
   pinned_at: timestamp("pinned_at"),
+  parent_id: uuid("parent_id"), // Remove circular reference
 });
 
 export const message_embeddings = pgTable("message_embeddings", {
   id: uuid("id").defaultRandom().primaryKey(),
-  message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }).notNull(),
-  user_id: uuid("user_id").references(() => users.id).notNull(),
+  message_id: uuid("message_id")
+    .references(() => messages.id, { onDelete: "cascade" })
+    .notNull(),
+  user_id: uuid("user_id")
+    .references(() => users.id)
+    .notNull(),
   embedding: text("embedding").notNull(),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const file_attachments = pgTable("file_attachments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  message_id: uuid("message_id").references(() => messages.id, { onDelete: 'cascade' }).notNull(),
+  message_id: uuid("message_id")
+    .references(() => messages.id, { onDelete: "cascade" })
+    .notNull(),
   file_url: text("file_url").notNull(),
   file_name: text("file_name").notNull(),
   file_type: text("file_type").notNull(),
@@ -115,13 +137,15 @@ export const sectionsRelations = relations(sections, ({ one, many }) => ({
   channels: many(channels),
 }));
 
-export const fileAttachmentsRelations = relations(file_attachments, ({ one }) => ({
-  message: one(messages, {
-    fields: [file_attachments.message_id],
-    references: [messages.id],
+export const fileAttachmentsRelations = relations(
+  file_attachments,
+  ({ one }) => ({
+    message: one(messages, {
+      fields: [file_attachments.message_id],
+      references: [messages.id],
+    }),
   }),
-}));
-
+);
 
 // Export schemas for validation
 export const insertUserSchema = createInsertSchema(users);

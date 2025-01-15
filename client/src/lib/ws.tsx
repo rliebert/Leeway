@@ -8,8 +8,8 @@ import React, {
 import type { Message } from "@db/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
-import { debugLogger } from './debug';
-import { queryClient } from '@/lib/queryClient';
+import { debugLogger } from "./debug";
+import { queryClient } from "@/lib/queryClient";
 
 interface WSContextType {
   messages: Message[];
@@ -24,7 +24,15 @@ interface WSContextType {
 }
 
 interface WSMessage {
-  type: "subscribe" | "unsubscribe" | "message" | "typing" | "ping" | "message_deleted" | "message_edited" | "debug_mode";
+  type:
+    | "subscribe"
+    | "unsubscribe"
+    | "message"
+    | "typing"
+    | "ping"
+    | "message_deleted"
+    | "message_edited"
+    | "debug_mode";
   channelId?: string;
   content?: string;
   parentId?: string;
@@ -53,7 +61,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
   const [messageQueue] = useState<WSMessage[]>([]);
   const [debugEnabled, setDebugEnabled] = useState(() => {
     // Check if debug mode was enabled in last session
-    return localStorage.getItem('debug_mode') === 'true';
+    return localStorage.getItem("debug_mode") === "true";
   });
   const { toast } = useToast();
   const { user } = useUser();
@@ -87,7 +95,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
         // Add retry delay if there was a previous connection attempt
         if (socket?.readyState === WebSocket.CLOSED) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
 
         debugLogger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
@@ -153,10 +161,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
           if (reconnectAttempts < maxReconnectAttempts) {
             const delay = Math.min(
               initialDelay * Math.pow(1.5, reconnectAttempts),
-              15000
+              15000,
             );
             debugLogger.info(
-              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`
+              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`,
             );
 
             reconnectTimeout = setTimeout(() => {
@@ -170,7 +178,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
             setError("Connection lost. Please refresh the page.");
             toast({
               variant: "destructive",
-              description: "Unable to connect to chat server. Please refresh the page.",
+              description:
+                "Unable to connect to chat server. Please refresh the page.",
               duration: 5000,
             });
           }
@@ -185,7 +194,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
           try {
             const data = JSON.parse(event.data);
             debugLogger.startGroup(`WebSocket Message: ${data.type}`);
-            debugLogger.debug('Received message', data);
+            debugLogger.debug("Received message", data);
 
             if (data.type === "pong" || data.type === "connected") {
               debugLogger.debug(`Received ${data.type} message`);
@@ -195,53 +204,65 @@ export function WSProvider({ children }: { children: ReactNode }) {
 
             const normalizeMessage = (message: any) => {
               if (!message) {
-                debugLogger.error('Attempted to normalize undefined message');
+                debugLogger.error("Attempted to normalize undefined message");
                 return null;
               }
 
-              debugLogger.debug('Normalizing message input', message);
+              debugLogger.debug("Normalizing message input", message);
               const normalized = {
                 ...message,
                 id: message.id?.toString(),
                 channel_id: message.channel_id?.toString(),
                 user_id: message.user_id?.toString(),
-                content: message.content || '',
+                content: message.content || "",
                 created_at: message.created_at || new Date().toISOString(),
-                updated_at: message.updated_at || message.created_at || new Date().toISOString(),
+                updated_at:
+                  message.updated_at ||
+                  message.created_at ||
+                  new Date().toISOString(),
                 parent_id: message.parent_id?.toString() || null,
                 author: message.author || null,
                 attachments: Array.isArray(message.attachments)
                   ? message.attachments.map((attachment: any) => ({
                       id: attachment.id?.toString(),
-                      url: attachment.file_url || attachment.url || '',
-                      originalName: attachment.file_name || attachment.originalName || '',
-                      mimetype: attachment.file_type || attachment.mimetype || '',
+                      url: attachment.file_url || attachment.url || "",
+                      originalName:
+                        attachment.file_name || attachment.originalName || "",
+                      mimetype:
+                        attachment.file_type || attachment.mimetype || "",
                       file_size: Number(attachment.file_size) || 0,
                     }))
-                  : []
+                  : [],
               };
-              debugLogger.debug('Normalized message output', normalized);
+              debugLogger.debug("Normalized message output", normalized);
               return normalized;
             };
 
             const updateMessageInState = (messageData: any) => {
               const normalizedMessage = normalizeMessage(messageData);
               if (!normalizedMessage) {
-                debugLogger.error('Failed to normalize message', messageData);
+                debugLogger.error("Failed to normalize message", messageData);
                 return;
               }
 
-              debugLogger.debug('Attempting to update message state with', normalizedMessage);
+              debugLogger.debug(
+                "Attempting to update message state with",
+                normalizedMessage,
+              );
 
               setMessages((prevMessages) => {
                 const existingIndex = prevMessages.findIndex(
-                  (msg) => msg.id?.toString() === normalizedMessage.id?.toString()
+                  (msg) =>
+                    msg.id?.toString() === normalizedMessage.id?.toString(),
                 );
-                debugLogger.debug('Found existing message at index', existingIndex);
+                debugLogger.debug(
+                  "Found existing message at index",
+                  existingIndex,
+                );
 
                 if (existingIndex > -1) {
                   const existingMessage = prevMessages[existingIndex];
-                  debugLogger.debug('Existing message', existingMessage);
+                  debugLogger.debug("Existing message", existingMessage);
 
                   const updatedMessages = [...prevMessages];
                   updatedMessages[existingIndex] = {
@@ -250,20 +271,24 @@ export function WSProvider({ children }: { children: ReactNode }) {
                     id: normalizedMessage.id,
                     // Preserve any fields that might not be in the update
                     author: normalizedMessage.author || existingMessage.author,
-                    attachments: normalizedMessage.attachments || existingMessage.attachments,
+                    attachments:
+                      normalizedMessage.attachments ||
+                      existingMessage.attachments,
                     // Force update timestamp
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                   };
 
-                  debugLogger.debug('Updated message state', {
+                  debugLogger.debug("Updated message state", {
                     before: existingMessage,
-                    after: updatedMessages[existingIndex]
+                    after: updatedMessages[existingIndex],
                   });
 
                   return updatedMessages;
                 }
 
-                debugLogger.debug('No existing message found, adding new message');
+                debugLogger.debug(
+                  "No existing message found, adding new message",
+                );
                 return [...prevMessages, normalizedMessage];
               });
             };
@@ -275,20 +300,26 @@ export function WSProvider({ children }: { children: ReactNode }) {
                   debugLogger.debug(`Processing ${data.type}`, data.message);
                   const normalizedMessage = normalizeMessage(data.message);
                   if (!normalizedMessage) {
-                    debugLogger.error('Failed to normalize message', data.message);
+                    debugLogger.error(
+                      "Failed to normalize message",
+                      data.message,
+                    );
                     return;
                   }
 
-                  setMessages(prevMessages => {
-                    const messageIndex = prevMessages.findIndex(msg => 
-                      msg.id?.toString() === normalizedMessage.id?.toString()
+                  setMessages((prevMessages) => {
+                    const messageIndex = prevMessages.findIndex(
+                      (msg) =>
+                        msg.id?.toString() === normalizedMessage.id?.toString(),
                     );
 
                     if (messageIndex > -1) {
                       const updatedMessages = [...prevMessages];
                       updatedMessages[messageIndex] = {
                         ...normalizedMessage,
-                        author: normalizedMessage.author || prevMessages[messageIndex].author
+                        author:
+                          normalizedMessage.author ||
+                          prevMessages[messageIndex].author,
                       };
                       return updatedMessages;
                     }
@@ -298,16 +329,19 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 break;
 
               case "message_deleted":
-                debugLogger.debug('Processing message deletion', data);
+                debugLogger.debug("Processing message deletion", data);
 
                 // Update local state immediately
                 setMessages((prevMessages) => {
                   const updatedMessages = prevMessages.filter(
                     (msg) =>
                       msg.id?.toString() !== data.messageId?.toString() &&
-                      msg.parent_id?.toString() !== data.messageId?.toString()
+                      msg.parent_id?.toString() !== data.messageId?.toString(),
                   );
-                  debugLogger.debug('Messages after deletion:', updatedMessages);
+                  debugLogger.debug(
+                    "Messages after deletion:",
+                    updatedMessages,
+                  );
                   return updatedMessages;
                 });
 
@@ -315,18 +349,19 @@ export function WSProvider({ children }: { children: ReactNode }) {
                 const queryKey = [`/api/channels/${data.channelId}/messages`];
                 queryClient.setQueryData(queryKey, (oldData: any) => {
                   if (!oldData) return [];
-                  const filtered = oldData.filter((msg: any) => 
-                    msg.id?.toString() !== data.messageId?.toString() &&
-                    msg.parent_id?.toString() !== data.messageId?.toString()
+                  const filtered = oldData.filter(
+                    (msg: any) =>
+                      msg.id?.toString() !== data.messageId?.toString() &&
+                      msg.parent_id?.toString() !== data.messageId?.toString(),
                   );
-                  debugLogger.debug('Query cache after deletion:', filtered);
+                  debugLogger.debug("Query cache after deletion:", filtered);
                   return filtered;
                 });
 
                 // Mark the cache as stale and trigger a background refresh
-                queryClient.invalidateQueries({ 
+                queryClient.invalidateQueries({
                   queryKey,
-                  refetchType: "all"
+                  refetchType: "all",
                 });
 
                 // Force an immediate refetch
@@ -335,8 +370,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
             }
             debugLogger.endGroup();
           } catch (error) {
-            debugLogger.error('Error processing WebSocket message:', error);
-            setError('Error processing message');
+            debugLogger.error("Error processing WebSocket message:", error);
+            setError("Error processing message");
           }
         };
       } catch (error) {
@@ -382,7 +417,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      debugLogger.debug('Sending WebSocket message:', data);
+      debugLogger.debug("Sending WebSocket message:", data);
       socket.send(JSON.stringify(data));
     } catch (error) {
       debugLogger.error("Error sending message:", error);
@@ -417,10 +452,11 @@ export function WSProvider({ children }: { children: ReactNode }) {
       setDebugEnabled(false);
       // Sync with server
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'debug_mode', enabled: false }));
+        socket.send(JSON.stringify({ type: "debug_mode", enabled: false }));
       }
       toast({
-        description: "Debug logging disabled - Console logs will no longer show detailed information",
+        description:
+          "Debug logging disabled - Console logs will no longer show detailed information",
         duration: 3000,
       });
     } else {
@@ -428,13 +464,18 @@ export function WSProvider({ children }: { children: ReactNode }) {
       setDebugEnabled(true);
       // Sync with server
       if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'debug_mode', enabled: true }));
+        socket.send(JSON.stringify({ type: "debug_mode", enabled: true }));
       }
       debugLogger.debug("Debug mode enabled!");
       debugLogger.info("You can now see detailed logs in the browser console");
-      debugLogger.debug("WebSocket state:", { connected, error, messageQueue: messageQueue.length });
+      debugLogger.debug("WebSocket state:", {
+        connected,
+        error,
+        messageQueue: messageQueue.length,
+      });
       toast({
-        description: "Debug logging enabled - Check browser console (F12) for detailed logs",
+        description:
+          "Debug logging enabled - Check browser console (F12) for detailed logs",
         duration: 3000,
       });
     }

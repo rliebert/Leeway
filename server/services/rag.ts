@@ -5,55 +5,8 @@ import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { Pinecone } from '@pinecone-database/pinecone';
 
-// Add env var check at the top of the file
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY environment variable is not set');
-}
-
-if (!process.env.PINECONE_API_KEY) {
-  throw new Error('PINECONE_API_KEY environment variable is not set');
-}
-
-console.log('Initializing OpenAI embeddings...');
-const embeddings = new OpenAIEmbeddings({
-  openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small" 
-});
-
-// Initialize Pinecone client with error handling
-console.log('Initializing Pinecone client...');
-let pinecone: Pinecone;
-let index: any;
-
-interface PineconeMatch {
-  id: string;
-  score: number;
-  metadata: {
-    userId: string;
-    content: string;
-    timestamp: string;
-  };
-}
-
-async function handleAIResponse(question: string): Promise<string | null> {
-  try {
-    console.log('Finding similar messages for question:', question);
-    const similarMessages = await findSimilarMessages(question, 5);
-
-    if (similarMessages.length === 0) {
-      console.log('No similar messages found, generating response without context');
-      return generateAIResponse(question, []);
-    }
-
-    console.log(`Found ${similarMessages.length} similar messages`);
-    return generateAIResponse(question, similarMessages);
-  } catch (error) {
-    console.error('Error handling AI response:', error);
-    return null;
-  }
-}
-
-async function initializePinecone() {
+export const initializePinecone = async () => {
+  // ... (implementation of initializePinecone function)
   try {
     pinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY!
@@ -124,7 +77,130 @@ async function initializePinecone() {
     console.error('Error initializing Pinecone:', error);
     throw error;
   }
+};
+
+// ... (other functions and code in services/rag.ts)
+
+// Add env var check at the top of the file
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is not set');
 }
+
+if (!process.env.PINECONE_API_KEY) {
+  throw new Error('PINECONE_API_KEY environment variable is not set');
+}
+
+console.log('Initializing OpenAI embeddings...');
+const embeddings = new OpenAIEmbeddings({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+  modelName: "text-embedding-3-small" 
+});
+
+// Initialize Pinecone client with error handling
+console.log('Initializing Pinecone client...');
+let pinecone: Pinecone;
+let index: any;
+
+interface PineconeMatch {
+  id: string;
+  score: number;
+  metadata: {
+    userId: string;
+    content: string;
+    timestamp: string;
+  };
+}
+
+async function handleAIResponse(question: string): Promise<string | null> {
+  try {
+    console.log('Finding similar messages for question:', question);
+    const similarMessages = await findSimilarMessages(question, 5);
+
+    if (similarMessages.length === 0) {
+      console.log('No similar messages found, generating response without context');
+      return generateAIResponse(question, []);
+    }
+
+    console.log(`Found ${similarMessages.length} similar messages`);
+    return generateAIResponse(question, similarMessages);
+  } catch (error) {
+    console.error('Error handling AI response:', error);
+    return null;
+  }
+}
+
+// async function initializePinecone() {
+  // try {
+  //   pinecone = new Pinecone({
+  //     apiKey: process.env.PINECONE_API_KEY!
+  //   });
+  //   console.log('Pinecone client initialized successfully');
+
+  //   const indexName = 'leeway-chat-index';
+
+  //   // List indexes with proper type checking
+  //   const { indexes } = await pinecone.listIndexes();
+  //   console.log('Available indexes:', JSON.stringify(indexes, null, 2));
+
+  //   // Check if our index exists in the indexes array
+  //   const indexExists = Array.isArray(indexes) &&
+  //     indexes.some(idx => typeof idx === 'object' && idx.name === indexName);
+
+  //   // Create index if it doesn't exist
+  //   if (!indexExists) {
+  //     console.log(`Creating new Pinecone index: ${indexName}`);
+  //     try {
+  //       await pinecone.createIndex({
+  //         name: indexName,
+  //         dimension: 1536, 
+  //         metric: 'cosine',
+  //         spec: {
+  //           serverless: {
+  //             cloud: 'aws',
+  //             region: 'us-east-1'  
+  //           }
+  //         }
+  //       });
+
+  //       // Wait for index to be ready
+  //       console.log('Waiting for index to initialize...');
+  //       let isReady = false;
+  //       let retries = 0;
+  //       const maxRetries = 10;
+
+  //       while (!isReady && retries < maxRetries) {
+  //         await new Promise(resolve => setTimeout(resolve, 5000)); 
+  //         const description = await pinecone.describeIndex(indexName);
+  //         isReady = description.status.ready;
+  //         if (!isReady) {
+  //           retries++;
+  //           console.log(`Index not ready, attempt ${retries}/${maxRetries}`);
+  //         }
+  //       }
+
+  //       if (!isReady) {
+  //         throw new Error('Index failed to initialize within the timeout period');
+  //       }
+  //     } catch (createError) {
+  //       console.error('Error creating Pinecone index:', createError);
+  //       throw createError;
+  //     }
+  //   }
+
+  //   // Connect to the index
+  //   console.log(`Connecting to Pinecone index: ${indexName}`);
+  //   index = pinecone.index(indexName);
+
+  //   // Test the connection
+  //   const stats = await index.describeIndexStats();
+  //   console.log('Successfully connected to Pinecone index. Stats:', stats);
+
+  //   return true;
+  // } catch (error) {
+  //   console.error('Error initializing Pinecone:', error);
+  //   throw error;
+  // }
+// }
 
 let lastTrainingTimestamp: Date | null = null;
 const RETRAINING_INTERVAL = 1000 * 60 * 60; 

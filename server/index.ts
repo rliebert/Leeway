@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeSessionStore } from "./config/session";
-import { initializePinecone, startPeriodicRetraining } from "./services/rag";
+iport { initializePinecone, startPeriodicRetraining } from "./services/rag";
 import path from "path";
 
 const app = express();
@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Serve uploaded files
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Enhanced logging middleware with timing
 app.use((req, res, next) => {
@@ -47,7 +47,7 @@ app.use((req, res, next) => {
 app.get("/health", (_req, res) => {
   res.json({
     status: "ok",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -87,16 +87,19 @@ app.get("/health", (_req, res) => {
     // Try alternative ports if 5000 is in use
     const tryPort = (port: number): Promise<void> => {
       return new Promise((resolve, reject) => {
-        server.listen(port, "0.0.0.0")
-          .once('listening', () => {
+        server
+          .listen(port, "0.0.0.0")
+          .once("listening", () => {
             log(`Server started successfully on port ${port}`);
             startPeriodicRetraining(); // Start periodic retraining after server is up
             resolve();
           })
-          .once('error', (err: any) => {
-            if (err.code === 'EADDRINUSE') {
+          .once("error", (err: any) => {
+            if (err.code === "EADDRINUSE") {
               log(`Port ${port} is in use, trying next port...`);
-              tryPort(port + 1).then(resolve).catch(reject);
+              tryPort(port + 1)
+                .then(resolve)
+                .catch(reject);
             } else {
               reject(err);
             }

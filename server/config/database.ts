@@ -1,10 +1,12 @@
 import { drizzle } from "drizzle-orm/neon-http";
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "@db/schema";
-import ws from 'ws';
+import ws from "ws";
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
 }
 
 // Configure neon with connection caching
@@ -26,7 +28,7 @@ export async function checkDatabaseConnection() {
     const result = await sql`SELECT NOW()`;
     return true;
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error("Database connection error:", error);
     return false;
   }
 }
@@ -37,16 +39,23 @@ export async function initializeDatabase(maxRetries = 3) {
   while (attempts < maxRetries) {
     try {
       await sql`SELECT 1`;
-      console.log(`Database connection established successfully after ${attempts + 1} attempts`);
+      console.log(
+        `Database connection established successfully after ${attempts + 1} attempts`,
+      );
       return true;
     } catch (error) {
       attempts++;
       if (attempts === maxRetries) {
-        console.error('Failed to connect to database after maximum retries:', error);
+        console.error(
+          "Failed to connect to database after maximum retries:",
+          error,
+        );
         throw error;
       }
-      console.log(`Retrying database connection (attempt ${attempts + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+      console.log(
+        `Retrying database connection (attempt ${attempts + 1}/${maxRetries})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
     }
   }
   return false;

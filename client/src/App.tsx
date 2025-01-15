@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import { Switch, Route } from "wouter";
 import { WSProvider } from "@/lib/ws";
 import Home from "@/pages/Home";
@@ -10,13 +10,15 @@ import DirectMessageView from "@/components/chat/DirectMessageView";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
-  const [selectedChannel, setSelectedChannel] = React.useState<string | null>(() => {
-    return localStorage.getItem('channelSidebar.selectedChannel');
-  });
+  const [selectedChannel, setSelectedChannel] = React.useState<string | null>(
+    () => {
+      return localStorage.getItem("channelSidebar.selectedChannel");
+    },
+  );
 
   React.useEffect(() => {
     if (selectedChannel) {
-      localStorage.setItem('channelSidebar.selectedChannel', selectedChannel);
+      localStorage.setItem("channelSidebar.selectedChannel", selectedChannel);
     }
   }, [selectedChannel]);
 
@@ -37,7 +39,10 @@ function AuthenticatedApp() {
       <div className="h-screen">
         <Switch>
           <Route path="/">
-            <Home selectedChannel={selectedChannel} onSelectChannel={setSelectedChannel} />
+            <Home
+              selectedChannel={selectedChannel}
+              onSelectChannel={setSelectedChannel}
+            />
           </Route>
           <Route path="/dm/:channelId">
             {(params) => <DirectMessageView channelId={params.channelId} />}
