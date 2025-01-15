@@ -89,9 +89,9 @@ export function WSProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const loc = window.location;
-        const wsProtocol = loc.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${wsProtocol}//${loc.host}/ws`;
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws`;
 
         // Add retry delay if there was a previous connection attempt
         if (socket?.readyState === WebSocket.CLOSED) {
@@ -104,10 +104,6 @@ export function WSProvider({ children }: { children: ReactNode }) {
           debugLogger.debug("Closing existing WebSocket connection");
           socket.close();
         }
-
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws`;
         
         const ws = new WebSocket(wsUrl, ["chat"]);
 
