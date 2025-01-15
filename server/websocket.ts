@@ -267,13 +267,13 @@ export function setupWebSocketServer(server: Server) {
 
                   if (aiBot) {
                     // Create AI response message
-                  const [aiMessage] = await db.insert(messages)
-                    .values({
-                      content: aiResponse,
-                      channel_id: message.channelId,
-                      user_id: aiBot.id,
-                    })
-                    .returning();
+                    const [aiMessage] = await db.insert(messages)
+                      .values({
+                        content: aiResponse,
+                        channel_id: message.channelId,
+                        user_id: aiBot.id,
+                      })
+                      .returning();
 
                   const messageWithAuthor = await db.query.messages.findFirst({
                     where: eq(messages.id, aiMessage.id),
