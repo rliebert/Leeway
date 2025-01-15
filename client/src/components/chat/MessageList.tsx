@@ -41,6 +41,7 @@ export default function MessageList({ channelId }: MessageListProps) {
   const allMessages = [
     ...(initialMessages?.filter(msg => !msg.parent_id) || []),
     ...wsMessages.filter(wsMsg => {
+      // Skip deleted messages
       if (wsMsg.type === 'message_deleted') {
         return false;
       }
@@ -49,16 +50,11 @@ export default function MessageList({ channelId }: MessageListProps) {
         wsMsg.channel_id?.toString() === channelId?.toString() && 
         !wsMsg.parent_id &&
         wsMsg.content !== null;
-      
-      const existingIndex = initialMessages?.findIndex(msg => msg.id === wsMsg.id);
-      if (existingIndex !== undefined && existingIndex > -1) {
-        initialMessages[existingIndex] = wsMsg;
-        return false;
-      }
+
       return isRelevant;
     })
   ].filter(msg => {
-    // Remove messages that have been marked as deleted
+    // Filter out any messages that have been marked as deleted
     const isDeleted = wsMessages.some(wsMsg => 
       wsMsg.type === 'message_deleted' && 
       wsMsg.messageId === msg.id
