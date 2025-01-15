@@ -3,17 +3,18 @@ import React, {
   useContext,
   useEffect,
   useState,
+  useCallback,
   type ReactNode,
 } from "react";
-import type { Message } from "@db/schema";
+import type { Message, WSMessage } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { debugLogger } from "./debug";
 import { queryClient } from "@/lib/queryClient";
 
 interface WSContextType {
-  messages: Message[];
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  messages: WSMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<WSMessage[]>>;
   send: (data: WSMessage) => void;
   connected: boolean;
   error: string | null;
@@ -21,24 +22,6 @@ interface WSContextType {
   unsubscribe: (channelId: string) => void;
   toggleDebug: () => void;
   isDebugEnabled: boolean;
-}
-
-interface WSMessage {
-  type:
-    | "subscribe"
-    | "unsubscribe"
-    | "message"
-    | "typing"
-    | "ping"
-    | "message_deleted"
-    | "message_edited"
-    | "debug_mode";
-  channelId?: string;
-  content?: string;
-  parentId?: string;
-  messageId?: string;
-  attachments?: any[];
-  enabled?: boolean;
 }
 
 const WSContext = createContext<WSContextType>({
@@ -55,310 +38,165 @@ const WSContext = createContext<WSContextType>({
 
 export function WSProvider({ children }: { children: ReactNode }) {
   const [socket, setSocket] = useState<WebSocket | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<WSMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [messageQueue] = useState<WSMessage[]>([]);
+  const [messageQueue, setMessageQueue] = useState<WSMessage[]>([]);
+  const [shouldReconnect, setShouldReconnect] = useState(true);
   const [debugEnabled, setDebugEnabled] = useState(() => {
-    // Check if debug mode was enabled in last session
     return localStorage.getItem("debug_mode") === "true";
   });
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
 
-  // Initialize debug logger based on saved state
   useEffect(() => {
-    if (debugEnabled) {
-      debugLogger.enable();
-    } else {
-      debugLogger.disable();
-    }
+    debugEnabled ? debugLogger.enable() : debugLogger.disable();
   }, [debugEnabled]);
 
-  useEffect(() => {
-    let heartbeatInterval: NodeJS.Timeout | undefined;
-    let reconnectTimeout: NodeJS.Timeout;
-    let reconnectAttempts = 0;
-    const maxReconnectAttempts = 5;
-    const initialDelay = 1000;
+  const connect = useCallback(async () => {
+    if (!user || isLoading) {
+      debugLogger.info("No user logged in or still loading, skipping WebSocket connection");
+      return;
+    }
 
-    const connect = async () => {
-      if (!user) {
-        debugLogger.info("No user logged in, skipping WebSocket connection");
-        return;
+    try {
+      const wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
+
+      if (socket?.readyState === WebSocket.OPEN) {
+        debugLogger.debug("Closing existing WebSocket connection");
+        socket.close();
       }
 
-      try {
-        let wsUrl;
-        if (process.env.NODE_ENV === "development") {
-          wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
-        } else {
-          wsUrl = `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
+      const ws = new WebSocket(wsUrl);
+      let connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          debugLogger.error("WebSocket connection timeout");
+          ws.close();
+          setError("Connection timeout");
         }
+      }, 10000);
 
-        // Add retry delay if there was a previous connection attempt
-        if (socket?.readyState === WebSocket.CLOSED) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
+      ws.onopen = () => {
+        debugLogger.info("WebSocket connection established");
+        clearTimeout(connectionTimeout);
 
-        debugLogger.debug(`Attempting WebSocket connection to: ${wsUrl}`);
-
-        if (socket?.readyState === WebSocket.OPEN) {
-          debugLogger.debug("Closing existing WebSocket connection");
-          socket.close();
-        }
-
-        const ws = new WebSocket(wsUrl);
-
-        let connectionTimeout: NodeJS.Timeout;
-        connectionTimeout = setTimeout(() => {
-          if (ws.readyState !== WebSocket.OPEN) {
-            debugLogger.error("WebSocket connection timeout, closing socket");
-            ws.close(1000, "Connection timeout");
-            setError("Connection timeout");
+        // Set up heartbeat
+        const heartbeatInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
           }
-        }, 10000);
+        }, 15000);
 
-        ws.onopen = () => {
-          debugLogger.startGroup("WebSocket Connected");
-          debugLogger.info("WebSocket connection established");
-          clearTimeout(connectionTimeout);
-
-          heartbeatInterval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: "ping" }));
-            }
-          }, 15000);
-
-          while (messageQueue.length > 0) {
-            const msg = messageQueue.shift();
-            if (msg) ws.send(JSON.stringify(msg));
+        // Process queued messages
+        messageQueue.forEach(msg => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify(msg));
           }
+        });
+        setMessageQueue([]); // Clear queue after processing
 
-          setConnected(true);
-          setError(null);
-          reconnectAttempts = 0;
-          setSocket(ws);
+        setConnected(true);
+        setError(null);
+        setSocket(ws);
 
-          ws.send(JSON.stringify({ type: "ping" }));
-          debugLogger.endGroup();
-        };
+        // Clean up heartbeat on unmount
+        return () => clearInterval(heartbeatInterval);
+      };
 
-        ws.onclose = (event) => {
-          debugLogger.info(`WebSocket closed with code: ${event.code}`);
-          clearTimeout(connectionTimeout);
-          if (heartbeatInterval) clearInterval(heartbeatInterval);
-          setConnected(false);
-          setSocket(null);
+      ws.onclose = (event) => {
+        debugLogger.info(`WebSocket closed with code: ${event.code}`);
+        setConnected(false);
+        setSocket(null);
 
-          if (event.code === 1000 || event.code === 1001) {
-            debugLogger.info("Clean WebSocket closure");
+        if (event.code === 1008) {
+          debugLogger.error("Authentication failed. Please refresh the page.");
+          toast({
+            variant: "destructive",
+            description: "Authentication failed. Please refresh the page.",
+            duration: 5000,
+          });
+          setShouldReconnect(false);
+          return;
+        }
+
+        if (shouldReconnect && user) {
+          const delay = 3000;
+          debugLogger.info(`Reconnecting in ${delay}ms...`);
+          setTimeout(connect, delay);
+        }
+      };
+
+      ws.onerror = (error) => {
+        debugLogger.error("WebSocket error:", error);
+        setError("Connection error occurred");
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as WSMessage;
+          debugLogger.debug("Received message", data);
+
+          if (data.type === "pong" || data.type === "connected") {
+            debugLogger.debug(`Received ${data.type} message`);
             return;
           }
 
-          if (!user) {
-            debugLogger.info("User not logged in, skipping reconnection");
-            return;
-          }
-
-          if (reconnectAttempts < maxReconnectAttempts) {
-            const delay = Math.min(
-              initialDelay * Math.pow(1.5, reconnectAttempts),
-              15000,
-            );
-            debugLogger.info(
-              `Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`,
-            );
-
-            reconnectTimeout = setTimeout(() => {
-              if (!connected) {
-                reconnectAttempts++;
-                connect();
-              }
-            }, delay);
-          } else {
-            debugLogger.error("Max reconnection attempts reached");
-            setError("Connection lost. Please refresh the page.");
-            toast({
-              variant: "destructive",
-              description:
-                "Unable to connect to chat server. Please refresh the page.",
-              duration: 5000,
-            });
-          }
-        };
-
-        ws.onerror = (error) => {
-          debugLogger.error("WebSocket error:", error);
-          setError("Connection error occurred");
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            debugLogger.startGroup(`WebSocket Message: ${data.type}`);
-            debugLogger.debug("Received message", data);
-
-            if (data.type === "pong" || data.type === "connected") {
-              debugLogger.debug(`Received ${data.type} message`);
-              debugLogger.endGroup();
-              return;
-            }
-
-            const normalizeMessage = (message: any) => {
-              if (!message) {
-                debugLogger.error("Attempted to normalize undefined message");
-                return null;
-              }
-
-              debugLogger.debug("Normalizing message input", message);
-              const normalized = {
-                ...message,
-                id: message.id?.toString(),
-                channel_id: message.channel_id?.toString(),
-                user_id: message.user_id?.toString(),
-                content: message.content || "",
-                created_at: message.created_at || new Date().toISOString(),
-                updated_at:
-                  message.updated_at ||
-                  message.created_at ||
-                  new Date().toISOString(),
-                parent_id: message.parent_id?.toString() || null,
-                author: message.author || null,
-                attachments: Array.isArray(message.attachments)
-                  ? message.attachments.map((attachment: any) => ({
-                      id: attachment.id?.toString(),
-                      url: attachment.file_url || attachment.url || "",
-                      originalName:
-                        attachment.file_name || attachment.originalName || "",
-                      mimetype:
-                        attachment.file_type || attachment.mimetype || "",
-                      file_size: Number(attachment.file_size) || 0,
-                    }))
-                  : [],
-              };
-              debugLogger.debug("Normalized message output", normalized);
-              return normalized;
-            };
-
-            
-
-            switch (data.type) {
-              case "message":
-              case "message_edited":
-                if (data.message) {
-                  debugLogger.debug(`Processing ${data.type}`, data.message);
-                  const normalizedMessage = normalizeMessage(data.message);
-                  if (!normalizedMessage) {
-                    debugLogger.error(
-                      "Failed to normalize message",
-                      data.message,
-                    );
-                    return;
-                  }
-
-                  // Force a cache update
-                  const queryKey = [`/api/channels/${data.message.channel_id}/messages`];
-                  queryClient.setQueryData(queryKey, (oldData: any) => {
-                    if (!oldData) return [normalizedMessage];
-                    return [...oldData, normalizedMessage];
-                  });
-
-                  setMessages((prevMessages) => {
-                    // Remove any temporary version of this message
-                    const filteredMessages = prevMessages.filter(
-                      msg => !msg.id?.startsWith('temp_')
-                    );
-                    return [...filteredMessages, normalizedMessage];
-                  });
+          setMessages(prev => {
+            if (data.type === 'message_deleted' && data.messageId) {
+              // Remove deleted message from the list
+              return prev.filter(msg => {
+                if (msg.type === 'message' && msg.message) {
+                  return msg.message.id !== data.messageId;
                 }
-                break;
-
-              case "message_deleted":
-                debugLogger.debug("Processing message deletion", data);
-
-                // Update local state immediately
-                setMessages((prevMessages) => {
-                  const updatedMessages = prevMessages.filter(
-                    (msg) =>
-                      msg.id?.toString() !== data.messageId?.toString() &&
-                      msg.parent_id?.toString() !== data.messageId?.toString(),
-                  );
-                  debugLogger.debug(
-                    "Messages after deletion:",
-                    updatedMessages,
-                  );
-                  return updatedMessages;
-                });
-
-                // Force immediate cache update
-                const queryKey = [`/api/channels/${data.channelId}/messages`];
-                queryClient.setQueryData(queryKey, (oldData: any) => {
-                  if (!oldData) return [];
-                  const filtered = oldData.filter(
-                    (msg: any) =>
-                      msg.id?.toString() !== data.messageId?.toString() &&
-                      msg.parent_id?.toString() !== data.messageId?.toString(),
-                  );
-                  debugLogger.debug("Query cache after deletion:", filtered);
-                  return filtered;
-                });
-
-                // Mark the cache as stale and trigger a background refresh
-                queryClient.invalidateQueries({
-                  queryKey,
-                  refetchType: "all",
-                });
-
-                // Force an immediate refetch
-                queryClient.refetchQueries({ queryKey, type: "active" });
-                break;
+                return true;
+              });
             }
-            debugLogger.endGroup();
-          } catch (error) {
-            debugLogger.error("Error processing WebSocket message:", error);
-            setError("Error processing message");
-          }
-        };
-      } catch (error) {
-        debugLogger.error("Error creating WebSocket connection:", error);
-        setError("Failed to create connection");
-      }
-    };
 
-    // Start with debug enabled state from localStorage
-    connect();
+            if (data.type === 'message' || data.type === 'message_edited') {
+              // Update query cache for real-time updates
+              if (data.message?.channel_id) {
+                queryClient.setQueryData(
+                  [`/api/channels/${data.message.channel_id}/messages`],
+                  (oldData: Message[] | undefined) => {
+                    if (!oldData || !data.message) return oldData;
+                    const newMessages = oldData.filter(m => m.id !== data.message?.id);
+                    return [...newMessages, data.message];
+                  }
+                );
+              }
+              return [...prev, data];
+            }
 
+            return prev;
+          });
+
+        } catch (error) {
+          debugLogger.error("Error processing WebSocket message:", error);
+          setError("Error processing message");
+        }
+      };
+    } catch (error) {
+      debugLogger.error("Error creating WebSocket connection:", error);
+      setError("Failed to create connection");
+    }
+  }, [user, isLoading, messageQueue, socket, shouldReconnect, toast]);
+
+  // Connect when user is available
+  useEffect(() => {
+    if (user && !isLoading && shouldReconnect) {
+      connect();
+    }
     return () => {
-      debugLogger.disable();
-      clearTimeout(reconnectTimeout);
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-      }
       if (socket && socket.readyState === WebSocket.OPEN) {
         socket.close(1000, "Component unmounting");
-        setSocket(null);
       }
     };
-  }, [toast, user, messageQueue]);
+  }, [user, isLoading, shouldReconnect, connect, socket]);
 
-  const send = (data: WSMessage) => {
-    if (!socket) {
-      debugLogger.warn("No socket connection, queueing message");
-      messageQueue.push(data);
-      return;
-    }
-
-    if (socket.readyState === WebSocket.CONNECTING) {
-      debugLogger.warn("Socket still connecting, queueing message");
-      messageQueue.push(data);
-      return;
-    }
-
-    if (socket.readyState !== WebSocket.OPEN) {
-      debugLogger.warn("Socket not open, reconnecting");
-      messageQueue.push(data);
-      socket.close();
+  const send = useCallback((data: WSMessage) => {
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      debugLogger.warn("Socket not ready, queueing message");
+      setMessageQueue(prev => [...prev, data]);
       return;
     }
 
@@ -367,65 +205,42 @@ export function WSProvider({ children }: { children: ReactNode }) {
       socket.send(JSON.stringify(data));
     } catch (error) {
       debugLogger.error("Error sending message:", error);
-      messageQueue.push(data);
+      setMessageQueue(prev => [...prev, data]);
       toast({
         variant: "destructive",
         description: "Message will be sent when connection is restored.",
         duration: 3000,
       });
     }
-  };
+  }, [socket, toast]);
 
-  const subscribe = (channelId: string) => {
+  const subscribe = useCallback((channelId: string) => {
     if (channelId) {
       debugLogger.info("Subscribing to channel:", channelId);
-      setMessages([]);
+      setMessages([]); // Clear previous messages
       send({ type: "subscribe", channelId });
     }
-  };
+  }, [send]);
 
-  const unsubscribe = (channelId: string) => {
+  const unsubscribe = useCallback((channelId: string) => {
     if (channelId) {
       debugLogger.info("Unsubscribing from channel:", channelId);
       send({ type: "unsubscribe", channelId });
     }
-  };
+  }, [send]);
 
-  const toggleDebug = () => {
-    if (debugEnabled) {
-      debugLogger.debug("Debug mode being disabled...");
-      debugLogger.disable();
-      setDebugEnabled(false);
-      // Sync with server
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "debug_mode", enabled: false }));
-      }
-      toast({
-        description:
-          "Debug logging disabled - Console logs will no longer show detailed information",
-        duration: 3000,
-      });
-    } else {
-      debugLogger.enable();
-      setDebugEnabled(true);
-      // Sync with server
-      if (socket?.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: "debug_mode", enabled: true }));
-      }
-      debugLogger.debug("Debug mode enabled!");
-      debugLogger.info("You can now see detailed logs in the browser console");
-      debugLogger.debug("WebSocket state:", {
-        connected,
-        error,
-        messageQueue: messageQueue.length,
-      });
-      toast({
-        description:
-          "Debug logging enabled - Check browser console (F12) for detailed logs",
-        duration: 3000,
-      });
-    }
-  };
+  const toggleDebug = useCallback(() => {
+    const newState = !debugEnabled;
+    setDebugEnabled(newState);
+    send({ type: "debug_mode", enabled: newState });
+
+    toast({
+      description: newState
+        ? "Debug logging enabled - Check browser console (F12) for detailed logs"
+        : "Debug logging disabled - Console logs will no longer show detailed information",
+      duration: 3000,
+    });
+  }, [debugEnabled, send, toast]);
 
   return (
     <WSContext.Provider

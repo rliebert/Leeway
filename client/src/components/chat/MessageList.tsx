@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import { useWS } from "@/lib/ws.tsx";
+import { useWS } from "@/lib/ws";
 import Message from "@/components/chat/Message";
-import type { Message as MessageType } from "@db/schema";
+import type { Message as MessageType } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 
 interface MessageListProps {
-  channelId: string;  // Changed to string for UUID
+  channelId: string;
 }
 
 export default function MessageList({ channelId }: MessageListProps) {
@@ -43,69 +43,32 @@ export default function MessageList({ channelId }: MessageListProps) {
         unsubscribe(channelId);
       };
     }
-  }, [channelId]); // Remove wsMessages.length dependency
+  }, [channelId, subscribe, unsubscribe]);
 
-  // Filter out thread replies and combine messages
-  const messageMap = new Map();
+  // Combine and deduplicate messages
+  const messageMap = new Map<string, MessageType>();
 
-  // Track deleted message IDs
-  const deletedMessageIds = new Set(
-    wsMessages
-      .filter(msg => msg.type === 'message_deleted')
-      .map(msg => msg.messageId)
-  );
-
-  if (deletedMessageIds.size > 0) {
-    console.log('[MessageList] Deleted message IDs:', Array.from(deletedMessageIds));
-  }
-
-  // Add initial messages that haven't been deleted
-  initialMessages
-    ?.filter(msg => !msg.parent_id && !deletedMessageIds.has(msg.id))
-    ?.forEach(msg => {
+  // Add initial messages
+  initialMessages?.forEach(msg => {
+    if (!msg.parent_id) { // Only add root messages
       messageMap.set(msg.id, msg);
-    });
+    }
+  });
 
-  // Add WebSocket messages that haven't been deleted
-  wsMessages
-    .filter(msg => 
-      (msg.type === 'message' || msg.message) &&
-      (msg.channel_id === channelId || msg.message?.channel_id === channelId) &&
-      (!msg.parent_id || !msg.message?.parent_id) &&
-      (msg.content !== null || msg.message?.content !== null) &&
-      !deletedMessageIds.has(msg.id || msg.message?.id)
-    )
-    .forEach(msg => {
-      const messageData = msg.type === 'message' ? msg : msg.message;
-      if (messageData && messageData.id) {
+  // Process WebSocket messages
+  wsMessages.forEach(msg => {
+    if (msg.type === 'message_deleted' && msg.messageId) {
+      messageMap.delete(msg.messageId);
+    } else if ((msg.type === 'message' || msg.type === 'message_edited') && msg.message) {
+      const messageData = msg.message;
+      if (!messageData.parent_id && messageData.channel_id === channelId) {
         messageMap.set(messageData.id, messageData);
       }
-    });
-
-  // Remove any child messages of deleted messages
-  for (const [key, msg] of messageMap.entries()) {
-    if (deletedMessageIds.has(msg.parent_id)) {
-      messageMap.delete(key);
     }
-  }
+  });
 
   const allMessages = Array.from(messageMap.values())
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-  // Debug effect for tracking message updates
-  useEffect(() => {
-    console.log('[MessageList] Message state updated:', {
-      initialMessages: initialMessages?.length || 0,
-      wsMessages: wsMessages.length,
-      combinedMessages: allMessages.length,
-      channelId,
-      deletedCount: deletedMessageIds.size
-    });
-  }, [initialMessages, wsMessages, allMessages.length, channelId, deletedMessageIds.size]);
-
-  useEffect(() => {
-    console.log('MessageList: Final message count:', allMessages.length);
-  }, [allMessages.length]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -113,7 +76,7 @@ export default function MessageList({ channelId }: MessageListProps) {
     setShowScrollButton(false);
   };
 
-  // Set up intersection observer to detect when last message is visible
+  // Set up intersection observer
   useEffect(() => {
     if (!lastMessageRef.current) return;
 
@@ -138,16 +101,14 @@ export default function MessageList({ channelId }: MessageListProps) {
     };
   }, []);
 
-  // Auto scroll when current user sends a message
+  // Auto scroll for new messages
   useEffect(() => {
     const lastMessage = allMessages[allMessages.length - 1];
     if (lastMessage?.user_id === user?.id) {
       scrollToBottom();
     } else if (lastMessage && !showScrollButton) {
-      // If messages are already at bottom, scroll to new messages from others too
       scrollToBottom();
     } else if (lastMessage) {
-      // Increment unread count for messages from others when not at bottom
       setUnreadCount(prev => prev + 1);
     }
   }, [allMessages.length, user?.id, showScrollButton]);
