@@ -4,16 +4,82 @@ import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { Pinecone } from '@pinecone-database/pinecone';
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is not set');
+}
+
+if (!process.env.PINECONE_API_KEY) {
+  throw new Error('PINECONE_API_KEY environment variable is not set');
+}
+
+console.log('Initializing OpenAI embeddings...');
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
   modelName: "text-embedding-ada-002"
 });
 
-// Initialize Pinecone client with the correct configuration
-const pinecone = new Pinecone();
+// Initialize Pinecone client with error handling
+console.log('Initializing Pinecone client...');
+let pinecone: Pinecone;
+let index: any;
 
-// Get the index using the full service URL
-const index = pinecone.index('rag-project-index');
+async function initializePinecone() {
+  try {
+    pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY
+    });
+    console.log('Pinecone client initialized successfully');
+
+    // List existing indexes
+    const indexes = await pinecone.listIndexes();
+    const indexName = 'rag-project-index';
+
+    // Check if our index exists
+    if (!indexes.find(idx => idx.name === indexName)) {
+      console.log(`Creating new Pinecone index: ${indexName}`);
+      await pinecone.createIndex({
+        name: indexName,
+        dimension: 1536,  // OpenAI ada-002 embedding dimension
+        metric: 'cosine',
+        spec: {
+          serverless: {
+            cloud: 'aws',
+            region: 'us-west-2'
+          }
+        }
+      });
+
+      // Wait for index to be ready
+      console.log('Waiting for index to be ready...');
+      let isReady = false;
+      while (!isReady) {
+        const description = await pinecone.describeIndex(indexName);
+        isReady = description.status.ready;
+        if (!isReady) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      }
+    }
+
+    // Get the index
+    console.log(`Connecting to Pinecone index: ${indexName}`);
+    index = pinecone.index(indexName);
+
+    // Test the connection
+    await index.describeIndexStats();
+    console.log('Successfully connected to Pinecone index');
+    return true;
+  } catch (error) {
+    console.error('Error initializing Pinecone:', error);
+    throw error;
+  }
+}
+
+// Initialize Pinecone
+initializePinecone().catch(error => {
+  console.error('Failed to initialize Pinecone:', error);
+  process.exit(1);
+});
 
 let lastTrainingTimestamp: Date | null = null;
 const RETRAINING_INTERVAL = 1000 * 60 * 60; // 1 hour
@@ -24,7 +90,7 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
     console.log('Generating embedding for message:', messageId);
     const embeddingVector = await embeddings.embedQuery(content);
 
-    console.log('Storing embedding in Pinecone');
+    console.log('Storing embedding in Pinecone, vector length:', embeddingVector.length);
     await index.upsert([{
       id: messageId,
       values: embeddingVector,
@@ -38,7 +104,7 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
     console.log('Successfully stored embedding for message:', messageId);
     return true;
   } catch (err) {
-    console.error('Error storing message embedding:', err instanceof Error ? err.message : 'Unknown error');
+    console.error('Error storing message embedding:', err instanceof Error ? err.message : 'Unknown error', err);
     return false;
   }
 }
@@ -47,7 +113,7 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
 export async function trainOnUserMessages(userId: string, since?: Date) {
   try {
     console.log('Starting training on user messages for user:', userId);
-    const whereClause = since 
+    const whereClause = since
       ? and(eq(messages.user_id, userId), gt(messages.created_at, since))
       : eq(messages.user_id, userId);
 
@@ -100,55 +166,64 @@ export async function findSimilarMessages(query: string, limit = 5) {
 
 // Generate AI response using retrieved context
 export async function generateAIResponse(query: string, similarMessages: any[]) {
-  try {
-    const context = similarMessages
-      .map(m => `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`)
-      .join('\n\n');
+    try {
+      const context = similarMessages
+        .map(m => `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`)
+        .join('\n\n');
 
-    console.log('Generating AI response with context length:', context.length);
+      console.log('Generating AI response with context length:', context.length);
 
-    const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are ai.rob, an AI assistant that helps users by providing informative and helpful responses. Your responses should be clear, concise, and natural while maintaining a helpful and professional tone."
-          },
-          {
-            role: "user",
-            content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 500,
-        response_format: { type: "json_object" }
-      })
-    });
+      const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",  
+          messages: [
+            {
+              role: "system",
+              content: `You are ai.rob, a helpful AI assistant in the Leeway chat application. Your responses should be:
+              1. Natural and conversational while maintaining professionalism
+              2. Clear and concise
+              3. Always relevant to the context provided
+              4. Formatted as a JSON object with a 'response' field containing your message
+              
+              When responding, consider both the direct question and any relevant context from previous messages.`
+            },
+            {
+              role: "user",
+              content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500,
+          response_format: { type: "json_object" }
+        })
+      });
 
-    if (!completion.ok) {
-      const errorData = await completion.json();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      if (!completion.ok) {
+        const errorData = await completion.json();
+        console.error('OpenAI API error:', errorData);
+        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      }
+
+      const response = await completion.json();
+      console.log('Received response from OpenAI');
+
+      try {
+        const parsedResponse = JSON.parse(response.choices[0].message.content);
+        return parsedResponse.response || "I couldn't generate a proper response at this time.";
+      } catch (parseError) {
+        console.error('Error parsing OpenAI response:', parseError);
+        return response.choices[0].message.content;
+      }
+    } catch (err) {
+      console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
+      return "I apologize, but I encountered an error while processing your request. Please try again later.";
     }
-
-    const response = await completion.json();
-    console.log('Received response from OpenAI');
-
-    // Parse the JSON response and extract the message content
-    const jsonResponse = JSON.parse(response.choices[0].message.content);
-    return jsonResponse.response || jsonResponse.message || "I couldn't generate a proper response at this time.";
-  } catch (err) {
-    console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
-    return "I apologize, but I encountered an error while processing your request.";
   }
-}
 
 export function isQuestion(message: string): boolean {
   const message_trimmed = message.trim().toLowerCase();
