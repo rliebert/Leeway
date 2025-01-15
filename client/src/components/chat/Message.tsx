@@ -333,6 +333,64 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             {isEditing ? (
               <div className="mt-1 space-y-2">
                 <div className="flex gap-2">
+                  <input
+                    type="file"
+                    className="hidden"
+                    id={`file-upload-edit-${message.id}`}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        fetch('/api/upload', {
+                          method: 'POST',
+                          body: formData,
+                        })
+                          .then((res) => res.json())
+                          .then((data) => {
+                            // Add the new attachment to the message
+                            queryClient.setQueryData(
+                              [`/api/channels/${message.channel_id}/messages`],
+                              (oldData: any) => {
+                                if (!oldData) return [];
+                                return oldData.map((msg: any) =>
+                                  msg.id === message.id
+                                    ? {
+                                        ...msg,
+                                        attachments: [
+                                          ...(msg.attachments || []),
+                                          {
+                                            id: data.id,
+                                            url: data.url,
+                                            originalName: file.name,
+                                            mimetype: file.type,
+                                            file_size: file.size,
+                                          },
+                                        ],
+                                      }
+                                    : msg
+                                );
+                              }
+                            );
+                          });
+                      }
+                      e.target.value = '';
+                    }}
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                  />
+                  {(!message.attachments?.length || deletedAttachments.length === message.attachments?.length) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        document.getElementById(`file-upload-edit-${message.id}`)?.click();
+                      }}
+                    >
+                      <FileIcon className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
                       <Button
