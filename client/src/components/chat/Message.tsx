@@ -323,6 +323,76 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             </div>
             {isEditing ? (
               <div className="mt-1 space-y-2">
+                {message.attachments && message.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-2 bg-muted/50 rounded-md">
+                    {message.attachments.map((file, index) => (
+                      <div key={index} className="relative group">
+                        {isImageFile(file.mimetype || file.file_type) ? (
+                          <div className="relative">
+                            <img
+                              src={normalizeFileUrl(file)}
+                              alt={file.originalName || file.file_name}
+                              className="h-16 w-16 object-cover rounded-md"
+                            />
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={async () => {
+                                const response = await fetch(`/api/attachments/${file.id}`, {
+                                  method: 'DELETE',
+                                });
+                                if (response.ok) {
+                                  queryClient.setQueryData(
+                                    [`/api/channels/${message.channel_id}/messages`],
+                                    (oldData: any) => oldData?.map((msg: any) => 
+                                      msg.id === message.id 
+                                        ? { ...msg, attachments: msg.attachments.filter((a: any) => a.id !== file.id) }
+                                        : msg
+                                    )
+                                  );
+                                }
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-md">
+                              <FileIcon className="h-4 w-4" />
+                              <span className="text-xs truncate max-w-[100px]">
+                                {file.originalName || file.file_name}
+                              </span>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="h-6 w-6 absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={async () => {
+                                const response = await fetch(`/api/attachments/${file.id}`, {
+                                  method: 'DELETE',
+                                });
+                                if (response.ok) {
+                                  queryClient.setQueryData(
+                                    [`/api/channels/${message.channel_id}/messages`],
+                                    (oldData: any) => oldData?.map((msg: any) => 
+                                      msg.id === message.id 
+                                        ? { ...msg, attachments: msg.attachments.filter((a: any) => a.id !== file.id) }
+                                        : msg
+                                    )
+                                  );
+                                }
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Popover open={showEmojiPicker} onOpenChange={setShowEmojiPicker}>
                     <PopoverTrigger asChild>
