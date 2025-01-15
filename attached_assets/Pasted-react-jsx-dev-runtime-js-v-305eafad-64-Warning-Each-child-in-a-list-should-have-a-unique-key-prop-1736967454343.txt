@@ -1,0 +1,87 @@
+react_jsx-dev-runtime.js?v=305eafad:64 Warning: Each child in a list should have a unique "key" prop.
+
+Check the render method of `ThreadModal`. See https://reactjs.org/link/warning-keys for more information.
+    at div
+    at ThreadModal (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/ThreadModal.tsx:37:3)
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/Message.tsx:28:42
+    at div
+    at div
+    at MessageList (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/MessageList.tsx:27:39)
+    at div
+    at div
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TVKOECXH.js?v=305eafad:41:13
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=305eafad:114:13
+    at div
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TVKOECXH.js?v=305eafad:41:13
+    at Provider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AFJ6VPUJ.js?v=305eafad:38:15)
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=305eafad:52:7
+    at _c (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/ui/scroll-area.tsx:21:11)
+    at div
+    at div
+    at div
+    at Home (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/pages/Home.tsx:32:49)
+    at Route (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=305eafad:191:16)
+    at Switch (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=305eafad:247:17)
+    at div
+    at WSProvider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/lib/ws.tsx:37:30)
+    at AuthenticatedApp (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/App.tsx:29:31)
+    at App
+    at QueryClientProvider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=305eafad:2829:3)
+printWarning @ react_jsx-dev-runtime.js?v=305eafad:64
+Show 1 more frame
+Show less
+2ThreadModal.tsx:312 Uncaught TypeError: Cannot read properties of undefined (reading 'toString')
+    at ThreadModal (ThreadModal.tsx:312:49)
+    at renderWithHooks (chunk-WERSD76P.js?v=305eafad:11548:26)
+    at mountIndeterminateComponent (chunk-WERSD76P.js?v=305eafad:14926:21)
+    at beginWork (chunk-WERSD76P.js?v=305eafad:15914:22)
+    at HTMLUnknownElement.callCallback2 (chunk-WERSD76P.js?v=305eafad:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-WERSD76P.js?v=305eafad:3699:24)
+    at invokeGuardedCallback (chunk-WERSD76P.js?v=305eafad:3733:39)
+    at beginWork$1 (chunk-WERSD76P.js?v=305eafad:19765:15)
+    at performUnitOfWork (chunk-WERSD76P.js?v=305eafad:19198:20)
+    at workLoopSync (chunk-WERSD76P.js?v=305eafad:19137:13)
+chunk-WERSD76P.js?v=305eafad:14032 The above error occurred in the <ThreadModal> component:
+
+    at ThreadModal (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/ThreadModal.tsx:37:3)
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/Message.tsx:28:42
+    at div
+    at div
+    at MessageList (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/chat/MessageList.tsx:27:39)
+    at div
+    at div
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TVKOECXH.js?v=305eafad:41:13
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=305eafad:114:13
+    at div
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TVKOECXH.js?v=305eafad:41:13
+    at Provider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AFJ6VPUJ.js?v=305eafad:38:15)
+    at https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-scroll-area.js?v=305eafad:52:7
+    at _c (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/components/ui/scroll-area.tsx:21:11)
+    at div
+    at div
+    at div
+    at Home (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/pages/Home.tsx:32:49)
+    at Route (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=305eafad:191:16)
+    at Switch (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=305eafad:247:17)
+    at div
+    at WSProvider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/lib/ws.tsx:37:30)
+    at AuthenticatedApp (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/src/App.tsx:29:31)
+    at App
+    at QueryClientProvider (https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=305eafad:2829:3)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-WERSD76P.js?v=305eafad:14032
+Show 1 more frame
+Show less
+chunk-WERSD76P.js?v=305eafad:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'toString')
+    at ThreadModal (ThreadModal.tsx:312:49)
+    at renderWithHooks (chunk-WERSD76P.js?v=305eafad:11548:26)
+    at mountIndeterminateComponent (chunk-WERSD76P.js?v=305eafad:14926:21)
+    at beginWork (chunk-WERSD76P.js?v=305eafad:15914:22)
+    at beginWork$1 (chunk-WERSD76P.js?v=305eafad:19753:22)
+    at performUnitOfWork (chunk-WERSD76P.js?v=305eafad:19198:20)
+    at workLoopSync (chunk-WERSD76P.js?v=305eafad:19137:13)
+    at renderRootSync (chunk-WERSD76P.js?v=305eafad:19116:15)
+    at recoverFromConcurrentError (chunk-WERSD76P.js?v=305eafad:18736:28)
+    at performSyncWorkOnRoot (chunk-WERSD76P.js?v=305eafad:18879:28)
