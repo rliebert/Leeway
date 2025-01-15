@@ -38,7 +38,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
     // For new messages, track optimistic message with a tempId
     if (data.type === 'message') {
       const tempId = crypto.randomUUID();
-      console.log('Generated new tempId for optimistic message:', tempId);
+      const timestamp = new Date().toLocaleTimeString();
+      console.log(`[${timestamp}] Generated new tempId for optimistic message:`, tempId);
       optimisticMessages.add(tempId);
       
       const optimisticMessage = {
@@ -123,10 +124,12 @@ export function WSProvider({ children }: { children: ReactNode }) {
       const data = JSON.parse(event.data);
       switch (data.type) {
         case 'message':
-          console.log('Received message from server:', {
+          const timestamp = new Date().toLocaleTimeString();
+      console.log(`[${timestamp}] Received message from server:`, {
             messageId: data.message?.id,
             tempId: data.tempId,
-            content: data.message?.content
+            content: data.message?.content,
+            isOptimistic: data.message?.isOptimistic
           });
           setMessages(prev => {
             // Only look for tempId match, ignore message.id

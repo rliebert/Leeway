@@ -74,7 +74,8 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   };
 
   useEffect(() => {
-    console.log('Message content updated:', message.content);
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`[${timestamp}] Message content updated:`, message.content, 'tempId:', message.tempId);
     setEditContent(message.content);
   }, [message.content]);
 
