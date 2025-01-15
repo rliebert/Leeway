@@ -78,10 +78,9 @@ export function setupWebSocketServer(server: Server) {
     perMessageDeflate: false,
     clientTracking: true,
     handleProtocols: (protocols) => {
-      if (!protocols) return false;
-      const protocolList = Array.isArray(protocols) ? protocols : protocols.split(',');
-      if (protocolList.includes('chat')) return 'chat';
-      if (protocolList.includes('vite-hmr')) return 'vite-hmr';
+      if (!protocols || protocols.length === 0) return false;
+      if (protocols.includes('chat')) return 'chat';
+      if (protocols.includes('vite-hmr')) return 'vite-hmr';
       return false;
     }
   });
