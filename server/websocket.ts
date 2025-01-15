@@ -6,6 +6,7 @@ import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
+import { generateAIResponse, isQuestion } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -21,7 +22,6 @@ interface WSMessage {
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
 }
 
-// Initialize channelSubscriptions at the module level
 const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
 function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
@@ -51,7 +51,6 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
 }
 
 export function setupWebSocketServer(server: Server) {
-  // Enhance debug logging
   debug.enable();
 
   const wss = new WebSocketServer({
@@ -140,7 +139,6 @@ export function setupWebSocketServer(server: Server) {
                 userId: ws.userId
               });
 
-              // First check if message exists and get its details
               const targetMessage = await db.query.messages.findFirst({
                 where: eq(messages.id, message.messageId),
                 with: {
@@ -157,7 +155,6 @@ export function setupWebSocketServer(server: Server) {
                 break;
               }
 
-              // Check permissions
               const user = await db.query.users.findFirst({
                 where: eq(users.id, ws.userId!)
               });
@@ -174,11 +171,9 @@ export function setupWebSocketServer(server: Server) {
                 break;
               }
 
-              // Delete message from database
               await db.delete(messages).where(eq(messages.id, message.messageId));
               debug.info('Message deleted from database:', message.messageId);
 
-              // Broadcast deletion to all clients in the channel
               const deleteNotification = {
                 type: 'message_deleted',
                 messageId: message.messageId,
@@ -208,7 +203,6 @@ export function setupWebSocketServer(server: Server) {
             channelSubscriptions.get(message.channelId)?.add(ws);
             debug.info(`User ${ws.userId} subscribed to channel ${message.channelId}`);
 
-            // Send existing messages
             const existingMessages = await db.query.messages.findMany({
               where: eq(messages.channel_id, message.channelId),
               with: {
@@ -263,11 +257,43 @@ export function setupWebSocketServer(server: Server) {
               });
 
               if (messageWithAuthor) {
-                debug.info('Broadcasting new message to channel');
+                debug.info('Broadcasting new message to channel:', messageWithAuthor);
+                const normalizedMessage = normalizeMessageForClient(messageWithAuthor);
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizeMessageForClient(messageWithAuthor)
+                  message: normalizedMessage
                 });
+
+                if (isQuestion(message.content)) {
+                  try {
+                    const aiResponse = await generateAIResponse(message.content, []);
+                    if (aiResponse) {
+                      const [aiMessage] = await db.insert(messages).values({
+                        channel_id: message.channelId,
+                        user_id: 'ai.rob', 
+                        content: aiResponse,
+                        parent_id: null,
+                      }).returning();
+
+                      const aiMessageWithAuthor = await db.query.messages.findFirst({
+                        where: eq(messages.id, aiMessage.id),
+                        with: {
+                          author: true,
+                          attachments: true,
+                        }
+                      });
+
+                      if (aiMessageWithAuthor) {
+                        broadcastToChannel(message.channelId, {
+                          type: 'message',
+                          message: normalizeMessageForClient(aiMessageWithAuthor)
+                        });
+                      }
+                    }
+                  } catch (aiError) {
+                    debug.error('Error generating AI response:', aiError);
+                  }
+                }
               }
             } catch (error) {
               debug.error('Error handling new message:', error);
@@ -301,7 +327,6 @@ export function setupWebSocketServer(server: Server) {
     });
   });
 
-  // Ping/Pong heartbeat
   const interval = setInterval(() => {
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
@@ -320,7 +345,6 @@ export function setupWebSocketServer(server: Server) {
   return wss;
 }
 
-// Helper function to normalize message data
 function normalizeMessageForClient(msg: any) {
   return {
     id: msg.id?.toString(),

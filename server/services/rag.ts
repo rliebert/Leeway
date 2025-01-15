@@ -15,7 +15,7 @@ if (!process.env.PINECONE_API_KEY) {
 console.log('Initializing OpenAI embeddings...');
 const embeddings = new OpenAIEmbeddings({
   openAIApiKey: process.env.OPENAI_API_KEY,
-  modelName: "text-embedding-3-small" 
+  modelName: "text-embedding-3-small"
 });
 
 // Initialize Pinecone client with error handling
@@ -56,12 +56,12 @@ export async function initializePinecone() {
       try {
         await pinecone.createIndex({
           name: indexName,
-          dimension: 1536, 
+          dimension: 1536,
           metric: 'cosine',
           spec: {
             serverless: {
               cloud: 'aws',
-              region: 'us-east-1'  
+              region: 'us-east-1'
             }
           }
         });
@@ -73,7 +73,7 @@ export async function initializePinecone() {
         const maxRetries = 10;
 
         while (!isReady && retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 5000)); 
+          await new Promise(resolve => setTimeout(resolve, 5000));
           const description = await pinecone.describeIndex(indexName);
           isReady = description.status.ready;
           if (!isReady) {
@@ -107,7 +107,7 @@ export async function initializePinecone() {
 }
 
 let lastTrainingTimestamp: Date | null = null;
-const RETRAINING_INTERVAL = 1000 * 60 * 60; 
+const RETRAINING_INTERVAL = 1000 * 60 * 60;
 
 // Store message embedding in Pinecone
 export async function storeMessageEmbedding(messageId: string, userId: string, content: string) {
@@ -200,6 +200,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
     console.log('Query:', query);
     console.log('Similar messages found:', similarMessages.length);
 
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const completion = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -207,7 +208,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",  // Updated to use gpt-4o-mini
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -222,11 +223,12 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
           },
           {
             role: "user",
-            content: `Based on this context (if available):\n\n${context}\n\nRespond to this question: ${query}`
+            content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
           }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 500,
+        response_format: { type: "text" }
       })
     });
 
@@ -242,7 +244,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
 
   } catch (err) {
     console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
-    throw err; 
+    throw err;
   }
 }
 
@@ -251,10 +253,10 @@ export function isQuestion(message: string): boolean {
 
   // Enhanced question detection
   const questionPatterns = [
-    /\?$/,  
-    /^(what|how|why|when|where|who|which|could|can|will|should|may|might)/,  
-    /^(is|are|was|were|do|does|did|have|has|had)\s/,  
-    /tell me (about|how|why|when|where)/i  
+    /\?$/,
+    /^(what|how|why|when|where|who|which|could|can|will|should|may|might)/,
+    /^(is|are|was|were|do|does|did|have|has|had)\s/,
+    /tell me (about|how|why|when|where)/i
   ];
 
   return questionPatterns.some(pattern => pattern.test(message_trimmed));
