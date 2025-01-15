@@ -30,7 +30,7 @@
 - [x] Implement admin-only retraining trigger
 - [x] Set up automatic training schedule
 - [ ] Test end-to-end question detection and responses
-
+- [ ] Fix real-time message delivery issues
 
 ## 6. Performance & Monitoring
 - [x] Add proper error handling
@@ -41,15 +41,15 @@
 - [ ] Implement fallback responses
 
 ## Next Actions (Priority Order):
-1. Run initial training:
-   - Execute training script on rliebert's message history
-   - Verify embeddings are stored correctly
-   - Check vector search functionality
+1. Fix Real-time Message Issues:
+   - Debug WebSocket connection handling
+   - Verify message broadcasting
+   - Test message delivery latency
 
-2. Test end-to-end functionality:
-   - Test question detection accuracy
-   - Verify AI responses match rliebert's style
-   - Check WebSocket integration for responses
+2. Complete AI Response Setup:
+   - Set AI_BOT_USER_ID in environment
+   - Run initial training on rliebert's messages
+   - Test AI responses to questions
 
 3. Add monitoring and quality control:
    - Implement storage monitoring

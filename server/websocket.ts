@@ -6,6 +6,7 @@ import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
+import { handleAIResponse } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
@@ -21,7 +22,6 @@ interface WSMessage {
   attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
 }
 
-// Initialize channelSubscriptions at the module level
 const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
 function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
@@ -43,6 +43,8 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
         debug.info(`Successfully sent to client ${client.userId}`);
       } catch (error) {
         debug.error(`Failed to send to client: ${error}`);
+        // Remove failed clients from subscriptions
+        subscribers.delete(client);
       }
     }
   });
@@ -51,7 +53,6 @@ function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSock
 }
 
 export function setupWebSocketServer(server: Server) {
-  // Enhance debug logging
   debug.enable();
 
   const wss = new WebSocketServer({
@@ -140,7 +141,6 @@ export function setupWebSocketServer(server: Server) {
                 userId: ws.userId
               });
 
-              // First check if message exists and get its details
               const targetMessage = await db.query.messages.findFirst({
                 where: eq(messages.id, message.messageId),
                 with: {
@@ -157,7 +157,6 @@ export function setupWebSocketServer(server: Server) {
                 break;
               }
 
-              // Check permissions
               const user = await db.query.users.findFirst({
                 where: eq(users.id, ws.userId!)
               });
@@ -174,11 +173,9 @@ export function setupWebSocketServer(server: Server) {
                 break;
               }
 
-              // Delete message from database
               await db.delete(messages).where(eq(messages.id, message.messageId));
               debug.info('Message deleted from database:', message.messageId);
 
-              // Broadcast deletion to all clients in the channel
               const deleteNotification = {
                 type: 'message_deleted',
                 messageId: message.messageId,
@@ -208,7 +205,6 @@ export function setupWebSocketServer(server: Server) {
             channelSubscriptions.get(message.channelId)?.add(ws);
             debug.info(`User ${ws.userId} subscribed to channel ${message.channelId}`);
 
-            // Send existing messages
             const existingMessages = await db.query.messages.findMany({
               where: eq(messages.channel_id, message.channelId),
               with: {
@@ -264,10 +260,45 @@ export function setupWebSocketServer(server: Server) {
 
               if (messageWithAuthor) {
                 debug.info('Broadcasting new message to channel');
+                // Broadcast the message immediately after creation
                 broadcastToChannel(message.channelId, {
                   type: 'message',
                   message: normalizeMessageForClient(messageWithAuthor)
                 });
+
+                // Check if this is a question and generate AI response if needed
+                if (await isQuestion(message.content)) {
+                  debug.info('Question detected, generating AI response');
+                  try {
+                    const aiResponse = await handleAIResponse(message.content);
+                    if (aiResponse) {
+                      const [aiMessage] = await db.insert(messages).values({
+                        channel_id: message.channelId,
+                        user_id: process.env.AI_BOT_USER_ID!,
+                        content: aiResponse,
+                        parent_id: newMessage.id,
+                      }).returning();
+
+                      const aiMessageWithAuthor = await db.query.messages.findFirst({
+                        where: eq(messages.id, aiMessage.id),
+                        with: {
+                          author: true,
+                          attachments: true,
+                        }
+                      });
+
+                      if (aiMessageWithAuthor) {
+                        debug.info('Broadcasting AI response');
+                        broadcastToChannel(message.channelId, {
+                          type: 'message',
+                          message: normalizeMessageForClient(aiMessageWithAuthor)
+                        });
+                      }
+                    }
+                  } catch (error) {
+                    debug.error('Error generating AI response:', error);
+                  }
+                }
               }
             } catch (error) {
               debug.error('Error handling new message:', error);
@@ -301,7 +332,6 @@ export function setupWebSocketServer(server: Server) {
     });
   });
 
-  // Ping/Pong heartbeat
   const interval = setInterval(() => {
     wss.clients.forEach((ws: AuthenticatedWebSocket) => {
       if (!ws.isAlive) {
@@ -320,7 +350,10 @@ export function setupWebSocketServer(server: Server) {
   return wss;
 }
 
-// Helper function to normalize message data
+async function isQuestion(content: string): Promise<boolean> {
+  return content.trim().endsWith('?');
+}
+
 function normalizeMessageForClient(msg: any) {
   return {
     id: msg.id?.toString(),
