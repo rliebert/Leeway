@@ -279,15 +279,17 @@ const Message: React.ForwardRefRenderFunction<HTMLDivElement, MessageProps> = (p
 
         setIsEditing(false);
         toast({ description: "Message updated" });
-        return;
-      }
-
-
-      // For real messages, proceed with normal edit
-      
-
-      setIsEditing(false);
-      toast({ description: "Message updated" });
+    } catch (error) {
+        queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
+        console.error('Error editing message:', error);
+        toast({ 
+          variant: "destructive",
+          description: "Failed to update message"
+        });
+        setIsEditing(false);
+    } finally {
+        setDeletedAttachments([]); // Reset after save
+    }
 
     } catch (error) {
       queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
