@@ -40,7 +40,14 @@ const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
 
 function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
   const subscribers = channelSubscriptions.get(channelId);
+  console.log('Broadcasting to channel:', {
+    channelId,
+    message,
+    numSubscribers: subscribers?.size || 0,
+    timestamp: new Date().toLocaleTimeString()
+  });
   if (!subscribers) {
+    console.warn(`No subscribers found for channel: ${channelId}`);
     debug.warn(`No subscribers found for channel: ${channelId}`);
     return;
   }
@@ -196,13 +203,22 @@ export function setupWebSocketServer(server: Server) {
 
     ws.on('message', async (data: string) => {
       try {
-        debug.info('Raw WebSocket message received:', data);
+        console.log('WebSocket message received:', data.toString());
+        debug.info('Raw WebSocket message received:', data.toString());
         const message = JSON.parse(data) as WSMessage;
+        console.log('Parsed WebSocket message:', {
+          type: message.type,
+          channelId: message.channelId,
+          tempId: message.tempId,
+          content: message.content?.substring(0, 50),
+          timestamp: new Date().toLocaleTimeString()
+        });
         debug.info('Parsed WebSocket message:', {
           type: message.type,
           channelId: message.channelId,
           tempId: message.tempId,
-          content: message.content?.substring(0, 50) // Log first 50 chars of content
+          content: message.content?.substring(0, 50),
+          timestamp: new Date().toLocaleTimeString()
         });
         switch (message.type) {
           case 'message': {
