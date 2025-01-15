@@ -26,7 +26,8 @@ let index: any;
 async function initializePinecone() {
   try {
     pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY!
+      apiKey: process.env.PINECONE_API_KEY!,
+      environment: 'us-east-1'  // Adding environment specification for proper initialization
     });
     console.log('Pinecone client initialized successfully');
 
@@ -51,7 +52,7 @@ async function initializePinecone() {
           spec: {
             serverless: {
               cloud: 'aws',
-              region: 'us-east-1'  // Changed from us-west-2 to us-east-1 for free plan compatibility
+              region: 'us-east-1'  // Using us-east-1 for free plan compatibility
             }
           }
         });
@@ -63,12 +64,12 @@ async function initializePinecone() {
         const maxRetries = 10;
 
         while (!isReady && retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between checks
           const description = await pinecone.describeIndex(indexName);
           isReady = description.status.ready;
           if (!isReady) {
             retries++;
             console.log(`Index not ready, attempt ${retries}/${maxRetries}`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
           }
         }
 
@@ -197,7 +198,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4",  // Using gpt-4 as the stable model
         messages: [
           {
             role: "system",
