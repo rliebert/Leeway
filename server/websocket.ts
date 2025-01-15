@@ -225,12 +225,15 @@ export function setupWebSocketServer(server: Server) {
                 debug.info('Broadcasting message with tempId:', message.tempId);
                 const normalizedMessage = normalizeMessageForClient({
                   ...messageWithAuthor,
-                  tempId: message.tempId
+                  tempId: message.tempId // Add tempId to the message object
                 });
+                debug.info('Normalized message:', { normalizedMessage, tempId: message.tempId });
                 broadcastToChannel(message.channelId, {
                   type: 'message',
-                  message: normalizedMessage,
-                  tempId: message.tempId
+                  message: {
+                    ...normalizedMessage,
+                    tempId: message.tempId // Ensure tempId is included in the final message
+                  }
                 });
               }
             } catch (error) {
