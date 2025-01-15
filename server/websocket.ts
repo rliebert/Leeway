@@ -109,23 +109,32 @@ export function setupWebSocketServer(server: Server) {
               }
 
               try {
-                // First broadcast a temporary message for instant feedback
-                const tempMessage = {
-                  id: "temp_" + Date.now(),
-                  channel_id: message.channelId,
-                  user_id: ws.userId,
-                  content: message.content,
-                  created_at: new Date().toISOString(),
-                  author: await db.query.users.findFirst({
-                    where: eq(users.id, ws.userId),
-                  }),
-                };
+                // Then save to database first
+                const [newMessage] = await db
+                  .insert(messages)
+                  .values({
+                    channel_id: message.channelId,
+                    user_id: ws.userId,
+                    content: message.content,
+                    parent_id: message.parentId || null,
+                  })
+                  .returning();
 
-                // Send temporary message immediately
-                broadcastToChannel(message.channelId, {
-                  type: "message",
-                  message: normalizeMessageForClient(tempMessage),
+                // Get complete message with author and attachments
+                const completeMessage = await db.query.messages.findFirst({
+                  where: eq(messages.id, newMessage.id),
+                  with: {
+                    author: true,
+                    attachments: true,
+                  },
                 });
+
+                if (completeMessage) {
+                  // Broadcast the complete message
+                  broadcastToChannel(message.channelId, {
+                    type: "message",
+                    message: normalizeMessageForClient(completeMessage),
+                  });
 
                 // Then save to database
                 const [newMessage] = await db

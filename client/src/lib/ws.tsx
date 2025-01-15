@@ -310,23 +310,19 @@ export function WSProvider({ children }: { children: ReactNode }) {
                     return;
                   }
 
-                  setMessages((prevMessages) => {
-                    const messageIndex = prevMessages.findIndex(
-                      (msg) =>
-                        msg.id?.toString() === normalizedMessage.id?.toString(),
-                    );
+                  // Force a cache update
+                  const queryKey = [`/api/channels/${data.message.channel_id}/messages`];
+                  queryClient.setQueryData(queryKey, (oldData: any) => {
+                    if (!oldData) return [normalizedMessage];
+                    return [...oldData, normalizedMessage];
+                  });
 
-                    if (messageIndex > -1) {
-                      const updatedMessages = [...prevMessages];
-                      updatedMessages[messageIndex] = {
-                        ...normalizedMessage,
-                        author:
-                          normalizedMessage.author ||
-                          prevMessages[messageIndex].author,
-                      };
-                      return updatedMessages;
-                    }
-                    return [...prevMessages, normalizedMessage];
+                  setMessages((prevMessages) => {
+                    // Remove any temporary version of this message
+                    const filteredMessages = prevMessages.filter(
+                      msg => !msg.id?.startsWith('temp_')
+                    );
+                    return [...filteredMessages, normalizedMessage];
                   });
                 }
                 break;
