@@ -6,6 +6,7 @@ import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";
+import aiRoutes from "./routes/ai";
 import { registerUploadRoutes } from "./routes/upload";
 import type { User, Message, Channel, Section } from "@db/schema";
 import multer from "multer";
@@ -59,6 +60,7 @@ export function registerRoutes(app: Express): Server {
   // Set up authentication routes and middleware first
   setupAuth(app);
   app.use("/api/dm", requireAuth, dmRoutes);
+  app.use("/api", requireAuth, aiRoutes); // Register AI routes
   registerUploadRoutes(app);
 
   // File upload endpoint
@@ -307,7 +309,7 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch replies" });
     }
   });
-    app.get("/api/users", async (req, res) => {
+  app.get("/api/users", async (req, res) => {
     if (!req.user) {
       return res.status(401).send("Not authenticated");
     }

@@ -20,8 +20,8 @@ export async function storeMessageEmbedding(messageId: string, userId: string, c
       user_id: userId,
       embedding: JSON.stringify(embeddingVector)
     });
-  } catch (error) {
-    console.error('Error storing message embedding:', error);
+  } catch (err) {
+    console.error('Error storing message embedding:', err instanceof Error ? err.message : 'Unknown error');
   }
 }
 
@@ -45,9 +45,10 @@ export async function trainOnUserMessages(userId: string, since?: Date) {
 
     lastTrainingTimestamp = new Date();
     return { success: true, newMessagesProcessed };
-  } catch (error) {
+  } catch (err) {
+    const error = err instanceof Error ? err.message : 'Unknown error';
     console.error('Error training on user messages:', error);
-    return { success: false, error: error.message };
+    return { success: false, error };
   }
 }
 
@@ -67,13 +68,14 @@ export async function checkAndRetrain() {
       (Date.now() - lastTrainingTimestamp.getTime() > RETRAINING_INTERVAL);
 
     if (shouldRetrain) {
-      return await trainOnUserMessages(rliebert.id, lastTrainingTimestamp);
+      return await trainOnUserMessages(rliebert.id, undefined);
     }
 
     return { success: true, newMessagesProcessed: 0, message: 'Retraining not needed' };
-  } catch (error) {
+  } catch (err) {
+    const error = err instanceof Error ? err.message : 'Unknown error';
     console.error('Error in checkAndRetrain:', error);
-    return { success: false, error: error.message };
+    return { success: false, error };
   }
 }
 
@@ -82,22 +84,27 @@ export async function findSimilarMessages(query: string, limit = 5) {
   try {
     const queryEmbedding = await embeddings.embedQuery(query);
 
+    // Using proper PostgreSQL vector operations
     const similarMessages = await db.execute(sql`
+      WITH query_embedding AS (
+        SELECT array_to_vector(${JSON.stringify(queryEmbedding)}) AS embedding
+      )
       SELECT m.*, 
              u.username,
              u.full_name,
-             1 - (me.embedding <=> ${JSON.stringify(queryEmbedding)}) as similarity
+             1 - (me.embedding::vector <=> query_embedding.embedding) as similarity
       FROM message_embeddings me
+      CROSS JOIN query_embedding
       JOIN messages m ON me.message_id = m.id
       JOIN users u ON m.user_id = u.id
       WHERE u.username = 'rliebert'
-      ORDER BY me.embedding <-> ${JSON.stringify(queryEmbedding)}
+      ORDER BY me.embedding::vector <-> query_embedding.embedding
       LIMIT ${limit}
     `);
 
     return similarMessages.rows;
-  } catch (error) {
-    console.error('Error finding similar messages:', error);
+  } catch (err) {
+    console.error('Error finding similar messages:', err instanceof Error ? err.message : 'Unknown error');
     return [];
   }
 }
@@ -109,6 +116,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
       .map(m => `Message: ${m.content}\nContext: This was posted by rliebert with similarity ${m.similarity}`)
       .join('\n\n');
 
+    // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
     const completion = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -116,7 +124,7 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -128,20 +136,31 @@ export async function generateAIResponse(query: string, similarMessages: any[]) 
           }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 500,
+        response_format: { type: "json_object" }
       })
     });
 
     const response = await completion.json();
-    return response.choices[0].message.content;
-  } catch (error) {
-    console.error('Error generating AI response:', error);
+    const parsedResponse = JSON.parse(response.choices[0].message.content);
+    return parsedResponse.response || "I apologize, I'm having trouble processing your request at the moment.";
+  } catch (err) {
+    console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
     return "I apologize, I'm having trouble processing your request at the moment.";
   }
 }
 
 export function isQuestion(message: string): boolean {
-  return message.trim().endsWith('?');
+  // More sophisticated question detection
+  const message_trimmed = message.trim().toLowerCase();
+  return message_trimmed.endsWith('?') || 
+         message_trimmed.startsWith('what') ||
+         message_trimmed.startsWith('how') ||
+         message_trimmed.startsWith('why') ||
+         message_trimmed.startsWith('when') ||
+         message_trimmed.startsWith('where') ||
+         message_trimmed.startsWith('who') ||
+         message_trimmed.startsWith('which');
 }
 
 // Start periodic retraining
