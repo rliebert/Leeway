@@ -1,53 +1,26 @@
-import { WebSocket, WebSocketServer } from "ws";
-import { Server } from "http";
-import { db } from "@db";
-import { messages, file_attachments, channels, users, sessions } from "@db/schema";
-import { eq, asc } from "drizzle-orm";
 import type { IncomingMessage } from "http";
 import { parse as parseCookie } from "cookie";
 import { serverDebugLogger as debug } from "./debug";
-import {
-  generateAIResponse,
-  isQuestion as ragIsQuestion,
-} from "./services/rag";
+//import { generateAIResponse, isQuestion } from "./services/rag";
 
 interface AuthenticatedWebSocket extends WebSocket {
   userId?: string;
   isAlive: boolean;
-  subscriptions: Set<string>;
 }
 
 interface WSMessage {
-  type:
-    | "subscribe"
-    | "unsubscribe"
-    | "message"
-    | "typing"
-    | "ping"
-    | "message_deleted"
-    | "message_edited"
-    | "debug_mode";
+  type: 'subscribe' | 'unsubscribe' | 'message' | 'typing' | 'ping' | 'message_deleted' | 'message_edited';
   channelId?: string;
   content?: string;
   parentId?: string;
   messageId?: string;
-  attachments?: {
-    url: string;
-    originalName: string;
-    mimetype: string;
-    size: number;
-  }[];
-  enabled?: boolean;
+  attachments?: { url: string; originalName: string; mimetype: string; size: number }[];
 }
 
+// Initialize channelSubscriptions at the module level
 const channelSubscriptions = new Map<string, Set<AuthenticatedWebSocket>>();
-const activeConnections = new Map<string, AuthenticatedWebSocket>();
 
-function broadcastToChannel(
-  channelId: string,
-  message: any,
-  excludeWs?: WebSocket,
-) {
+function broadcastToChannel(channelId: string, message: any, excludeWs?: WebSocket) {
   const subscribers = channelSubscriptions.get(channelId);
   if (!subscribers) {
     debug.warn(`No subscribers found for channel: ${channelId}`);
@@ -56,340 +29,238 @@ function broadcastToChannel(
 
   const data = JSON.stringify(message);
   let broadcastCount = 0;
+  debug.info(`Broadcasting to channel ${channelId}:`, message);
 
   subscribers.forEach((client: AuthenticatedWebSocket) => {
     if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
       try {
         client.send(data);
         broadcastCount++;
+        debug.info(`Successfully sent to client ${client.userId}`);
       } catch (error) {
-        debug.error(`Failed to send to client ${client.userId}:`, error);
-        // Clean up dead connections
-        subscribers.delete(client);
-        if (client.userId) {
-          activeConnections.delete(client.userId);
-        }
+        debug.error(`Failed to send to client: ${error}`);
       }
     }
   });
 
-  debug.info(
-    `Broadcast complete: ${broadcastCount} clients received the message`,
-  );
-}
-
-async function handleAuthentication(ws: AuthenticatedWebSocket, request: IncomingMessage): Promise<boolean> {
-  try {
-    // Parse session cookie
-    const cookies = parseCookie(request.headers.cookie || '');
-    const sessionId = cookies['connect.sid'];
-
-    if (!sessionId) {
-      debug.warn("No session ID found in cookies");
-      ws.close(1008, "Unauthorized");
-      return false;
-    }
-
-    // Clean session ID (remove s: prefix and possible signature)
-    const cleanSessionId = sessionId.split('.')[0].replace('s:', '');
-
-    // Fetch session data
-    const session = await db.query.sessions.findFirst({
-      where: eq(sessions.sid, cleanSessionId)
-    });
-
-    if (!session?.sess) {
-      debug.warn("No session found in database");
-      ws.close(1008, "Invalid session");
-      return false;
-    }
-
-    // Parse session data
-    let sessionData;
-    try {
-      sessionData = typeof session.sess === 'string' ? 
-        JSON.parse(session.sess) : 
-        session.sess;
-    } catch (e) {
-      debug.error("Failed to parse session data:", e);
-      ws.close(1008, "Invalid session");
-      return false;
-    }
-
-    // Validate user data
-    if (!sessionData?.passport?.user) {
-      debug.warn("No user ID found in session passport");
-      ws.close(1008, "Unauthorized");
-      return false;
-    }
-
-    const userId = sessionData.passport.user.toString();
-
-    // Close existing connection if it exists
-    const existingConnection = activeConnections.get(userId);
-    if (existingConnection && existingConnection !== ws) {
-      debug.info(`Closing existing connection for user: ${userId}`);
-      existingConnection.close(1000, "New connection established");
-    }
-
-    // Set socket properties
-    ws.userId = userId;
-    ws.isAlive = true;
-    ws.subscriptions = new Set();
-    activeConnections.set(userId, ws);
-    debug.info("WebSocket connected for user:", userId);
-
-    // Send connection acknowledgment
-    ws.send(JSON.stringify({ type: "connected" }));
-    return true;
-  } catch (error) {
-    debug.error("Error authenticating WebSocket connection:", error);
-    ws.close(1008, "Unauthorized");
-    return false;
-  }
+  debug.info(`Broadcast complete: ${broadcastCount} clients received the message`);
 }
 
 export function setupWebSocketServer(server: Server) {
+  // Enhance debug logging
   debug.enable();
 
   const wss = new WebSocketServer({
     server,
-    path: "/ws",
+    path: '/ws',
     perMessageDeflate: false,
     clientTracking: true,
-  });
-
-  wss.on(
-    "connection",
-    async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
-      if (request.headers["sec-websocket-protocol"] === "vite-hmr") {
-        return;
-      }
-
-      const authenticated = await handleAuthentication(ws, request);
-      if (!authenticated) return;
-
-      ws.on("message", async (data: string) => {
-        if (!ws.userId) {
-          debug.warn("Received message from unauthenticated socket");
-          ws.close(1008, "Unauthorized");
+    handleProtocols: () => 'chat',
+    verifyClient: async ({ req }, done) => {
+      try {
+        if (req.headers['sec-websocket-protocol'] === 'vite-hmr') {
+          done(true);
           return;
         }
 
-        try {
-          const message = JSON.parse(data) as WSMessage;
-          debug.info(`Received message of type: ${message.type}`);
+        const cookies = parseCookie(req.headers.cookie || '');
+        const sessionId = cookies['connect.sid'];
 
-          switch (message.type) {
-            case "message": {
-              if (!message.channelId || !message.content) {
-                debug.warn("Invalid message data:", message);
-                break;
-              }
+        if (!sessionId) {
+          debug.error('WebSocket connection rejected: No session cookie');
+          done(false, 401, 'No session cookie');
+          return;
+        }
 
-              try {
-                // Save to database
-                const [newMessage] = await db
-                  .insert(messages)
-                  .values({
-                    channel_id: message.channelId,
-                    user_id: ws.userId,
-                    content: message.content,
-                    parent_id: message.parentId || null,
-                  })
-                  .returning();
+        const cleanSessionId = decodeURIComponent(sessionId).split('s:')[1]?.split('.')[0];
+        if (!cleanSessionId) {
+          debug.error('WebSocket connection rejected: Invalid session format');
+          done(false, 401, 'Invalid session format');
+          return;
+        }
 
-                // Get complete message with author and attachments
-                const completeMessage = await db.query.messages.findFirst({
-                  where: eq(messages.id, newMessage.id),
-                  with: {
-                    author: true,
-                    attachments: true,
-                  },
-                });
+        const session = await db.query.sessions.findFirst({
+          where: eq(sessions.sid, cleanSessionId),
+        });
 
-                if (completeMessage) {
-                  // Send acknowledgment to sender
-                  ws.send(JSON.stringify({
-                    type: "message_ack",
-                    messageId: newMessage.id,
-                    channelId: message.channelId
-                  }));
+        if (!session?.sess) {
+          debug.error('WebSocket connection rejected: Invalid session');
+          done(false, 401, 'Invalid session');
+          return;
+        }
 
-                  // Broadcast the message
-                  broadcastToChannel(message.channelId, {
-                    type: "message",
-                    channelId: message.channelId,
-                    message: normalizeMessageForClient(completeMessage),
-                  }, ws);
+        const sessionData = typeof session.sess === 'string'
+          ? JSON.parse(session.sess)
+          : session.sess;
 
-                  // Process attachments if any
-                  if (message.attachments?.length > 0) {
-                    const attachmentRecords = message.attachments.map(
-                      (attachment) => ({
-                        message_id: newMessage.id,
-                        file_url: attachment.url,
-                        file_name: attachment.originalName,
-                        file_type: attachment.mimetype,
-                        file_size: attachment.size,
-                      }),
-                    );
-                    await db.insert(file_attachments).values(attachmentRecords);
-                  }
-                }
-              } catch (error) {
-                debug.error("Error handling message:", error);
-                ws.send(
-                  JSON.stringify({
-                    type: "error",
-                    message: "Failed to send message",
-                  }),
-                );
-              }
+        if (!sessionData?.passport?.user) {
+          debug.error('WebSocket connection rejected: No user in session');
+          done(false, 401, 'Authentication failed');
+          return;
+        }
+
+        (req as any).userId = sessionData.passport.user;
+        done(true);
+      } catch (error) {
+        debug.error('WebSocket authentication error:', error);
+        done(false, 500, 'Internal server error');
+      }
+    }
+  });
+
+  wss.on('connection', async (ws: AuthenticatedWebSocket, request: IncomingMessage) => {
+    if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+      return;
+    }
+
+    ws.userId = (request as any).userId?.toString();
+    ws.isAlive = true;
+    debug.info('WebSocket connected for user:', ws.userId);
+
+    ws.on('message', async (data: string) => {
+      try {
+        const message = JSON.parse(data) as WSMessage;
+        debug.info(`Received message of type: ${message.type}`, message);
+
+        switch (message.type) {
+          case 'message_deleted': {
+            if (!message.channelId || !message.messageId) {
+              debug.warn('Invalid message_deleted event:', { message });
               break;
             }
 
-            case "subscribe": {
-              if (!message.channelId) {
-                debug.warn("Invalid subscribe request - no channelId");
-                break;
-              }
-
-              // Verify channel access
-              const channel = await db.query.channels.findFirst({
-                where: eq(channels.id, message.channelId),
+            try {
+              debug.info('Processing message deletion request:', {
+                messageId: message.messageId,
+                channelId: message.channelId,
+                userId: ws.userId
               });
 
-              if (!channel) {
-                debug.warn("Attempted to subscribe to non-existent channel");
+              // First check if message exists and get its details
+              const targetMessage = await db.query.messages.findFirst({
+                where: eq(messages.id, message.messageId),
+                with: {
+                  author: true
+                }
+              });
+
+              if (!targetMessage) {
+                debug.warn('Message not found for deletion:', message.messageId);
                 ws.send(JSON.stringify({
-                  type: "error",
-                  message: "Channel not found"
+                  type: 'error',
+                  message: 'Message not found'
                 }));
                 break;
               }
 
-              if (!channelSubscriptions.has(message.channelId)) {
-                channelSubscriptions.set(message.channelId, new Set());
+              // Check permissions
+              const user = await db.query.users.findFirst({
+                where: eq(users.id, ws.userId!)
+              });
+
+              const isAdmin = user?.is_admin || false;
+              const isOwnMessage = targetMessage.user_id === ws.userId;
+
+              if (!user || (!isAdmin && !isOwnMessage)) {
+                debug.warn('Unauthorized deletion attempt');
+                ws.send(JSON.stringify({
+                  type: 'error',
+                  message: 'Not authorized to delete this message'
+                }));
+                break;
               }
 
-              const subscribers = channelSubscriptions.get(message.channelId)!;
-              subscribers.add(ws);
-              ws.subscriptions.add(message.channelId);
+              // Delete message from database
+              await db.delete(messages).where(eq(messages.id, message.messageId));
+              debug.info('Message deleted from database:', message.messageId);
 
-              debug.info(
-                `User ${ws.userId} subscribed to channel ${message.channelId}`,
-              );
+              // Broadcast deletion to all clients in the channel
+              const deleteNotification = {
+                type: 'message_deleted',
+                messageId: message.messageId,
+                channelId: message.channelId
+              };
 
-              // Send existing messages
-              const existingMessages = await db.query.messages.findMany({
-                where: eq(messages.channel_id, message.channelId),
+              debug.info('Broadcasting deletion notification:', deleteNotification);
+              broadcastToChannel(message.channelId, deleteNotification);
+              debug.info('Deletion notification broadcast complete');
+
+            } catch (error) {
+              debug.error('Error handling message deletion:', error);
+              ws.send(JSON.stringify({
+                type: 'error',
+                message: 'Failed to delete message'
+              }));
+            }
+            break;
+          }
+
+          case 'subscribe': {
+            if (!message.channelId) break;
+
+            if (!channelSubscriptions.has(message.channelId)) {
+              channelSubscriptions.set(message.channelId, new Set());
+            }
+            channelSubscriptions.get(message.channelId)?.add(ws);
+            debug.info(`User ${ws.userId} subscribed to channel ${message.channelId}`);
+
+            // Send existing messages
+            const existingMessages = await db.query.messages.findMany({
+              where: eq(messages.channel_id, message.channelId),
+              with: {
+                author: true,
+                attachments: true,
+              },
+              orderBy: [asc(messages.created_at)],
+            });
+
+            existingMessages.forEach(msg => {
+              ws.send(JSON.stringify({
+                type: 'message',
+                message: normalizeMessageForClient(msg)
+              }));
+            });
+            break;
+          }
+
+          case 'message': {
+            if (!message.channelId || !message.content || !ws.userId) {
+              debug.warn('Invalid message data:', message);
+              break;
+            }
+
+            try {
+              debug.info('Creating new message in database');
+              const [newMessage] = await db.insert(messages).values({
+                channel_id: message.channelId,
+                user_id: ws.userId,
+                content: message.content,
+                parent_id: message.parentId || null,
+              }).returning();
+
+              if (message.attachments && message.attachments.length > 0) {
+                const attachmentRecords = message.attachments.map((attachment) => ({
+                  message_id: newMessage.id,
+                  file_url: attachment.url,
+                  file_name: attachment.originalName,
+                  file_type: attachment.mimetype,
+                  file_size: attachment.size || 0,
+                }));
+
+                await db.insert(file_attachments).values(attachmentRecords);
+              }
+
+              const messageWithAuthor = await db.query.messages.findFirst({
+                where: eq(messages.id, newMessage.id),
                 with: {
                   author: true,
                   attachments: true,
-                },
-                orderBy: [asc(messages.created_at)],
-                limit: 50,
+                }
               });
 
-              ws.send(JSON.stringify({
-                type: "message_history",
-                channelId: message.channelId,
-                messages: existingMessages.map(normalizeMessageForClient),
-              }));
-              break;
-            }
-
-            case "unsubscribe": {
-              if (!message.channelId) break;
-              const subscribers = channelSubscriptions.get(message.channelId);
-              if (subscribers) {
-                subscribers.delete(ws);
-                ws.subscriptions.delete(message.channelId);
-              }
-              debug.info(
-                `User ${ws.userId} unsubscribed from channel ${message.channelId}`,
-              );
-              break;
-            }
-
-            case "ping": {
-              ws.isAlive = true;
-              ws.send(JSON.stringify({ type: "pong" }));
-              break;
-            }
-          }
-        } catch (error) {
-          debug.error("Error processing WebSocket message:", error);
-          ws.send(
-            JSON.stringify({
-              type: "error",
-              message: "Failed to process message",
-            }),
-          );
-        }
-      });
-
-      ws.on("close", () => {
-        debug.info("WebSocket closed for user:", ws.userId);
-        // Clean up subscriptions
-        if (ws.userId) {
-          activeConnections.delete(ws.userId);
-          ws.subscriptions.forEach(channelId => {
-            const subscribers = channelSubscriptions.get(channelId);
-            if (subscribers) {
-              subscribers.delete(ws);
-            }
-          });
-        }
-      });
-
-      ws.on("error", (error) => {
-        debug.error("WebSocket error:", error);
-      });
-    },
-  );
-
-  // Heartbeat to keep connections alive and clean up dead connections
-  const interval = setInterval(() => {
-    wss.clients.forEach((ws) => {
-      const extWs = ws as AuthenticatedWebSocket;
-      if (!extWs.isAlive) {
-        if (extWs.userId) {
-          activeConnections.delete(extWs.userId);
-        }
-        ws.terminate();
-        return;
-      }
-      extWs.isAlive = false;
-      ws.ping();
-    });
-  }, 30000);
-
-  wss.on("close", () => {
-    clearInterval(interval);
-  });
-
-  return wss;
-}
-
-function normalizeMessageForClient(msg: any) {
-  return {
-    id: msg.id?.toString(),
-    channel_id: msg.channel_id?.toString(),
-    user_id: msg.user_id?.toString(),
-    content: msg.content || "",
-    created_at: msg.created_at || new Date().toISOString(),
-    updated_at: msg.updated_at || msg.created_at || new Date().toISOString(),
-    parent_id: msg.parent_id?.toString() || null,
-    author: msg.author,
-    attachments:
-      msg.attachments?.map((attachment: any) => ({
-        id: attachment.id?.toString(),
-        url: attachment.file_url || attachment.url || "",
-        originalName: attachment.file_name || attachment.originalName || "",
-        mimetype: attachment.file_type || attachment.mimetype || "",
-        file_size: Number(attachment.file_size) || 0,
-      })) || [],
-  };
-}
+              if (messageWithAuthor) {
+                debug.info('Broadcasting new message to channel');
+                broadcastToChannel(message.channelId, {
+                  type: 'message',
+                  message: normalizeMessageForClient(messageWithAuthor)
+                });
