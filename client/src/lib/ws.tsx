@@ -241,60 +241,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
               return normalized;
             };
 
-            const updateMessageInState = (messageData: any) => {
-              const normalizedMessage = normalizeMessage(messageData);
-              if (!normalizedMessage) {
-                debugLogger.error("Failed to normalize message", messageData);
-                return;
-              }
-
-              debugLogger.debug(
-                "Attempting to update message state with",
-                normalizedMessage,
-              );
-
-              setMessages((prevMessages) => {
-                const existingIndex = prevMessages.findIndex(
-                  (msg) =>
-                    msg.id?.toString() === normalizedMessage.id?.toString(),
-                );
-                debugLogger.debug(
-                  "Found existing message at index",
-                  existingIndex,
-                );
-
-                if (existingIndex > -1) {
-                  const existingMessage = prevMessages[existingIndex];
-                  debugLogger.debug("Existing message", existingMessage);
-
-                  const updatedMessages = [...prevMessages];
-                  updatedMessages[existingIndex] = {
-                    ...normalizedMessage,
-                    // Ensure we keep the message ID consistent
-                    id: normalizedMessage.id,
-                    // Preserve any fields that might not be in the update
-                    author: normalizedMessage.author || existingMessage.author,
-                    attachments:
-                      normalizedMessage.attachments ||
-                      existingMessage.attachments,
-                    // Force update timestamp
-                    updated_at: new Date().toISOString(),
-                  };
-
-                  debugLogger.debug("Updated message state", {
-                    before: existingMessage,
-                    after: updatedMessages[existingIndex],
-                  });
-
-                  return updatedMessages;
-                }
-
-                debugLogger.debug(
-                  "No existing message found, adding new message",
-                );
-                return [...prevMessages, normalizedMessage];
-              });
-            };
+            
 
             switch (data.type) {
               case "message":

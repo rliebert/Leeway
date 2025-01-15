@@ -144,24 +144,6 @@ export function setupWebSocketServer(server: Server) {
                     );
 
                     if (aiResponse && process.env.AI_BOT_USER_ID) {
-                      const [aiMessage] = await db
-                  .insert(messages)
-                  .values({
-                    channel_id: message.channelId,
-                    user_id: ws.userId,
-                    content: message.content,
-                    parent_id: message.parentId || null,
-                  })
-                  .returning();
-
-                // Get complete message with author and attachments
-                const completeMessage = await db.query.messages.findFirst({
-                  where: eq(messages.id, newMessage.id),
-                  with: {
-                    author: true,
-                    attachments: true,
-                  },
-                });
 
                 if (completeMessage) {
                   // Update with permanent message
