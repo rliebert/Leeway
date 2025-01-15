@@ -2,7 +2,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { db } from "@db";
 import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
-import { Pinecone } from '@pinecone-database/pinecone';
+import { Pinecone, PineconeIndexStats } from '@pinecone-database/pinecone';
 
 if (!process.env.OPENAI_API_KEY) {
   throw new Error('OPENAI_API_KEY environment variable is not set');
@@ -26,20 +26,26 @@ let index: any;
 async function initializePinecone() {
   try {
     pinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY
+      apiKey: process.env.PINECONE_API_KEY!
     });
     console.log('Pinecone client initialized successfully');
 
-    // List existing indexes
-    const indexes = await pinecone.listIndexes();
-    const indexName = 'rag-project-index';
+    const indexName = 'leeway-chat-index';
 
-    // Check if our index exists
-    if (!indexes.find(idx => idx.name === indexName)) {
+    // List indexes with proper type checking
+    const { indexes } = await pinecone.listIndexes();
+    console.log('Available indexes:', JSON.stringify(indexes, null, 2));
+
+    // Check if our index exists in the indexes array
+    const indexExists = Array.isArray(indexes) && 
+      indexes.some(idx => typeof idx === 'object' && idx.name === indexName);
+
+    // Create index if it doesn't exist
+    if (!indexExists) {
       console.log(`Creating new Pinecone index: ${indexName}`);
       await pinecone.createIndex({
         name: indexName,
-        dimension: 1536,  // OpenAI ada-002 embedding dimension
+        dimension: 1536, // OpenAI ada-002 embedding dimension
         metric: 'cosine',
         spec: {
           serverless: {
@@ -50,7 +56,7 @@ async function initializePinecone() {
       });
 
       // Wait for index to be ready
-      console.log('Waiting for index to be ready...');
+      console.log('Waiting for index to initialize...');
       let isReady = false;
       while (!isReady) {
         const description = await pinecone.describeIndex(indexName);
@@ -61,13 +67,14 @@ async function initializePinecone() {
       }
     }
 
-    // Get the index
+    // Connect to the index
     console.log(`Connecting to Pinecone index: ${indexName}`);
     index = pinecone.index(indexName);
 
     // Test the connection
-    await index.describeIndexStats();
-    console.log('Successfully connected to Pinecone index');
+    const stats = await index.describeIndexStats();
+    console.log('Successfully connected to Pinecone index. Stats:', stats);
+
     return true;
   } catch (error) {
     console.error('Error initializing Pinecone:', error);
@@ -166,64 +173,67 @@ export async function findSimilarMessages(query: string, limit = 5) {
 
 // Generate AI response using retrieved context
 export async function generateAIResponse(query: string, similarMessages: any[]) {
-    try {
-      const context = similarMessages
-        .map(m => `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`)
-        .join('\n\n');
+  try {
+    const context = similarMessages
+      .map(m => `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`)
+      .join('\n\n');
 
-      console.log('Generating AI response with context length:', context.length);
+    console.log('Generating AI response with context length:', context.length);
+    console.log('Query:', query);
+    console.log('Similar messages found:', similarMessages.length);
 
-      const completion = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: "gpt-4o",  
-          messages: [
-            {
-              role: "system",
-              content: `You are ai.rob, a helpful AI assistant in the Leeway chat application. Your responses should be:
-              1. Natural and conversational while maintaining professionalism
-              2. Clear and concise
-              3. Always relevant to the context provided
-              4. Formatted as a JSON object with a 'response' field containing your message
-              
-              When responding, consider both the direct question and any relevant context from previous messages.`
-            },
-            {
-              role: "user",
-              content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 500,
-          response_format: { type: "json_object" }
-        })
-      });
+    const completion = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",  // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
+        messages: [
+          {
+            role: "system",
+            content: `You are ai.rob, a helpful AI assistant in the Leeway chat application. Your responses should be:
+            1. Natural and conversational while maintaining professionalism
+            2. Clear and concise
+            3. Always relevant to the context provided
+            4. Formatted as a JSON object with a 'response' field containing your message
 
-      if (!completion.ok) {
-        const errorData = await completion.json();
-        console.error('OpenAI API error:', errorData);
-        throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
-      }
+            When responding, consider both the direct question and any relevant context from previous messages.`
+          },
+          {
+            role: "user",
+            content: `Based on this context:\n\n${context}\n\nRespond to this question: ${query}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 500,
+        response_format: { type: "json_object" }
+      })
+    });
 
-      const response = await completion.json();
-      console.log('Received response from OpenAI');
-
-      try {
-        const parsedResponse = JSON.parse(response.choices[0].message.content);
-        return parsedResponse.response || "I couldn't generate a proper response at this time.";
-      } catch (parseError) {
-        console.error('Error parsing OpenAI response:', parseError);
-        return response.choices[0].message.content;
-      }
-    } catch (err) {
-      console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
-      return "I apologize, but I encountered an error while processing your request. Please try again later.";
+    if (!completion.ok) {
+      const errorData = await completion.json();
+      console.error('OpenAI API error:', errorData);
+      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
     }
+
+    const response = await completion.json();
+    console.log('Received response from OpenAI');
+
+    try {
+      const parsedResponse = JSON.parse(response.choices[0].message.content);
+      console.log('Parsed response:', parsedResponse);
+      return parsedResponse.response || "I couldn't generate a proper response at this time.";
+    } catch (parseError) {
+      console.error('Error parsing OpenAI response:', parseError);
+      return response.choices[0].message.content;
+    }
+  } catch (err) {
+    console.error('Error generating AI response:', err instanceof Error ? err.message : 'Unknown error');
+    return "I apologize, but I encountered an error while processing your request. Please try again later.";
   }
+}
 
 export function isQuestion(message: string): boolean {
   const message_trimmed = message.trim().toLowerCase();

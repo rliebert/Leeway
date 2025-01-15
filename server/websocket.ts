@@ -210,7 +210,7 @@ export function setupWebSocketServer(server: Server) {
             // Send AI response as ai.rob
             const [aiMessage] = await db.insert(messages).values({
               channel_id: message.channelId,
-              user_id: aiRobUser.id,  // Use the actual UUID
+              user_id: aiRobUser.id,
               content: aiResponse,
               parent_id: null,
             }).returning();
