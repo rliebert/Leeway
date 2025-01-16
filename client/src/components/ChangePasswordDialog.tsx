@@ -43,11 +43,10 @@ export function ChangePasswordDialog({
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || "Failed to change password";
-        setError(errorMessage);
-        throw new Error(errorMessage);
+        setError(data.error);
+        return;
       }
 
       toast({ 
