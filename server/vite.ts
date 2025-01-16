@@ -84,21 +84,7 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(path.join(process.cwd(), "client"), {
-    setHeaders: (res, filePath) => {
-      if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      } else if (filePath.endsWith('.ts') || filePath.endsWith('.tsx')) {
-        res.setHeader('Content-Type', 'application/typescript; charset=utf-8');
-      } else if (filePath.endsWith('.svg')) {
-        res.setHeader('Content-Type', 'image/svg+xml');
-      }
-      // Add proper MIME type for ES modules
-      if (filePath.includes('main.tsx')) {
-        res.setHeader('Content-Type', 'text/javascript; charset=utf-8');
-      }
-    }
-  }));
+  app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist
   app.use("*", (_req, res) => {
