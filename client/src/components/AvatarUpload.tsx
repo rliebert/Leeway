@@ -11,7 +11,7 @@ interface AvatarUploadProps {
   onAvatarUpdate: (newAvatarUrl: string) => void;
 }
 
-export default function AvatarUpload({ userId, currentAvatar, username, onAvatarUpdate }: AvatarUploadProps) {
+export function AvatarUpload({ userId, currentAvatar, username, onAvatarUpdate }: AvatarUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 

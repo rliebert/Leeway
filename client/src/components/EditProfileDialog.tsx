@@ -58,7 +58,12 @@ export function EditProfileDialog({
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <AvatarUpload />
+          <AvatarUpload 
+            userId={user?.id} 
+            currentAvatar={user?.avatar_url}
+            username={user?.username || ''}
+            onAvatarUpdate={refreshUser}
+          />
           <div className="grid gap-2">
             <label htmlFor="username">Username</label>
             <Input
