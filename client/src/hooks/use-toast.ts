@@ -6,7 +6,8 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 2000 // 2 seconds
+const TOAST_DURATION = 2000 // 2 seconds for showing the toast
+const TOAST_REMOVE_DELAY = 1000 // 1 second fade out animation
 
 type ToasterToast = ToastProps & {
   id: string
@@ -158,7 +159,7 @@ function toast({ ...props }: Toast) {
       onOpenChange: (open) => {
         if (!open) dismiss()
       },
-      duration: 2000,
+      duration: TOAST_DURATION,
     },
   })
 
