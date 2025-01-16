@@ -45,7 +45,7 @@ export function ChangePasswordDialog({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || errorData.message || "Failed to change password");
+        throw new Error(errorData.error || "Failed to change password");
       }
 
       toast({ 
@@ -97,7 +97,7 @@ export function ChangePasswordDialog({
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>} {/* Added error display */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
