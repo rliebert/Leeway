@@ -56,15 +56,16 @@ export default function ChannelSidebar({
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-    select: (channels) => {
-      if (!selectedChannel && channels?.length > 0) {
-        const lastChannel = localStorage.getItem('lastSelectedChannel');
-        const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
-        onSelectChannel(defaultChannel.id);
-      }
-      return channels;
-    }
   });
+
+  // Handle default channel selection
+  useEffect(() => {
+    if (!selectedChannel && channels?.length > 0) {
+      const lastChannel = localStorage.getItem('lastSelectedChannel');
+      const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
+      onSelectChannel(defaultChannel.id);
+    }
+  }, [channels, selectedChannel, onSelectChannel]);
 
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
@@ -428,7 +429,9 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
       }`}
       onClick={() => {
         onSelect(channel.id.toString());
-        onSelectUser(''); // Clear selected user when selecting a channel
+        if (typeof onSelectUser === 'function') {
+          onSelectUser(''); // Clear selected user when selecting a channel
+        }
         window.history.pushState({}, '', '/');
       }}
     >
