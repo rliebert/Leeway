@@ -1,8 +1,8 @@
 
 -- Add creator_id and recipient_id columns
 ALTER TABLE dm_channels 
-ADD COLUMN creator_id INTEGER REFERENCES users(id),
-ADD COLUMN recipient_id INTEGER REFERENCES users(id);
+ADD COLUMN creator_id UUID REFERENCES users(id),
+ADD COLUMN recipient_id UUID REFERENCES users(id);
 
 -- Add unique constraint for creator/recipient pair
 ALTER TABLE dm_channels 
