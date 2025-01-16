@@ -22,6 +22,7 @@ export function EditProfileDialog({
   const { user, refreshUser } = useUser();
   const { toast } = useToast();
   const [username, setUsername] = useState(user?.username || "");
+  const [email, setEmail] = useState(user?.email || "");
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -31,7 +32,7 @@ export function EditProfileDialog({
       const response = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, full_name: fullName }),
+        body: JSON.stringify({ username, email, full_name: fullName }),
       });
 
       if (!response.ok) {
@@ -72,6 +73,15 @@ export function EditProfileDialog({
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <label htmlFor="email">Email</label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
