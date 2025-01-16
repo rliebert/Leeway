@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+// Separate schema for initial current password validation
+const currentPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string(),
+  confirmPassword: z.string(),
+});
+
+// Full schema for new password validation
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string()
@@ -44,17 +52,14 @@ export function ChangePasswordDialog({
   onClose: () => void;
 }) {
   const { toast } = useToast();
-  const [serverError, setServerError] = useState<string | null>(null);
-
   const form = useForm<ChangePasswordForm>({
-    resolver: zodResolver(changePasswordSchema),
+    resolver: zodResolver(currentPasswordSchema), // Start with basic validation
     defaultValues: {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     },
-    mode: "onBlur", // Validate on blur
-    reValidateMode: "onChange", // Show errors on change after first validation
+    mode: "onSubmit",
   });
 
   const verifyCurrentPassword = async (currentPassword: string) => {
@@ -66,46 +71,44 @@ export function ChangePasswordDialog({
       });
 
       if (!response.ok) {
-        form.setError("currentPassword", { 
-          message: "Current password is incorrect",
-          type: "manual" // Manual error takes precedence
-        });
         return false;
       }
       return true;
     } catch (error) {
-      form.setError("currentPassword", { 
-        message: "Failed to verify current password",
-        type: "manual"
-      });
       return false;
     }
   };
 
   const handleSubmit = async (values: ChangePasswordForm) => {
-    setServerError(null);
-    form.clearErrors(); // Clear any existing errors
+    // Clear any existing errors before starting validation
+    form.clearErrors();
 
     // Verify current password first
     const isCurrentPasswordValid = await verifyCurrentPassword(values.currentPassword);
     if (!isCurrentPasswordValid) {
-      return;
+      form.setError("currentPassword", { 
+        message: "Current password is incorrect"
+      });
+      return; // Stop here if current password is wrong
     }
 
+    // If current password is valid, validate the new password fields
     try {
+      // Validate against the full schema
+      const validatedData = changePasswordSchema.parse(values);
+
       const response = await fetch("/api/user/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentPassword: values.currentPassword,
-          newPassword: values.newPassword,
+          currentPassword: validatedData.currentPassword,
+          newPassword: validatedData.newPassword,
         }),
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        setServerError(data.error || "Failed to update password");
-        return;
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update password");
       }
 
       toast({ 
@@ -114,7 +117,21 @@ export function ChangePasswordDialog({
       form.reset();
       onClose();
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "An unexpected error occurred");
+      if (error instanceof z.ZodError) {
+        // Handle Zod validation errors
+        error.errors.forEach((err) => {
+          if (err.path) {
+            form.setError(err.path[0] as keyof ChangePasswordForm, {
+              message: err.message
+            });
+          }
+        });
+      } else {
+        // Set form-level error for API failures
+        form.setError("root", {
+          message: error instanceof Error ? error.message : "Failed to update password"
+        });
+      }
     }
   };
 
@@ -136,17 +153,6 @@ export function ChangePasswordDialog({
                     <Input 
                       type="password" 
                       {...field} 
-                      onBlur={async (e) => {
-                        field.onBlur(); // Call the default onBlur
-                        if (e.target.value) {
-                          await verifyCurrentPassword(e.target.value);
-                        }
-                      }}
-                      // Clear current password error when user starts typing again
-                      onChange={(e) => {
-                        field.onChange(e);
-                        form.clearErrors("currentPassword");
-                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -179,9 +185,10 @@ export function ChangePasswordDialog({
                 </FormItem>
               )}
             />
-            {serverError && (
-              <div className="text-sm font-medium text-destructive">
-                {serverError}
+            {/* Show form-level API errors */}
+            {form.formState.errors.root && (
+              <div className="text-sm text-destructive">
+                {form.formState.errors.root.message}
               </div>
             )}
             <div className="flex justify-end gap-2 pt-4">
