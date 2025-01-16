@@ -324,6 +324,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Avatar upload endpoint
+  app.post("/api/users/:userId/avatar", requireAuth, upload.single('avatar'), async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!user?.id || user.id !== req.params.userId) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      if (!req.file) {
+        return res.status(400).send("No file uploaded");
+      }
+
+      const avatarUrl = `/uploads/${req.file.filename}`;
+      
+      // Update user's avatar_url in database
+      await db
+        .update(users)
+        .set({ avatar_url: avatarUrl })
+        .where(eq(users.id, user.id));
+
+      res.json({ url: avatarUrl });
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      res.status(500).send("Failed to upload avatar");
+    }
+  });
+
   app.put("/api/user/profile", requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
@@ -345,19 +372,17 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Update user profile
-      await db
+      const [updatedUser] = await db
         .update(users)
         .set({ username, full_name })
-        .where(eq(users.id, user.id));
+        .where(eq(users.id, user.id))
+        .returning();
 
-      // Update session user data
-      req.login({
-        ...user,
-        username,
-        full_name,
-      }, (err) => {
+      // Update session with complete user data
+      req.login(updatedUser, (err) => {
         if (err) {
           console.error("Session update error:", err);
+          return res.status(500).send("Failed to update session");
         }
       });
 

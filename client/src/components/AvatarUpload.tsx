@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
 
 interface AvatarUploadProps {
-  userId: number;
+  userId?: string;
   currentAvatar?: string | null;
   username: string;
   onAvatarUpdate: (newAvatarUrl: string) => void;
