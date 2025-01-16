@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -22,9 +21,11 @@ export function ChangePasswordDialog({
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       if (newPassword !== confirmPassword) {
         throw new Error("New passwords don't match");
@@ -52,6 +53,7 @@ export function ChangePasswordDialog({
       });
       onClose();
     } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to update password");
       toast({
         variant: "destructive",
         description: error instanceof Error ? error.message : "Failed to update password",
@@ -95,6 +97,7 @@ export function ChangePasswordDialog({
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
+          {error && <p className="text-red-500 text-sm">{error}</p>} {/* Added error display */}
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
