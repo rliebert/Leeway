@@ -361,11 +361,21 @@ export function registerRoutes(app: Express): Server {
 
       const { currentPassword, newPassword } = req.body;
 
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Current password and new password are required" });
+      }
+
       const currentUser = await db.query.users.findFirst({
         where: eq(users.id, user.id)
       });
 
-      if (!currentUser || !await argon2.verify(currentUser.password, currentPassword)) {
+      if (!currentUser) {
+        console.error("User not found:", user.id);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isPasswordValid = await argon2.verify(currentUser.password, currentPassword);
+      if (!isPasswordValid) {
         return res.status(401).json({ error: "Current password is incorrect" });
       }
 
@@ -389,7 +399,8 @@ export function registerRoutes(app: Express): Server {
       res.status(200).json({ success: true });
     } catch (error) {
       console.error("Password change error:", error);
-      res.status(500).json({ error: "Failed to change password" });
+      const errorMessage = error instanceof Error ? error.message : "Failed to change password";
+      res.status(500).json({ error: errorMessage });
     }
   });
 
