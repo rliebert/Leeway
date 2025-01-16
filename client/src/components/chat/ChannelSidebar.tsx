@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -31,13 +30,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import DirectMessageSidebar from "./DirectMessageSidebar";
 
 interface Props {
   selectedChannel: string;
   onSelectChannel: (channelId: string) => void;
+  onSelectUser: (userId: string) => void;
+  selectedUserId?: string;
 }
 
-export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Props) {
+export default function ChannelSidebar({ 
+  selectedChannel, 
+  onSelectChannel,
+  onSelectUser,
+  selectedUserId 
+}: Props) {
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -393,6 +400,12 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
             </div>
           ))}
+
+          {/* Direct Messages Section */}
+          <DirectMessageSidebar 
+            onSelectUser={onSelectUser}
+            selectedUserId={selectedUserId}
+          />
         </div>
       </ScrollArea>
     </div>

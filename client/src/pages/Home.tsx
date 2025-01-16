@@ -11,7 +11,6 @@ import SearchMessages from "@/components/chat/SearchMessages";
 import UserProfile from "@/components/UserProfile";
 import type { Channel } from "@db/schema";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
 import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
 interface HomeProps {
@@ -22,7 +21,7 @@ interface HomeProps {
 export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
-  const [location] = useLocation();
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -33,10 +32,6 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   useEffect(() => {
     setLocalSelectedChannel(initialSelectedChannel);
   }, [initialSelectedChannel]);
-
-  // Extract DM channel ID from location if present
-  const dmMatch = location.match(/^\/dm\/(.+)/);
-  const dmChannelId = dmMatch ? dmMatch[1] : null;
 
   if (isLoading) {
     return (
@@ -50,7 +45,12 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
 
   const handleSelectChannel = (channelId: string) => {
     onSelectChannel(channelId);
-    window.history.pushState({}, '', '/');
+    setSelectedUserId(null); // Clear selected DM user when switching to a channel
+  };
+
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserId(userId);
+    setLocalSelectedChannel(null); // Clear selected channel when switching to DM
   };
 
   return (
@@ -75,13 +75,15 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
           <ChannelSidebar
             selectedChannel={localSelectedChannel || ""}
             onSelectChannel={handleSelectChannel}
+            onSelectUser={handleSelectUser}
+            selectedUserId={selectedUserId || undefined}
           />
           <UserProfile />
         </div>
 
         <div className="flex-1 flex flex-col">
-          {dmChannelId ? (
-            <DirectMessageView channelId={dmChannelId} />
+          {selectedUserId ? (
+            <DirectMessageView channelId={selectedUserId} />
           ) : (
             <>
               <div className="border-b px-6 py-3">

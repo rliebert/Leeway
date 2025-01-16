@@ -175,6 +175,7 @@ export const dmChannelsRelations = relations(dm_channels, ({ one }) => ({
   }),
 }));
 
+// Schema types
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 
