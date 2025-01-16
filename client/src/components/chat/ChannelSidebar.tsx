@@ -457,7 +457,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   <div
                     key={otherUser.id}
                     className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                    onClick={() => handleUserClick(otherUser.id)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleUserClick(otherUser.id);
+                    }}
                   >
                     <Avatar className="h-6 w-6 mr-2">
                       <AvatarImage src={otherUser.avatar_url || undefined} />
