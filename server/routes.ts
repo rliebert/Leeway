@@ -12,6 +12,7 @@ import type { User, Message, Channel, Section } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
+import argon2 from 'argon2'; // Assuming argon2 is used for password hashing
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -337,7 +338,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       const avatarUrl = `/uploads/${req.file.filename}`;
-      
+
       // Update user's avatar_url in database
       await db
         .update(users)
@@ -358,23 +359,39 @@ export function registerRoutes(app: Express): Server {
         return res.status(401).send("Unauthorized");
       }
 
-      const { username, full_name } = req.body;
-      
+      const { username, full_name, new_password, current_password } = req.body;
+
       // Check if username is taken
       if (username !== user.username) {
         const existing = await db.query.users.findFirst({
           where: eq(users.username, username),
         });
-        
+
         if (existing) {
           return res.status(400).send("Username already taken");
         }
       }
 
-      // Update user profile
+      const updateData: any = {
+        username,
+        full_name,
+      };
+
+      if (new_password) {
+        const currentUser = await db.query.users.findFirst({
+          where: eq(users.id, user.id)
+        });
+
+        if (!currentUser || !await argon2.verify(currentUser.password, current_password)) {
+          return res.status(401).send("Current password is incorrect");
+        }
+
+        updateData.password = await argon2.hash(new_password);
+      }
+
       const [updatedUser] = await db
         .update(users)
-        .set({ username, full_name })
+        .set(updateData)
         .where(eq(users.id, user.id))
         .returning();
 
@@ -404,4 +421,3 @@ export function registerRoutes(app: Express): Server {
 
   return httpServer;
 }
-

@@ -24,15 +24,30 @@ export function EditProfileDialog({
   const [username, setUsername] = useState(user?.username || "");
   const [email, setEmail] = useState(user?.email || "");
   const [fullName, setFullName] = useState(user?.full_name || "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
+      const data: any = { username, email, full_name: fullName };
+      if (newPassword) {
+        if (newPassword !== confirmPassword) {
+          throw new Error("New passwords don't match");
+        }
+        if (!currentPassword) {
+          throw new Error("Current password is required to change password");
+        }
+        data.current_password = currentPassword;
+        data.new_password = newPassword;
+      }
+      
       const response = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, full_name: fullName }),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -91,6 +106,36 @@ export function EditProfileDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+          </div>
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium">Change Password</h4>
+            <div className="grid gap-2">
+              <label htmlFor="currentPassword">Current Password</label>
+              <Input
+                id="currentPassword"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="newPassword">New Password</label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label htmlFor="confirmPassword">Confirm New Password</label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2">
