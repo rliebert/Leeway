@@ -214,11 +214,9 @@ export default function ChannelSidebar({
   const handleUserClick = async (userId: string) => {
     // Store last visited channel before navigating
     localStorage.setItem('lastSelectedChannel', selectedChannel);
-
-    // Use query client to navigate to DM view
-    queryClient.setQueryData(['currentDMUser'], userId);
+    onSelectUser(userId);
+    onSelectChannel(''); // Clear selected channel when starting a DM
     window.history.pushState({}, '', `/dm/${userId}`);
-    window.dispatchEvent(new Event('popstate'));
   };
 
   const handleCreateSection = () => {
@@ -430,6 +428,7 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
       }`}
       onClick={() => {
         onSelect(channel.id.toString());
+        onSelectUser(''); // Clear selected user when selecting a channel
         window.history.pushState({}, '', '/');
       }}
     >
