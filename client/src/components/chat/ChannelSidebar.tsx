@@ -67,7 +67,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     queryKey: ["/api/users"],
   });
 
-
   const [channelFormData, setChannelFormData] = useState<{
     name: string;
     description?: string;
@@ -206,20 +205,13 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   }, {} as Record<string | number, Channel[]>);
 
   const handleUserClick = async (userId: string) => {
-    try {
-      // Store last visited channel before navigating
-      localStorage.setItem('lastSelectedChannel', selectedChannel);
+    // Store last visited channel before navigating
+    localStorage.setItem('lastSelectedChannel', selectedChannel);
 
-      // Navigate to DM route and let DirectMessageView handle the channel creation/fetching
-      window.history.pushState({}, '', `/dm/${userId}`);
-      window.dispatchEvent(new Event('popstate')); // Trigger route update
-    } catch (error) {
-      console.error("Error handling user click:", error);
-      toast({
-        variant: "destructive",
-        description: error instanceof Error ? error.message : "Failed to open DM channel"
-      });
-    }
+    // Use query client to navigate to DM view
+    queryClient.setQueryData(['currentDMUser'], userId);
+    window.history.pushState({}, '', `/dm/${userId}`);
+    window.dispatchEvent(new Event('popstate'));
   };
 
   const handleCreateSection = () => {
@@ -233,9 +225,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
-        <div
-          className="flex items-center justify-between px-3 h-10 group"
-        >
+        <div className="flex items-center justify-between px-3 h-10 group">
           <div className="flex items-center flex-1">
             <Button
               variant="ghost"
@@ -247,10 +237,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-6 px-2 hover:bg-accent group flex items-center gap-1"
-                >
+                <Button variant="ghost" className="h-6 px-2 hover:bg-accent group flex items-center gap-1">
                   <span className="text-lg font-semibold">Channels</span>
                   <ChevronDown className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
@@ -406,47 +393,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
             </div>
           ))}
-
-          {/* Direct Messages Section */}
-          <div className="relative mt-8">
-            <div className="flex items-center justify-between h-10 group">
-              <div className="flex items-center flex-1 pl-[5px]">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 p-0 hover:bg-transparent"
-                  onClick={() => setIsDMExpanded(!isDMExpanded)}
-                >
-                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isDMExpanded ? 'rotate-90' : ''}`} />
-                </Button>
-                <span className="text-lg font-semibold ml-2">Direct Messages</span>
-              </div>
-            </div>
-
-            {/* Users List */}
-            {isDMExpanded && (
-              <div className="ml-4 space-y-1">
-                {users?.filter(u => u.id !== user?.id).map((otherUser) => (
-                  <div
-                    key={otherUser.id}
-                    className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleUserClick(otherUser.id);
-                    }}
-                  >
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={otherUser.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {otherUser.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="flex-1 text-sm">{otherUser.username}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </ScrollArea>
     </div>
