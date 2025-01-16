@@ -366,7 +366,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (!currentUser || !await argon2.verify(currentUser.password, currentPassword)) {
-        return res.status(401).json({ message: "Current password is incorrect" });
+        return res.status(401).json({ error: "Current password is incorrect" });
       }
 
       const [updatedUser] = await db
@@ -389,7 +389,7 @@ export function registerRoutes(app: Express): Server {
       res.status(200).json({ success: true });
     } catch (error) {
       console.error("Password change error:", error);
-      res.status(500).send("Failed to change password");
+      res.status(500).json({ error: "Failed to change password" });
     }
   });
 
