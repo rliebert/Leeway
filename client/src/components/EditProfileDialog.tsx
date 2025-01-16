@@ -183,12 +183,20 @@ export function EditProfileDialog({
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+          <div className="flex justify-center">
+            <Button 
+              variant="link" 
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="text-muted-foreground hover:text-primary"
+            >
+              Change Password
+            </Button>
+          </div>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => setIsChangePasswordOpen(true)}>Change Password</Button> {/*Button to open modal*/}
           <Button onClick={handleSubmit} disabled={isLoading}>
             {isLoading ? "Saving..." : "Save Changes"}
           </Button>
