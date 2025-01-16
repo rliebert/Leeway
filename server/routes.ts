@@ -352,6 +352,47 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/user/change-password", requireAuth, async (req, res) => {
+    try {
+      const user = req.user as User;
+      if (!user?.id) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      const currentUser = await db.query.users.findFirst({
+        where: eq(users.id, user.id)
+      });
+
+      if (!currentUser || !await argon2.verify(currentUser.password, currentPassword)) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+
+      const [updatedUser] = await db
+        .update(users)
+        .set({ password: await argon2.hash(newPassword) })
+        .where(eq(users.id, user.id))
+        .returning();
+
+      await new Promise((resolve, reject) => {
+        req.login(updatedUser, (err) => {
+          if (err) {
+            console.error("Session update error:", err);
+            reject(err);
+          } else {
+            resolve(true);
+          }
+        });
+      });
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Password change error:", error);
+      res.status(500).send("Failed to change password");
+    }
+  });
+
   app.put("/api/user/profile", requireAuth, async (req, res) => {
     try {
       const user = req.user as User;
@@ -359,7 +400,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(401).send("Unauthorized");
       }
 
-      const { username, full_name, new_password, current_password } = req.body;
+      const { username, full_name, email } = req.body;
 
       // Check if username is taken
       if (username !== user.username) {
@@ -372,26 +413,9 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-      const updateData: any = {
-        username,
-        full_name,
-      };
-
-      if (new_password) {
-        const currentUser = await db.query.users.findFirst({
-          where: eq(users.id, user.id)
-        });
-
-        if (!currentUser || !await argon2.verify(currentUser.password, current_password)) {
-          return res.status(401).send("Current password is incorrect");
-        }
-
-        updateData.password = await argon2.hash(new_password);
-      }
-
       const [updatedUser] = await db
         .update(users)
-        .set(updateData)
+        .set({ username, full_name, email })
         .where(eq(users.id, user.id))
         .returning();
 
