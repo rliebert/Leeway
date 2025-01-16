@@ -61,6 +61,14 @@ export function EditProfileDialog({
           <DialogTitle>Edit Profile</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <label htmlFor="fullName">Full Name</label>
+            <Input
+              id="fullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
           <AvatarUpload 
             userId={user?.id} 
             currentAvatar={user?.avatar_url}
@@ -82,14 +90,6 @@ export function EditProfileDialog({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <label htmlFor="fullName">Full Name</label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
             />
           </div>
         </div>
