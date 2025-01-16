@@ -12,7 +12,28 @@ import type { User, Message, Channel, Section } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import { v4 as uuidv4 } from "uuid";
-import argon2 from 'argon2'; // Assuming argon2 is used for password hashing
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
+
+const crypto = {
+  hash: async (password: string) => {
+    const salt = randomBytes(16).toString("hex");
+    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+    return `${buf.toString("hex")}.${salt}`;
+  },
+  compare: async (suppliedPassword: string, storedPassword: string) => {
+    const [hashedPassword, salt] = storedPassword.split(".");
+    const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
+    const suppliedPasswordBuf = (await scryptAsync(
+      suppliedPassword,
+      salt,
+      64
+    )) as Buffer;
+    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+  },
+};
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -374,14 +395,14 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const isPasswordValid = await argon2.verify(currentUser.password, currentPassword);
+      const isPasswordValid = await crypto.compare(currentPassword, currentUser.password);
       if (!isPasswordValid) {
         return res.status(401).json({ error: "Current password is incorrect" });
       }
 
       const [updatedUser] = await db
         .update(users)
-        .set({ password: await argon2.hash(newPassword) })
+        .set({ password: await crypto.hash(newPassword) })
         .where(eq(users.id, user.id))
         .returning();
 
