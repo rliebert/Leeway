@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import type { Message, User as UserType } from "@db/schema";
 import MessageComponent from "./Message";
 import ChatInput from "./ChatInput";
@@ -32,20 +32,20 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const [, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
 
-  const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
+  const { data: channel } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
     enabled: !!channelId,
     retry: false,
-    onError: (err: Error) => {
+    onError: (err) => {
       toast({
         variant: "destructive",
-        description: err.message || "Failed to load DM channel",
+        description: err instanceof Error ? err.message : "Failed to load DM channel",
       });
       setLocation("/");
     },
   });
 
-  const otherUser = channel?.participants?.find((p: Participant) => p.id !== user?.id);
+  const otherUser = channel?.participants?.find((p: UserType) => p.id !== user?.id);
 
   useEffect(() => {
     if (!channelId) return;
@@ -79,35 +79,6 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   // Filter messages for this DM channel
   const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
-  const handleUserClick = async (userId: string) => {
-    try {
-      // Check for existing DM channel
-      const response = await fetch(`/api/dm/channels?userId=${userId}`);
-      if (response.ok) {
-        const channel = await response.json();
-        onSelectChannel(channel.id); // Open existing channel
-      } else if (response.status === 404) {
-        // Create a new DM channel if none exists
-        createDMMutation.mutate(userId, {
-          onSuccess: (newChannel) => {
-            onSelectChannel(newChannel.id); // Open new channel
-          },
-        });
-      }
-    } catch (error) {
-      console.error("Error handling user click:", error);
-      toast({ variant: "destructive", description: "Failed to open DM channel" });
-    }
-  };
-
-  if (isError) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-destructive">Error: {error?.message}</p>
-      </div>
-    );
-  }
-
   if (!channel || !otherUser) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -140,14 +111,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
           {channelMessages.map((message) => (
             <MessageComponent
               key={message.id}
-              message={{
-                ...message,
-                attachments: message.attachments?.map(att => ({
-                  url: att.file_url,
-                  originalName: att.file_name,
-                  mimetype: att.file_type
-                }))
-              }}
+              message={message}
             />
           ))}
         </div>

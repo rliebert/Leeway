@@ -11,7 +11,7 @@ import SearchMessages from "@/components/chat/SearchMessages";
 import UserProfile from "@/components/UserProfile";
 import type { Channel } from "@db/schema";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 import ConnectionStatus from "@/components/chat/ConnectionStatus";
 
 interface HomeProps {
@@ -22,7 +22,7 @@ interface HomeProps {
 export default function Home({ selectedChannel: initialSelectedChannel, onSelectChannel }: HomeProps) {
   const { user, isLoading } = useUser();
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
-  const [selectedDM, setSelectedDM] = useState<string | null>(null);
+  const [location] = useLocation();
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -34,6 +34,10 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
     setLocalSelectedChannel(initialSelectedChannel);
   }, [initialSelectedChannel]);
 
+  // Extract DM channel ID from location if present
+  const dmMatch = location.match(/^\/dm\/(.+)/);
+  const dmChannelId = dmMatch ? dmMatch[1] : null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -44,14 +48,9 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
 
   if (!user) return null;
 
-  const handleSelectDM = (dmId: string) => {
-    setSelectedDM(dmId);
-    setLocalSelectedChannel(null);
-  };
-
   const handleSelectChannel = (channelId: string) => {
     onSelectChannel(channelId);
-    setSelectedDM(null);
+    window.history.pushState({}, '', '/');
   };
 
   return (
@@ -81,8 +80,8 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
         </div>
 
         <div className="flex-1 flex flex-col">
-          {selectedDM ? (
-            <DirectMessageView channelId={selectedDM} />
+          {dmChannelId ? (
+            <DirectMessageView channelId={dmChannelId} />
           ) : (
             <>
               <div className="border-b px-6 py-3">
