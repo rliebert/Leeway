@@ -1,7 +1,1 @@
-- [✅] Set up server-side endpoint to check for existing DM channels.
-- [✅] Set up server-side endpoint to create new DM channels.
-- [✅] Update DirectMessageView to handle user clicks and open DM channels.
-- [✅] Implement logic to check for existing DM channels on user click.
-- [✅] Implement logic to create new DM channels if none exist.
-- [✅] Update UI to display the selected DM channel in the chat area.
-- [❌] Test the feature to ensure it works as expected. 
+ 

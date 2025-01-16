@@ -65,7 +65,7 @@ export const messages = pgTable("messages", {
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   pinned_by: uuid("pinned_by").references(() => users.id),
   pinned_at: timestamp("pinned_at"),
-  parent_id: uuid("parent_id").references(() => messages.id),
+  parent_id: uuid("parent_id"), // Remove circular reference
 });
 
 export const message_embeddings = pgTable("message_embeddings", {
@@ -97,7 +97,6 @@ export const dm_channels = pgTable("dm_channels", {
   name: text("name").unique().notNull(),
   description: text("description"),
   creator_id: uuid("creator_id").references(() => users.id),
-  recipient_id: uuid("recipient_id").references(() => users.id),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   order_index: integer("order_index").notNull().default(0),
 });
@@ -110,6 +109,7 @@ export const channel_subscriptions = pgTable("channel_subscriptions", {
   subscribed_at: timestamp("subscribed_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),
   created_channels: many(channels, { relationName: "creator" }),
@@ -164,21 +164,11 @@ export const fileAttachmentsRelations = relations(
   }),
 );
 
-export const dmChannelsRelations = relations(dm_channels, ({ one }) => ({
-  creator: one(users, {
-    fields: [dm_channels.creator_id],
-    references: [users.id],
-  }),
-  recipient: one(users, {
-    fields: [dm_channels.recipient_id],
-    references: [users.id],
-  }),
-}));
-
-// Schema types
+// Export schemas for validation
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 
+// Export types
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type FileAttachment = typeof file_attachments.$inferSelect;
@@ -194,5 +184,3 @@ export type Section = typeof sections.$inferSelect & {
   creator?: User;
   channels?: Channel[];
 };
-export type DMChannel = typeof dm_channels.$inferSelect;
-export type InsertDMChannel = typeof dm_channels.$inferInsert;

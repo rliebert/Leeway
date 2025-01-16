@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -30,21 +31,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import DirectMessageSidebar from "./DirectMessageSidebar";
 
 interface Props {
   selectedChannel: string;
   onSelectChannel: (channelId: string) => void;
-  onSelectUser: (userId: string) => void;
-  selectedUserId?: string;
 }
 
-export default function ChannelSidebar({ 
-  selectedChannel, 
-  onSelectChannel,
-  onSelectUser,
-  selectedUserId 
-}: Props) {
+export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Props) {
   const { user } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -52,20 +45,20 @@ export default function ChannelSidebar({
   const [isDMExpanded, setIsDMExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-  });
-
-  // Handle default channel selection
-  useEffect(() => {
-    if (!selectedChannel && channels?.length > 0) {
-      const lastChannel = localStorage.getItem('lastSelectedChannel');
-      const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
-      onSelectChannel(defaultChannel.id);
+    select: (channels) => {
+      if (!selectedChannel && channels?.length > 0) {
+        const lastChannel = localStorage.getItem('lastSelectedChannel');
+        const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
+        onSelectChannel(defaultChannel.id);
+      }
+      return channels;
     }
-  }, [channels, selectedChannel, onSelectChannel]);
+  });
 
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
@@ -73,6 +66,21 @@ export default function ChannelSidebar({
 
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
+  });
+
+  const createDMMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const response = await fetch("/api/dm/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Direct message channel created" });
+    },
   });
 
   const [channelFormData, setChannelFormData] = useState<{
@@ -103,6 +111,14 @@ export default function ChannelSidebar({
       setSectionName("");
     },
   });
+
+  const handleCreateSection = () => {
+    if (!sectionName.trim()) {
+      toast({ variant: "destructive", description: "Section name is required" });
+      return;
+    }
+    createSectionMutation.mutate(sectionName);
+  };
 
   // Reset form when dialog closes
   const handleDialogChange = (open: boolean) => {
@@ -212,30 +228,16 @@ export default function ChannelSidebar({
     return acc;
   }, {} as Record<string | number, Channel[]>);
 
-  const handleUserClick = async (userId: string) => {
-    // Store last visited channel before navigating
-    localStorage.setItem('lastSelectedChannel', selectedChannel);
-    onSelectUser(userId);
-    onSelectChannel(''); // Clear selected channel when starting a DM
-    window.history.pushState({}, '', `/dm/${userId}`);
-  };
-
-  const handleCreateSection = () => {
-    if (!sectionName.trim()) {
-      toast({ variant: "destructive", description: "Section name is required" });
-      return;
-    }
-    createSectionMutation.mutate(sectionName);
-  };
-
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
-        <div className="flex items-center justify-between px-3 h-10 group">
+        <div
+          className="flex items-center justify-between px-3 h-10 group"
+        >
           <div className="flex items-center flex-1">
-            <Button
-              variant="ghost"
-              size="icon"
+            <Button 
+              variant="ghost" 
+              size="icon" 
               className="h-6 w-6 p-0 hover:bg-transparent"
               onClick={() => setIsChannelsExpanded(!isChannelsExpanded)}
             >
@@ -243,22 +245,25 @@ export default function ChannelSidebar({
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-6 px-2 hover:bg-accent group flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  className="h-6 px-2 hover:bg-accent group flex items-center gap-1"
+                >
                   <span className="text-lg font-semibold">Channels</span>
                   <ChevronDown className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => setIsDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Channel
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setIsSectionDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Section
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onSelect={() => setIsDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Channel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setIsSectionDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Section
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
           </div>
         </div>
 
@@ -269,8 +274,8 @@ export default function ChannelSidebar({
                 {editingChannel ? 'Edit Channel' : 'Create New Channel'}
               </DialogTitle>
               <DialogDescription>
-                {editingChannel
-                  ? 'Edit the channel details below.'
+                {editingChannel 
+                  ? 'Edit the channel details below.' 
                   : 'Create a new channel for team communication.'}
               </DialogDescription>
             </DialogHeader>
@@ -297,10 +302,10 @@ export default function ChannelSidebar({
                 <Label htmlFor="section">Section</Label>
                 <Select
                   value={channelFormData.section_id || ''}
-                  onValueChange={(value) =>
-                    setChannelFormData(prev => ({
-                      ...prev,
-                      section_id: value === 'none' ? null : value
+                  onValueChange={(value) => 
+                    setChannelFormData(prev => ({ 
+                      ...prev, 
+                      section_id: value === 'none' ? null : value 
                     }))
                   }
                 >
@@ -372,39 +377,71 @@ export default function ChannelSidebar({
           {/* Sections with their channels */}
           {sections?.map((section) => (
             <div key={section.id} className="mt-3">
-              <div
+              <div 
                 className="flex items-center pl-[11px] pr-2 mb-1 cursor-pointer hover:bg-accent/50 rounded-md"
                 onClick={() => toggleSection(section.id)}
               >
-                <ChevronRight
+                <ChevronRight 
                   className={`h-4 w-4 mr-1 transition-transform ${
                     expandedSections[section.id] ? 'rotate-90' : ''
-                  }`}
+                  }`} 
                 />
                 <span className="text-sm font-medium">{section.name}</span>
               </div>
               <div className="ml-6">
-                {channelsBySection?.[section.id]?.map((channel: Channel) =>
+                {channelsBySection?.[section.id]?.map((channel: Channel) => 
                   (expandedSections[section.id] || channel.id.toString() === selectedChannel) &&
-                  <ChannelItem
-                    key={channel.id}
-                    channel={channel}
-                    isSelected={selectedChannel === channel.id.toString()}
-                    onSelect={onSelectChannel}
-                    onEdit={() => handleEditChannel(channel)}
-                    onDelete={() => handleDeleteChannel(channel.id)}
-                    isCreator={channel.creator_id === user?.id}
-                  />
+                    <ChannelItem
+                      key={channel.id}
+                      channel={channel}
+                      isSelected={selectedChannel === channel.id.toString()}
+                      onSelect={onSelectChannel}
+                      onEdit={() => handleEditChannel(channel)}
+                      onDelete={() => handleDeleteChannel(channel.id)}
+                      isCreator={channel.creator_id === user?.id}
+                    />
                 )}
               </div>
             </div>
           ))}
 
           {/* Direct Messages Section */}
-          <DirectMessageSidebar 
-            onSelectUser={onSelectUser}
-            selectedUserId={selectedUserId}
-          />
+          <div className="relative mt-8">
+            <div className="flex items-center justify-between h-10 group">
+              <div className="flex items-center flex-1 pl-[5px]">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 p-0 hover:bg-transparent"
+                  onClick={() => setIsDMExpanded(!isDMExpanded)}
+                >
+                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isDMExpanded ? 'rotate-90' : ''}`} />
+                </Button>
+                <span className="text-lg font-semibold ml-2">Direct Messages</span>
+              </div>
+            </div>
+
+            {/* Users List */}
+            {isDMExpanded && (
+              <div className="ml-4 space-y-1">
+                {users?.filter(u => u.id !== user?.id).map((otherUser) => (
+                  <div
+                    key={otherUser.id}
+                    className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
+                    onClick={() => createDMMutation.mutate(otherUser.id)}
+                  >
+                    <Avatar className="h-6 w-6 mr-2">
+                      <AvatarImage src={otherUser.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {otherUser.username[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 text-sm">{otherUser.username}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </ScrollArea>
     </div>
@@ -428,12 +465,9 @@ function ChannelItem({ channel, isSelected, onSelect, onEdit, onDelete, isCreato
         isSelected ? 'bg-blue-50 dark:bg-blue-900/50' : ''
       }`}
       onClick={() => {
-        onSelect(channel.id.toString());
-        if (typeof onSelectUser === 'function') {
-          onSelectUser(''); // Clear selected user when selecting a channel
-        }
-        window.history.pushState({}, '', '/');
-      }}
+  onSelect(channel.id.toString());
+  window.history.pushState({}, '', '/');
+}}
     >
       <Hash className="h-4 w-4 mr-2 text-gray-500" />
       <span className="flex-1 text-sm">{channel.name}</span>

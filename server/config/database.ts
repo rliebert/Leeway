@@ -1,4 +1,3 @@
-
 import { drizzle } from "drizzle-orm/neon-http";
 import { neon, neonConfig } from "@neondatabase/serverless";
 import * as schema from "@db/schema";
@@ -10,45 +9,53 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Configure neon with connection pooling and caching
+// Configure neon with connection caching
 neonConfig.fetchConnectionCache = true;
-neonConfig.webSocketConstructor = ws;
-neonConfig.pipelineConnect = false; // Disable pipelining for more stable connections
 
-// Use connection pooling URL
-const poolUrl = process.env.DATABASE_URL.replace('.us-east-2', '-pooler.us-east-2');
+// Create a SQL connection
+const sql = neon(process.env.DATABASE_URL);
 
-// Create a SQL connection with retries
-const sql = neon(poolUrl);
-
-// Export the database instance with logging
+// Export the database instance
 export const db = drizzle(sql, {
   schema,
   logger: true
 });
 
-// Helper function to check database connection with retries
-export async function checkDatabaseConnection(maxRetries = 5) {
+// Helper function to check database connection
+export async function checkDatabaseConnection() {
+  try {
+    const result = await sql`SELECT NOW()`;
+    return true;
+  } catch (error) {
+    console.error("Database connection error:", error);
+    return false;
+  }
+}
+
+// Initialize database with retries
+export async function initializeDatabase(maxRetries = 3) {
   let attempts = 0;
   while (attempts < maxRetries) {
     try {
-      const result = await sql`SELECT NOW()`;
-      console.log("Database connection successful");
+      await sql`SELECT 1`;
+      console.log(
+        `Database connection established successfully after ${attempts + 1} attempts`,
+      );
       return true;
     } catch (error) {
       attempts++;
       if (attempts === maxRetries) {
-        console.error("Failed to connect to database after maximum retries:", error);
-        return false;
+        console.error(
+          "Failed to connect to database after maximum retries:",
+          error,
+        );
+        throw error;
       }
-      console.log(`Retrying database connection (attempt ${attempts}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+      console.log(
+        `Retrying database connection (attempt ${attempts + 1}/${maxRetries})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
     }
   }
   return false;
-}
-
-// Initialize database with automatic retries
-export async function initializeDatabase(maxRetries = 5) {
-  return checkDatabaseConnection(maxRetries);
 }

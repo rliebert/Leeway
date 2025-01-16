@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { Message, User as UserType } from "@db/schema";
 import MessageComponent from "./Message";
 import ChatInput from "./ChatInput";
@@ -32,20 +32,20 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const [, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
 
-  const { data: channel } = useQuery<DirectMessageChannel>({
+  const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
     enabled: !!channelId,
     retry: false,
-    onError: (err) => {
+    onError: (err: Error) => {
       toast({
         variant: "destructive",
-        description: err instanceof Error ? err.message : "Failed to load DM channel",
+        description: err.message || "Failed to load DM channel",
       });
       setLocation("/");
     },
   });
 
-  const otherUser = channel?.participants?.find((p: UserType) => p.id !== user?.id);
+  const otherUser = channel?.participants?.find((p: Participant) => p.id !== user?.id);
 
   useEffect(() => {
     if (!channelId) return;
@@ -79,6 +79,14 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   // Filter messages for this DM channel
   const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
+  if (isError) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-destructive">Error: {error?.message}</p>
+      </div>
+    );
+  }
+
   if (!channel || !otherUser) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -111,7 +119,14 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
           {channelMessages.map((message) => (
             <MessageComponent
               key={message.id}
-              message={message}
+              message={{
+                ...message,
+                attachments: message.attachments?.map(att => ({
+                  url: att.file_url,
+                  originalName: att.file_name,
+                  mimetype: att.file_type
+                }))
+              }}
             />
           ))}
         </div>
