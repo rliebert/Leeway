@@ -324,16 +324,17 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.put("/api/user/profile", async (req, res) => {
+  app.put("/api/user/profile", requireAuth, async (req, res) => {
     try {
-      if (!req.session.user?.id) {
+      const user = req.user as User;
+      if (!user?.id) {
         return res.status(401).send("Unauthorized");
       }
 
       const { username, full_name } = req.body;
       
       // Check if username is taken
-      if (username !== req.session.user.username) {
+      if (username !== user.username) {
         const existing = await db.query.users.findFirst({
           where: eq(users.username, username),
         });
@@ -347,14 +348,18 @@ export function registerRoutes(app: Express): Server {
       await db
         .update(users)
         .set({ username, full_name })
-        .where(eq(users.id, req.session.user.id));
+        .where(eq(users.id, user.id));
 
-      // Update session
-      req.session.user = {
-        ...req.session.user,
+      // Update session user data
+      req.login({
+        ...user,
         username,
         full_name,
-      };
+      }, (err) => {
+        if (err) {
+          console.error("Session update error:", err);
+        }
+      });
 
       res.status(200).json({ success: true });
     } catch (error) {
