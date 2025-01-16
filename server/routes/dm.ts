@@ -40,10 +40,14 @@ router.get("/users/search", async (req, res) => {
 
 // Add endpoint to check for existing DM channels
 router.get("/dm/channels", async (req, res) => {
-  if (!req.user) return res.status(401).send("Not authenticated");
+  if (!req.user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
-  const { userId } = req.query;
-  if (!userId) return res.status(400).send("User ID is required");
+  const userId = req.query.userId?.toString();
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
 
   try {
     const existingChannel = await db
@@ -63,11 +67,14 @@ router.get("/dm/channels", async (req, res) => {
       )
       .first();
 
-    if (existingChannel) return res.json(existingChannel);
-    return res.status(404).send("No existing DM channel found");
+    if (!existingChannel) {
+      return res.status(404).json({ error: "No DM channel found" });
+    }
+
+    return res.json(existingChannel);
   } catch (error) {
-    console.error("Error checking DM channel:", error);
-    return res.status(500).send("Internal server error");
+    console.error("Error finding DM channel:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
