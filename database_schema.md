@@ -44,6 +44,21 @@
 - content: text (not null)
 - created_at: timestamp
 
+## DM Channels Table (public.dm_channels)
+- id: serial (primary key)
+- name: text (unique, not null)
+- description: text
+- creator_id: integer REFERENCES users.id
+- created_at: timestamp
+- order_index: integer (not null, default 0)
+
+## Channel Subscriptions Table (public.channel_subscriptions)
+- id: serial (primary key)
+- user_id: integer REFERENCES users.id
+- channel_id: integer REFERENCES channels.id
+- dm_channel_id: integer REFERENCES dm_channels.id
+- subscribed_at: timestamp
+
 ## Authentication Notes
 - Using Passport.js local strategy for authentication
 - Passwords are hashed using scrypt before storage

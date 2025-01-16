@@ -21,6 +21,7 @@ export interface Message {
   author?: {
     username: string;
     avatar_url: string;
+    full_name?: string | null;
   };
   attachments?: FileAttachment[];
   type?: 'message' | 'message_deleted' | 'message_edited';
@@ -41,6 +42,7 @@ export interface WSMessage {
   tempId?: string; // For optimistic updates
   userId?: string;
   originalContent?: string;
+  deletedAttachments?: string[];
 }
 
 export type WSContextType = {

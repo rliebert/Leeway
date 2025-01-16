@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Form,
   FormControl,
@@ -20,29 +19,11 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-// Separate schema for initial current password validation
-const currentPasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string(),
-  confirmPassword: z.string(),
-});
-
-// Full schema for new password validation
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .max(100, "Password cannot exceed 100 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-}).refine((data) => data.currentPassword !== data.newPassword, {
-  message: "New password must be different from current password",
-  path: ["newPassword"],
-});
-
-type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
+type ChangePasswordForm = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+};
 
 export function ChangePasswordDialog({
   isOpen,
@@ -53,85 +34,79 @@ export function ChangePasswordDialog({
 }) {
   const { toast } = useToast();
   const form = useForm<ChangePasswordForm>({
-    resolver: zodResolver(currentPasswordSchema), // Start with basic validation
     defaultValues: {
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     },
-    mode: "onSubmit",
   });
 
-  const verifyCurrentPassword = async (currentPassword: string) => {
-    try {
-      const response = await fetch("/api/user/verify-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword }),
-      });
-
-      if (!response.ok) {
-        return false;
-      }
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-
   const handleSubmit = async (values: ChangePasswordForm) => {
-    // Clear any existing errors before starting validation
     form.clearErrors();
 
-    // Verify current password first
-    const isCurrentPasswordValid = await verifyCurrentPassword(values.currentPassword);
-    if (!isCurrentPasswordValid) {
-      form.setError("currentPassword", { 
-        message: "Current password is incorrect"
-      });
-      return; // Stop here if current password is wrong
+    // Validate new password fields first
+    const newPasswordErrors = [];
+
+    if (!values.newPassword) {
+      newPasswordErrors.push("New password is required");
+    } else {
+      if (values.newPassword.length < 8) {
+        newPasswordErrors.push("Password must be at least 8 characters");
+      }
+      if (values.newPassword.length > 100) {
+        newPasswordErrors.push("Password cannot exceed 100 characters");
+      }
+      if (values.newPassword === values.currentPassword) {
+        newPasswordErrors.push("New password must be different from current password");
+      }
     }
 
-    // If current password is valid, validate the new password fields
-    try {
-      // Validate against the full schema
-      const validatedData = changePasswordSchema.parse(values);
+    if (newPasswordErrors.length > 0) {
+      form.setError("newPassword", { message: newPasswordErrors[0] });
+      return;
+    }
 
+    if (!values.confirmPassword) {
+      form.setError("confirmPassword", { message: "Please confirm your password" });
+      return;
+    }
+
+    if (values.newPassword !== values.confirmPassword) {
+      form.setError("confirmPassword", { message: "Passwords don't match" });
+      return;
+    }
+
+    try {
       const response = await fetch("/api/user/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          currentPassword: validatedData.currentPassword,
-          newPassword: validatedData.newPassword,
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update password");
+      const data = await response.json();
+      
+      if (data.error === "Invalid current password") {
+        form.setError("currentPassword", { 
+          message: "Current password is incorrect" 
+        });
+        return;
       }
 
-      toast({ 
-        description: "Password updated successfully"
-      });
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
+
+      toast({ description: "Password updated successfully" });
       form.reset();
       onClose();
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        // Handle Zod validation errors
-        error.errors.forEach((err) => {
-          if (err.path) {
-            form.setError(err.path[0] as keyof ChangePasswordForm, {
-              message: err.message
-            });
-          }
-        });
-      } else {
-        // Set form-level error for API failures
-        form.setError("root", {
-          message: error instanceof Error ? error.message : "Failed to update password"
-        });
-      }
+      toast({ 
+        variant: "destructive",
+        description: error instanceof Error ? error.message : "Failed to update password"
+      });
     }
   };
 
@@ -150,10 +125,7 @@ export function ChangePasswordDialog({
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="password" 
-                      {...field} 
-                    />
+                    <Input type="password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,7 +157,6 @@ export function ChangePasswordDialog({
                 </FormItem>
               )}
             />
-            {/* Show form-level API errors */}
             {form.formState.errors.root && (
               <div className="text-sm text-destructive">
                 {form.formState.errors.root.message}

@@ -92,6 +92,23 @@ export const file_attachments = pgTable("file_attachments", {
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const dm_channels = pgTable("dm_channels", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").unique().notNull(),
+  description: text("description"),
+  creator_id: uuid("creator_id").references(() => users.id),
+  created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  order_index: integer("order_index").notNull().default(0),
+});
+
+export const channel_subscriptions = pgTable("channel_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  user_id: uuid("user_id").references(() => users.id).notNull(),
+  channel_id: uuid("channel_id").references(() => channels.id),
+  dm_channel_id: uuid("dm_channel_id").references(() => dm_channels.id),
+  subscribed_at: timestamp("subscribed_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   messages: many(messages),

@@ -23,7 +23,12 @@ interface ThreadModalProps {
   onOpenChange: (open: boolean) => void;
   parentMessage: Message & {
     author?: { username: string; avatar_url?: string | null };
-    attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
+    attachments?: Array<{
+      url: string;
+      originalName: string;
+      mimetype: string;
+      // Add any other properties needed for consistency
+    }>;
     channel_id: string;
   };
 }

@@ -28,14 +28,28 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
 
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const response = await fetch("/api/dm/channels", {
-        method: "POST",
+      const response = await fetch(`/api/dm/channels?userId=${userId}`, {
+        method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ userId }),
       });
 
       if (!response.ok) {
+        if (response.status === 404) {
+          // If no existing channel, create a new one
+          const createResponse = await fetch("/api/dm/channels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ userId }),
+          });
+
+          if (!createResponse.ok) {
+            throw new Error(await createResponse.text());
+          }
+
+          return createResponse.json();
+        }
         throw new Error(await response.text());
       }
 
@@ -44,19 +58,14 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
     onSuccess: (data) => {
       if (data?.id) {
         onSelectDM(data.id);
-        // Update route without page reload
-        const newUrl = `/dm/${data.id}`;
-        if (window.location.pathname !== newUrl) {
-          window.history.pushState({}, '', newUrl);
-        }
+        setLocation(`/dm/${data.id}`);
       }
-      toast({ description: "Direct message channel opened" });
       queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create chat",
+        description: error.message || "Failed to create or open chat",
         variant: "destructive",
       });
     },

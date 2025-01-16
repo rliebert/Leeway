@@ -50,12 +50,13 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-    onSuccess: (channels) => {
+    select: (channels) => {
       if (!selectedChannel && channels?.length > 0) {
         const lastChannel = localStorage.getItem('lastSelectedChannel');
         const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
         onSelectChannel(defaultChannel.id);
       }
+      return channels;
     }
   });
 
@@ -359,7 +360,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
           {/* Channels Section */}
           {isChannelsExpanded && (
             <div className="ml-4">
-              {channelsBySection?.uncategorized?.map((channel) => (
+              {channelsBySection?.uncategorized?.map((channel: Channel) => (
                 <ChannelItem
                   key={channel.id}
                   channel={channel}
@@ -388,7 +389,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 <span className="text-sm font-medium">{section.name}</span>
               </div>
               <div className="ml-6">
-                {channelsBySection?.[section.id]?.map((channel) => 
+                {channelsBySection?.[section.id]?.map((channel: Channel) => 
                   (expandedSections[section.id] || channel.id.toString() === selectedChannel) &&
                     <ChannelItem
                       key={channel.id}

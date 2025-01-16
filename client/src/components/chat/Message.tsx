@@ -14,19 +14,40 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface FileAttachment {
   id: string;
-  url: string;
-  originalName: string;
-  mimetype: string;
+  url?: string;
+  originalName?: string;
+  mimetype?: string;
   file_size: number;
   file_url?: string;
   file_type?: string;
+  file_name?: string;
+}
+
+interface Author {
+  full_name?: string | null;
+  username: string;
+  avatar_url?: string | null;
 }
 
 interface MessageProps {
   message: MessageType & {
-    author?: { username: string; avatar_url?: string | null };
+    tempId?: string;
+    author?: Author;
     attachments?: FileAttachment[];
   };
+}
+
+interface WSMessage {
+  type: string;
+  channelId: string;
+  messageId: string;
+  content?: string;
+  deletedAttachments?: string[];
+  // ... other properties
+}
+
+function isImageFile(type?: string): boolean {
+  return type ? type.startsWith('image/') : false;
 }
 
 const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
@@ -84,7 +105,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
   }, [message.content]);
 
   const { data: replies = [] } = useQuery<(MessageType & {
-    author?: { username: string; avatar_url?: string | null };
+    author?: Author;
     attachments?: FileAttachment[];
   })[]>({
     queryKey: [`/api/messages/${message.id}/replies`],
@@ -117,10 +138,6 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
     let fileUrl = attachment.file_url || attachment.url || '';
     fileUrl = fileUrl.replace(/^\/uploads\//, '').replace(/^uploads\//, '');
     return `${baseUrl}/uploads/${fileUrl}`;
-  };
-
-  const isImageFile = (mimetype?: string): boolean => {
-    return mimetype ? mimetype.startsWith('image/') : false;
   };
 
   const formatTimestamp = (date: string | Date | null): string => {
@@ -218,7 +235,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
             if (!oldData) return [];
             return oldData.map((msg: any) => 
               msg.id === message.id 
-                ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
+                ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter((a: FileAttachment) => !deletedAttachments.includes(a.id))}
                 : msg
             );
           }
@@ -244,7 +261,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           if (!oldData) return [];
           return oldData.map((msg: any) => 
             msg.id === message.id 
-              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter(a => !deletedAttachments.includes(a.id))}
+              ? { ...msg, content: editContent.trim(), attachments: msg.attachments?.filter((a: FileAttachment) => !deletedAttachments.includes(a.id))}
               : msg
           );
         }
@@ -262,7 +279,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       toast({ description: "Message updated" });
 
     } catch (error) {
-      queryClient.invalidateQueries([`/api/channels/${message.channel_id}/messages`]);
+      queryClient.invalidateQueries({
+        queryKey: [`/api/channels/${message.channel_id}/messages`],
+      });
       console.error('Error editing message:', error);
       toast({ 
         variant: "destructive",
@@ -295,7 +314,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{message.author?.username}</span>
+                <span className="font-semibold text-sm">{message.author?.full_name || message.author?.username}</span>
                 <span className="text-xs text-muted-foreground">
                   {formatTimestamp(message.created_at)}
                 </span>
@@ -498,7 +517,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
                 <div className="flex flex-wrap gap-2">
                   {message.attachments
-                    .filter(file => !deletedAttachments.includes(file.id) && !isImageFile(file.mimetype || file.file_type))
+                    .filter(file => !deletedAttachments.includes(file.id) && !isImageFile(file.file_type))
                     .map((file, index) => (
                       <div key={index} className="relative group">
                         <a
@@ -509,7 +528,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                         >
                           <Paperclip className="h-4 w-4" />
                           <span className="truncate max-w-[200px]">
-                            {file.originalName || file.file_name}
+                            {file.file_name}
                           </span>
                           <ExternalLink className="h-3 w-3" />
                         </a>
@@ -555,7 +574,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{reply.author?.username}</span>
+                        <span className="font-semibold text-sm">{reply.author?.full_name || reply.author?.username || ''}</span>
                         <span className="text-xs text-muted-foreground">
                           {formatTimestamp(reply.created_at)}
                         </span>
@@ -635,9 +654,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                       {reply.attachments && reply.attachments.length > 0 && (
                         <div className="mt-2 space-y-2">
                           <div className="flex flex-wrap gap-2">
-                            {reply.attachments
+                            {Array.from(reply.attachments || [])
                               .filter((file: FileAttachment) => isImageFile(file.mimetype || file.file_type))
-                              .map((file, index) => (
+                              .map((file: FileAttachment, index: number) => (
                                 <a 
                                   key={index}
                                   href={normalizeFileUrl(file)}
@@ -655,9 +674,9 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                           </div>
 
                           <div className="flex flex-wrap gap-2">
-                            {reply.attachments
+                            {Array.from(reply.attachments || [])
                               .filter(file => !isImageFile(file.mimetype || file.file_type))
-                              .map((file, index) => (
+                              .map((file: FileAttachment, index: number) => (
                                 <a
                                   key={index}
                                   href={normalizeFileUrl(file)}
@@ -687,6 +706,18 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
         parentMessage={{
           ...message,
           channel_id: message.channel_id || '',
+          attachments: message.attachments?.map(att => ({
+            id: att.id,
+            created_at: att.created_at,
+            message_id: att.message_id,
+            file_url: att.file_url || '',
+            file_name: att.file_name || '',
+            file_type: att.file_type || '',
+            file_size: att.file_size,
+            url: att.file_url || '',
+            originalName: att.file_name || '',
+            mimetype: att.file_type || ''
+          }))
         }}
       />
     </>

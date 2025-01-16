@@ -29,6 +29,7 @@ const registrationSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  full_name: z.string().optional(),
 });
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -135,6 +136,19 @@ export default function AuthForm() {
           <TabsContent value="register">
             <Form {...registerForm}>
               <form onSubmit={registerForm.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={registerForm.control}
+                  name="full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter your full name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={registerForm.control}
                   name="username"
