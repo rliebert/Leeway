@@ -53,10 +53,45 @@ export function ChangePasswordDialog({
       newPassword: "",
       confirmPassword: "",
     },
+    mode: "onBlur", // Validate on blur
+    reValidateMode: "onChange", // Show errors on change after first validation
   });
+
+  const verifyCurrentPassword = async (currentPassword: string) => {
+    try {
+      const response = await fetch("/api/user/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword }),
+      });
+
+      if (!response.ok) {
+        form.setError("currentPassword", { 
+          message: "Current password is incorrect",
+          type: "manual" // Manual error takes precedence
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      form.setError("currentPassword", { 
+        message: "Failed to verify current password",
+        type: "manual"
+      });
+      return false;
+    }
+  };
 
   const handleSubmit = async (values: ChangePasswordForm) => {
     setServerError(null);
+    form.clearErrors(); // Clear any existing errors
+
+    // Verify current password first
+    const isCurrentPasswordValid = await verifyCurrentPassword(values.currentPassword);
+    if (!isCurrentPasswordValid) {
+      return;
+    }
+
     try {
       const response = await fetch("/api/user/change-password", {
         method: "POST",
@@ -67,14 +102,8 @@ export function ChangePasswordDialog({
         }),
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        if (data.error === "Current password is incorrect") {
-          form.setError("currentPassword", { 
-            message: "Current password is incorrect" 
-          });
-          return;
-        }
+        const data = await response.json();
         setServerError(data.error || "Failed to update password");
         return;
       }
@@ -104,7 +133,21 @@ export function ChangePasswordDialog({
                 <FormItem>
                   <FormLabel>Current Password</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input 
+                      type="password" 
+                      {...field} 
+                      onBlur={async (e) => {
+                        field.onBlur(); // Call the default onBlur
+                        if (e.target.value) {
+                          await verifyCurrentPassword(e.target.value);
+                        }
+                      }}
+                      // Clear current password error when user starts typing again
+                      onChange={(e) => {
+                        field.onChange(e);
+                        form.clearErrors("currentPassword");
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
