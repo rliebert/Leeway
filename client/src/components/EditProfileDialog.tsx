@@ -40,8 +40,7 @@ export function EditProfileDialog({
 
       await refreshUser();
       toast({ 
-        description: "Profile updated successfully",
-        duration: 2000 // Auto dismiss after 2 seconds
+        description: "Profile updated successfully"
       });
       onClose();
     } catch (error) {

@@ -29,7 +29,7 @@ export default function UserProfile() {
         throw new Error(result.message);
       }
       toast({
-        description: "Logged out successfully",
+        description: "Logged out successfully"
       });
     } catch (error) {
       toast({
