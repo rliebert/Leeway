@@ -231,29 +231,36 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const handleUserClick = async (userId: string) => {
     try {
       // Check for existing DM channel
-      const response = await fetch(`/api/dm/channels?userId=${userId}`);
+      let response = await fetch(`/api/dm/channels?userId=${userId}`);
+      let channel;
+
       if (response.ok) {
-        const channel = await response.json();
-        onSelectChannel(channel.id);
+        channel = await response.json();
       } else if (response.status === 404) {
-        // Create new DM channel if none exists
-        const createResponse = await fetch('/api/dm/channels', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        // Create new channel
+        response = await fetch("/api/dm/channels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId })
         });
-        if (createResponse.ok) {
-          const newChannel = await createResponse.json();
-          onSelectChannel(newChannel.id);
-        } else {
-          throw new Error('Failed to create DM channel');
+
+        if (!response.ok) {
+          throw new Error(await response.text());
         }
+        channel = await response.json();
       } else {
-        throw new Error('Failed to check DM channel');
+        throw new Error(`Unexpected status: ${response.status}`);
+      }
+
+      if (channel?.id) {
+        onSelectChannel(channel.id);
       }
     } catch (error) {
       console.error("Error handling user click:", error);
-      toast({ variant: "destructive", description: "Failed to open DM channel" });
+      toast({ 
+        variant: "destructive", 
+        description: error instanceof Error ? error.message : "Failed to open DM channel"
+      });
     }
   };
 
