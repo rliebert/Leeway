@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -32,17 +33,18 @@ export function ChangePasswordDialog({
         throw new Error("Current password is required");
       }
 
-      const response = await fetch("/api/user/profile", {
-        method: "PUT",
+      const response = await fetch("/api/user/change-password", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          current_password: currentPassword,
-          new_password: newPassword 
+        body: JSON.stringify({
+          currentPassword,
+          newPassword
         }),
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to change password");
       }
 
       toast({ 
