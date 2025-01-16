@@ -228,6 +228,31 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     return acc;
   }, {} as Record<string | number, Channel[]>);
 
+  const handleUserClick = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/dm/channels?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const channel = await response.json();
+        onSelectChannel(channel.id);
+      } else {
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        toast({ variant: "destructive", description: "Failed to open DM channel" });
+      }
+    } catch (error) {
+      console.error("Error handling user click:", error);
+      toast({ variant: "destructive", description: "Failed to open DM channel" });
+    }
+  };
+
+  const authToken = localStorage.getItem('authToken');
+  const ws = new WebSocket(`wss://${window.location.hostname}:your_port_number/ws`);
+
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
@@ -428,7 +453,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                   <div
                     key={otherUser.id}
                     className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                    onClick={() => createDMMutation.mutate(otherUser.id)}
+                    onClick={() => handleUserClick(otherUser.id)}
                   >
                     <Avatar className="h-6 w-6 mr-2">
                       <AvatarImage src={otherUser.avatar_url || undefined} />

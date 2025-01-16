@@ -79,6 +79,27 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   // Filter messages for this DM channel
   const channelMessages = wsMessages.filter(msg => msg.channel_id === `dm_${channelId}`);
 
+  const handleUserClick = async (userId: string) => {
+    try {
+      // Check for existing DM channel
+      const response = await fetch(`/api/dm/channels?userId=${userId}`);
+      if (response.ok) {
+        const channel = await response.json();
+        onSelectChannel(channel.id); // Open existing channel
+      } else if (response.status === 404) {
+        // Create a new DM channel if none exists
+        createDMMutation.mutate(userId, {
+          onSuccess: (newChannel) => {
+            onSelectChannel(newChannel.id); // Open new channel
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error handling user click:", error);
+      toast({ variant: "destructive", description: "Failed to open DM channel" });
+    }
+  };
+
   if (isError) {
     return (
       <div className="flex items-center justify-center h-full">

@@ -4,7 +4,6 @@ import { Hash } from "lucide-react";
 import leewayLogo from "@/assets/leeway-logo3.svg";
 import { useUser } from "@/hooks/use-user";
 import ChannelSidebar from "@/components/chat/ChannelSidebar";
-import DirectMessageSidebar from "@/components/chat/DirectMessageSidebar";
 import DirectMessageView from "@/components/chat/DirectMessageView";
 import MessageList from "@/components/chat/MessageList";
 import ChatInput from "@/components/chat/ChatInput";
@@ -77,10 +76,6 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
           <ChannelSidebar
             selectedChannel={localSelectedChannel || ""}
             onSelectChannel={handleSelectChannel}
-          />
-          <DirectMessageSidebar
-            selectedDM={selectedDM}
-            onSelectDM={handleSelectDM}
           />
           <UserProfile />
         </div>
