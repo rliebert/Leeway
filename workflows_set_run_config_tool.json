@@ -7,10 +7,12 @@
       "environment": {
         "NODE_ENV": "development",
         "PORT": "5000",
-        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
-        "PINECONE_API_KEY": "${PINECONE_API_KEY}",
         "DATABASE_URL": "${DATABASE_URL}",
-        "AI_BOT_USER_ID": "5c6f10f4-eaf1-4a8f-a927-136e080fa683"
+        "PGUSER": "${PGUSER}",
+        "PGHOST": "${PGHOST}",
+        "PGDATABASE": "${PGDATABASE}",
+        "PGPASSWORD": "${PGPASSWORD}",
+        "PGPORT": "${PGPORT}"
       }
     }
   ]
