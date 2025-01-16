@@ -158,6 +158,15 @@ export function EditProfileDialog({
             username={user?.username || ''}
             onAvatarUpdate={refreshUser}
           />
+          <div className="flex justify-center">
+            <Button 
+              variant="link" 
+              onClick={() => setIsChangePasswordOpen(true)}
+              className="text-muted-foreground hover:text-primary"
+            >
+              Change Password
+            </Button>
+          </div>
           <div className="grid gap-2">
             <label htmlFor="fullName">Full Name</label>
             <Input
@@ -182,15 +191,6 @@ export function EditProfileDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-          </div>
-          <div className="flex justify-center">
-            <Button 
-              variant="link" 
-              onClick={() => setIsChangePasswordOpen(true)}
-              className="text-muted-foreground hover:text-primary"
-            >
-              Change Password
-            </Button>
           </div>
         </div>
         <div className="flex justify-end gap-2">
