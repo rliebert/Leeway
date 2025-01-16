@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -36,9 +35,9 @@ export function ChangePasswordDialog({
       const response = await fetch("/api/user/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           current_password: currentPassword,
-          new_password: newPassword,
+          new_password: newPassword 
         }),
       });
 
