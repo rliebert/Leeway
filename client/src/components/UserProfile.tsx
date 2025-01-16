@@ -1,3 +1,4 @@
+
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -68,7 +69,6 @@ export default function UserProfile() {
         isOpen={isEditProfileOpen} 
         onClose={() => setIsEditProfileOpen(false)} 
       />
-      </DropdownMenu>
     </div>
   );
 }
