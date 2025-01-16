@@ -16,10 +16,9 @@ neonConfig.fetchConnectionCache = true;
 const sql = neon(process.env.DATABASE_URL);
 
 // Export the database instance
-export const db = drizzle({
-  connection: sql,
+export const db = drizzle(sql, {
   schema,
-  ws: ws,
+  logger: true
 });
 
 // Helper function to check database connection

@@ -18,10 +18,14 @@ export interface Message {
   updated_at: string;
   pinned_by: string | null;
   pinned_at: string | null;
-  author?: User;
+  author?: {
+    username: string;
+    avatar_url: string;
+  };
   attachments?: FileAttachment[];
   type?: 'message' | 'message_deleted' | 'message_edited';
   messageId?: string; // For deletion events
+  tempId?: string; // For optimistic updates
 }
 
 export interface WSMessage {
@@ -34,8 +38,17 @@ export interface WSMessage {
   enabled?: boolean;
   message?: Message;
   messages?: Message[];
+  tempId?: string; // For optimistic updates
+  userId?: string;
+  originalContent?: string;
 }
 
-interface WSContextType {
+export type WSContextType = {
+  connected: boolean;
+  connecting: boolean;
+  messages: Message[];
+  subscribe: (channelId: string) => void;
+  unsubscribe: (channelId: string) => void;
+  send: (data: WSMessage) => void;
   connectionQuality: number;
-}
+};

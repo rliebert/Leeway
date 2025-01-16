@@ -70,7 +70,7 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await db.query.users.findFirst({
-        where: eq(users.id, id),
+        where: eq(users.id, id.toString()),
       });
       done(null, user);
     } catch (err) {

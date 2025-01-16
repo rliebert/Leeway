@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@db";
 import { eq, and, or } from "drizzle-orm";
-import { users } from "@db/schema";
+import { users, type User } from "@db/schema";
 
 const router = Router();
 
@@ -25,7 +25,7 @@ router.get("/users/search", async (req, res) => {
         and(
           eq(users.username, query),
           or(
-            eq(users.id, req.user.id), // Include current user for self-messaging
+            eq(users.id, (req.user as User).id), // Include current user for self-messaging
           )
         )
       )

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { useUser } from "@/hooks/use-user";
 import { debugLogger } from "@/lib/debug";
 import type { Message, WSContextType, WSMessage } from "@/lib/types";
+import { toast } from "@/hooks/use-toast";
 
 // Constants
 const INITIAL_RECONNECT_DELAY = 1000;
@@ -12,6 +13,7 @@ const MAX_PING_HISTORY = 10;
 
 const WSContext = createContext<WSContextType>({
   connected: false,
+  connecting: false,
   messages: [],
   subscribe: () => {},
   unsubscribe: () => {},
@@ -42,19 +44,22 @@ export function WSProvider({ children }: { children: ReactNode }) {
       console.log(`[${timestamp}] Generated new tempId for optimistic message:`, tempId);
       optimisticMessages.add(tempId);
       
-      const optimisticMessage = {
+      const optimisticMessage: Message = {
         id: tempId,
         content: data.content!,
         channel_id: data.channelId!,
         created_at: new Date().toISOString(),
-        user_id: user?.id,
-        tempId, // Store tempId for later matching
+        updated_at: new Date().toISOString(),
+        user_id: user?.id || '',
+        parent_id: null,
+        pinned_by: null,
+        pinned_at: null,
         author: {
-          username: user?.username,
-          avatar_url: user?.avatar_url
+          username: user?.username ?? '',
+          avatar_url: user?.avatar_url ?? ''
         },
         attachments: data.attachments || [],
-        isOptimistic: true
+        tempId
       };
 
       setMessages(prev => [...prev, optimisticMessage]);
