@@ -230,28 +230,32 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const handleUserClick = async (userId: string) => {
     try {
-      const response = await fetch(`/api/dm/channels?userId=${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Check for existing DM channel
+      const response = await fetch(`/api/dm/channels?userId=${userId}`);
       if (response.ok) {
         const channel = await response.json();
         onSelectChannel(channel.id);
+      } else if (response.status === 404) {
+        // Create new DM channel if none exists
+        const createResponse = await fetch('/api/dm/channels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId })
+        });
+        if (createResponse.ok) {
+          const newChannel = await createResponse.json();
+          onSelectChannel(newChannel.id);
+        } else {
+          throw new Error('Failed to create DM channel');
+        }
       } else {
-        const errorText = await response.text();
-        console.error("Error response:", errorText);
-        toast({ variant: "destructive", description: "Failed to open DM channel" });
+        throw new Error('Failed to check DM channel');
       }
     } catch (error) {
       console.error("Error handling user click:", error);
       toast({ variant: "destructive", description: "Failed to open DM channel" });
     }
   };
-
-  const authToken = localStorage.getItem('authToken');
-  const ws = new WebSocket(`wss://${window.location.hostname}:your_port_number/ws`);
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
