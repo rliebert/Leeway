@@ -82,7 +82,7 @@ export function AvatarUpload({ userId, currentAvatar, username, onAvatarUpdate }
           onClick={() => document.getElementById('avatar-upload')?.click()}
         >
           <Upload className="h-4 w-4 mr-2" />
-          {isUploading ? "Uploading..." : "Upload Avatar"}
+          {isUploading ? "Uploading..." : currentAvatar ? "Replace Avatar" : "Upload Avatar"}
         </Button>
         <input
           id="avatar-upload"

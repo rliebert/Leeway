@@ -379,14 +379,18 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Update session with complete user data
-      req.login(updatedUser, (err) => {
-        if (err) {
-          console.error("Session update error:", err);
-          return res.status(500).send("Failed to update session");
-        }
+      await new Promise((resolve, reject) => {
+        req.login(updatedUser, (err) => {
+          if (err) {
+            console.error("Session update error:", err);
+            reject(err);
+          } else {
+            resolve(true);
+          }
+        });
       });
 
-      res.status(200).json({ success: true });
+      res.status(200).json({ success: true, user: updatedUser });
     } catch (error) {
       console.error("Profile update error:", error);
       res.status(500).send("Failed to update profile");
