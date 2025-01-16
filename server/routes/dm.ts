@@ -74,12 +74,12 @@ router.get("/dm/channels", async (req, res) => {
 // Add endpoint to create a new DM channel
 router.post("/dm/channels", async (req, res) => {
   if (!req.user) {
-    return res.status(401).send("Not authenticated");
+    return res.status(401).json({ error: "Not authenticated" });
   }
 
   const { userId } = req.body;
   if (!userId || typeof userId !== "string") {
-    return res.status(400).send("User ID is required");
+    return res.status(400).json({ error: "User ID is required" });
   }
 
   try {
@@ -91,10 +91,10 @@ router.post("/dm/channels", async (req, res) => {
       })
       .returning();
 
-    return res.status(201).json(newChannel);
+    return res.status(201).json(newChannel[0]);
   } catch (error) {
     console.error("Error creating DM channel:", error);
-    return res.status(500).send("Internal server error");
+    return res.status(500).json({ error: "Internal server error" });
   }
 });
 
