@@ -103,5 +103,6 @@ export function useUser() {
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
+    refreshUser: () => queryClient.invalidateQueries(['user']),
   };
 }

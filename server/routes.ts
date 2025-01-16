@@ -331,3 +331,42 @@ export function registerRoutes(app: Express): Server {
 
   return httpServer;
 }
+// Add this route handler inside your routes setup
+app.put("/api/user/profile", async (req, res) => {
+  try {
+    if (!req.session.user?.id) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    const { username, full_name } = req.body;
+    
+    // Check if username is taken
+    if (username !== req.session.user.username) {
+      const existing = await db.query.users.findFirst({
+        where: eq(users.username, username),
+      });
+      
+      if (existing) {
+        return res.status(400).send("Username already taken");
+      }
+    }
+
+    // Update user profile
+    await db
+      .update(users)
+      .set({ username, full_name })
+      .where(eq(users.id, req.session.user.id));
+
+    // Update session
+    req.session.user = {
+      ...req.session.user,
+      username,
+      full_name,
+    };
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).send("Failed to update profile");
+  }
+});

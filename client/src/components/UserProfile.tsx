@@ -7,12 +7,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
+import { useState } from "react";
+import { EditProfileDialog } from "./EditProfileDialog";
 import { useToast } from "@/hooks/use-toast";
 
 export default function UserProfile() {
   const { user, logout } = useUser();
   const { toast } = useToast();
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   if (!user) {
     return null;
@@ -51,11 +54,20 @@ export default function UserProfile() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => setIsEditProfileOpen(true)}>
+            <Settings className="mr-2 h-4 w-4" />
+            Edit Profile
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
+      </DropdownMenu>
+      <EditProfileDialog 
+        isOpen={isEditProfileOpen} 
+        onClose={() => setIsEditProfileOpen(false)} 
+      />
       </DropdownMenu>
     </div>
   );
