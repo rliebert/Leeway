@@ -50,12 +50,15 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
     select: (channels) => {
-      if (!selectedChannel && channels?.length > 0) {
+      // Filter out DM channels
+      const regularChannels = channels?.filter(channel => channel.type !== 'dm') || [];
+      
+      if (!selectedChannel && regularChannels.length > 0) {
         const lastChannel = localStorage.getItem('lastSelectedChannel');
-        const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
+        const defaultChannel = regularChannels.find(c => c.id === lastChannel) || regularChannels[0];
         onSelectChannel(defaultChannel.id);
       }
-      return channels;
+      return regularChannels;
     }
   });
 
