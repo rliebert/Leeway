@@ -44,6 +44,7 @@ export const sections = pgTable("sections", {
 export const channels = pgTable("channels", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").unique().notNull(),
+  type: text("type").default("channel").notNull(), // Add type column to distinguish between regular channels and DMs
   description: text("description"),
   section_id: uuid("section_id").references(() => sections.id),
   creator_id: uuid("creator_id").references(() => users.id),
@@ -65,7 +66,7 @@ export const messages = pgTable("messages", {
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   pinned_by: uuid("pinned_by").references(() => users.id),
   pinned_at: timestamp("pinned_at"),
-  parent_id: uuid("parent_id"), // Remove circular reference
+  parent_id: uuid("parent_id"),
 });
 
 export const message_embeddings = pgTable("message_embeddings", {

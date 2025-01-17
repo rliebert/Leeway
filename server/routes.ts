@@ -142,8 +142,44 @@ export function registerRoutes(app: Express): Server {
 
   // Channel management endpoints
   app.post("/api/channels", requireAuth, async (req, res) => {
-    const { name, description, section_id } = req.body;
+    const { name, description, section_id, type, invitedUserId } = req.body;
     try {
+      // Handle DM channel creation differently
+      if (type === "dm" && invitedUserId) {
+        // Check if DM channel already exists between these users
+        const existingChannel = await db.query.channels.findFirst({
+          where: or(
+            and(
+              eq(channels.name, `dm-${(req.user as User).id}-${invitedUserId}`),
+              eq(channels.type, "dm")
+            ),
+            and(
+              eq(channels.name, `dm-${invitedUserId}-${(req.user as User).id}`),
+              eq(channels.type, "dm")
+            )
+          ),
+        });
+
+        if (existingChannel) {
+          return res.json(existingChannel);
+        }
+
+        // Create new DM channel with a guaranteed unique name
+        const timestamp = Date.now();
+        const uniqueChannelName = `dm-${(req.user as User).id}-${invitedUserId}-${timestamp}`;
+
+        const [newChannel] = await db.insert(channels).values({
+          name: uniqueChannelName,
+          type: "dm",
+          description: "Direct Message Channel",
+          creator_id: (req.user as User).id,
+          order_index: 0,
+        }).returning();
+
+        return res.status(201).json(newChannel);
+      }
+
+      // Handle regular channel creation
       const [newChannel] = await db.insert(channels).values({
         name,
         description,
@@ -151,6 +187,7 @@ export function registerRoutes(app: Express): Server {
         creator_id: (req.user as User).id,
         order_index: 0,
       }).returning();
+
       res.status(201).json(newChannel);
     } catch (error) {
       console.error('Failed to create channel:', error);

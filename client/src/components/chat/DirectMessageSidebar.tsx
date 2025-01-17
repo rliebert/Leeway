@@ -47,80 +47,53 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
 
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
-      console.log("[DM] Starting mutation with userId:", userId);
-
       try {
         // First check if DM channel exists
-        const checkResponse = await fetch(`/api/channels/dm/${userId}`, {
+        const checkResponse = await fetch(`/api/dm/channels/${userId}`, {
           method: "GET",
           headers: { 
             "Content-Type": "application/json",
-            "Accept": "application/json",
           },
           credentials: "include",
         });
 
-        console.log("[DM] Check response:", {
-          status: checkResponse.status,
-          headers: Object.fromEntries(checkResponse.headers.entries())
-        });
+        const responseData = await checkResponse.json();
 
-        const checkText = await checkResponse.text();
-        console.log("[DM] Check response text:", checkText);
-
-        // If channel exists, parse and return it
-        if (checkResponse.ok && !checkText.startsWith('<!doctype')) {
-          try {
-            const existingChannel = JSON.parse(checkText);
-            console.log("[DM] Found existing channel:", existingChannel);
-            return existingChannel;
-          } catch (e) {
-            console.error("[DM] Failed to parse existing channel:", e);
-          }
+        if (checkResponse.ok && responseData.id) {
+          return responseData;
         }
 
-        // If not found or invalid response, create new channel
-        const channelName = `dm-${currentUser?.id}-${userId}`.split('-').sort().join('-');
-
-        const payload = { 
-          type: "dm",
-          invitedUserId: userId,
-          name: channelName
-        };
-        console.log("[DM] Creating new channel with payload:", payload);
-
-        const createResponse = await fetch("/api/channels", {
+        // If channel doesn't exist, create a new one
+        const createResponse = await fetch("/api/dm/channels", {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "Accept": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ invitedUserId: userId }),
         });
 
         if (!createResponse.ok) {
-          const errorText = await createResponse.text();
-          throw new Error(errorText || "Failed to create channel");
+          const errorData = await createResponse.json();
+          throw new Error(errorData.error || "Failed to create DM channel");
         }
 
         return createResponse.json();
       } catch (error) {
         console.error("[DM] Request error:", error);
-        throw error;
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error("Failed to handle DM channel creation");
       }
     },
     onSuccess: (data) => {
-      console.log("[DM] Success with data:", data);
       if (data?.id) {
         onSelectDM(data.id);
         queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
-      } else {
-        console.error("[DM] Success but no channel ID in response:", data);
       }
     },
     onError: (error: Error) => {
-      console.error("[DM] Error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create DM channel",
@@ -170,13 +143,10 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
                   key={user.id}
                   type="button"
                   onClick={() => {
-                    console.log("[DM] User clicked:", user.id);
                     if (!isSelf) {
                       if (existingChannel) {
-                        console.log("[DM] Using existing channel:", existingChannel.id);
                         onSelectDM(existingChannel.id);
                       } else {
-                        console.log("[DM] Creating new channel for user:", user.id);
                         createDMMutation.mutate(user.id);
                       }
                     }
