@@ -32,7 +32,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
+  const { data: channel, isError, error, isLoading } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
     enabled: !!channelId,
     retry: (failureCount, error) => {
@@ -112,20 +112,18 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
       }
     }));
 
-  if (isError) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-destructive">
-          {error instanceof Error ? error.message : "Could not load messages"}
-        </p>
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading conversation...</p>
       </div>
     );
   }
 
-  if (!channel || !otherUser) {
+  if (isError || !channel) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading conversation...</p>
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Could not load conversation</p>
       </div>
     );
   }
