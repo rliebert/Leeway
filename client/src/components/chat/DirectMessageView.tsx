@@ -30,32 +30,47 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],
     enabled: !!channelId,
-    retry: false,
-  });
-
-  useEffect(() => {
-    if (isError) {
+    retry: (failureCount, error) => {
+      // Only retry if it's not a 404
+      return failureCount < 3 && !(error instanceof Error && error.message.includes("404"));
+    },
+    onError: (error) => {
+      console.error("Error fetching DM channel:", error);
       toast({
         variant: "destructive",
+        title: "Error",
         description: error instanceof Error ? error.message : "Failed to load DM channel",
       });
-      setLocation("/");
+      // Only redirect on critical errors, not on expected cases like 404
+      if (!(error instanceof Error && error.message.includes("404"))) {
+        setLocation("/");
+      }
     }
-  }, [isError, error, toast, setLocation]);
+  });
 
   const otherUser = channel?.members?.find(m => m.user.id !== user?.id)?.user;
 
   useEffect(() => {
-    if (!channelId) return;
-    subscribe(`dm_${channelId}`);
+    if (!channelId || isSubscribed) return;
+
+    const wsChannel = `dm_${channelId}`;
+    console.log(`[DM] Subscribing to channel: ${wsChannel}`);
+    subscribe(wsChannel);
+    setIsSubscribed(true);
+
     return () => {
-      unsubscribe(`dm_${channelId}`);
+      if (isSubscribed) {
+        console.log(`[DM] Unsubscribing from channel: ${wsChannel}`);
+        unsubscribe(wsChannel);
+        setIsSubscribed(false);
+      }
     };
-  }, [channelId, subscribe, unsubscribe]);
+  }, [channelId, subscribe, unsubscribe, isSubscribed]);
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim()) return;
@@ -67,10 +82,11 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
         content: content.trim()
       });
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("[DM] Error sending message:", error);
       toast({
         variant: "destructive",
-        description: "Failed to send message",
+        title: "Error",
+        description: "Failed to send message. Please try again.",
       });
     }
   };
@@ -93,14 +109,15 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
         created_at: null,
         role: "user",
         is_admin: false,
-        password: "" // This is safe as it's only used for type compatibility and never exposed
       }
     }));
 
   if (isError) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-destructive">Error: {error instanceof Error ? error.message : "Unknown error"}</p>
+        <p className="text-destructive">
+          {error instanceof Error ? error.message : "Could not load messages"}
+        </p>
       </div>
     );
   }
@@ -108,7 +125,7 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
   if (!channel || !otherUser) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">Loading conversation...</p>
       </div>
     );
   }

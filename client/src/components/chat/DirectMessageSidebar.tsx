@@ -24,7 +24,7 @@ interface DMChannel {
   }[];
 }
 
-function isUserOnline(lastActive: string | null) {
+function isUserOnline(lastActive: Date | string | null) {
   if (!lastActive) return false;
   const lastActiveDate = new Date(lastActive);
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
@@ -48,22 +48,7 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       try {
-        // First check if DM channel exists
-        const checkResponse = await fetch(`/api/dm/channels/${userId}`, {
-          method: "GET",
-          headers: { 
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        });
-
-        const responseData = await checkResponse.json();
-
-        if (checkResponse.ok && responseData.id) {
-          return responseData;
-        }
-
-        // If channel doesn't exist, create a new one
+        // Create a new DM channel
         const createResponse = await fetch("/api/dm/channels", {
           method: "POST",
           headers: { 
