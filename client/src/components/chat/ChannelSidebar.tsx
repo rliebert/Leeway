@@ -71,21 +71,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     select: (sections) => sections?.filter(section => section.name !== "LeewayDMs"),
   });
 
-  const { data: users } = useQuery<User[]>({
-    queryKey: ["/api/users"],
-    select: (users) => {
-      console.log("Fetched users for Direct Messages:", users);
-      return users;
-    },
-  });
-
-  useEffect(() => {
-    if (users) {
-      console.log("Fetched users:", users);
-    } else {
-      console.log("Users data is undefined");
-    }
-  }, [users]);
+  // Removed unnecessary user fetching since this is handled in DirectMessageSidebar
 
   const [channelFormData, setChannelFormData] = useState<{
     name: string;
