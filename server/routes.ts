@@ -204,7 +204,7 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const result = await db.query.channels.findMany({
-        where: eq(channels.type, "channel"),
+        where: eq(channels.type, "channel"), // Only get regular channels
         with: {
           section: true,
           creator: true,
