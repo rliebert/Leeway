@@ -204,10 +204,7 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const result = await db.query.channels.findMany({
-        where: and(
-          eq(channels.type, "channel"),
-          not(eq(channels.type, "dm"))
-        ),
+        where: not(eq(channels.type, "dm")),
         with: {
           section: true,
           creator: true,
