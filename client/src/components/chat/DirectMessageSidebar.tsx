@@ -8,14 +8,12 @@ import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
 
 interface DirectMessageSidebarProps {
   selectedDM: string | null;
   onSelectDM: (userId: string) => void;
 }
 
-// Update interface for DM Channel to match API response
 interface DMChannel {
   id: string;
   created_at: string;
@@ -34,7 +32,6 @@ function isUserOnline(lastActive: string | null) {
 }
 
 export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
-  console.log("[DM] DirectMessageSidebar rendering with props:", { selectedDM, onSelectDM });
   const [isExpanded, setIsExpanded] = useState(true);
   const { user: currentUser } = useUser();
   const queryClient = useQueryClient();
@@ -46,35 +43,31 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
 
   const { data: dmChannels = [] } = useQuery<DMChannel[]>({
     queryKey: ["/api/dm/channels"],
-    onSuccess: (data) => {
-      console.log('[DM] Channels response:', data);
-    }
   });
 
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       console.log("[DM] Starting mutation with userId:", userId);
-      
+
       try {
         // First check if DM channel exists
-        const checkResponse = await fetch(`https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/api/channels/dm/${userId}`, {
+        const checkResponse = await fetch(`/api/channels/dm/${userId}`, {
           method: "GET",
           headers: { 
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
           },
           credentials: "include",
         });
-        
+
         console.log("[DM] Check response:", {
           status: checkResponse.status,
           headers: Object.fromEntries(checkResponse.headers.entries())
         });
-        
+
         const checkText = await checkResponse.text();
         console.log("[DM] Check response text:", checkText);
-        
+
         // If channel exists, parse and return it
         if (checkResponse.ok && !checkText.startsWith('<!doctype')) {
           try {
@@ -85,48 +78,33 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
             console.error("[DM] Failed to parse existing channel:", e);
           }
         }
-        
+
         // If not found or invalid response, create new channel
         const channelName = `dm-${currentUser?.id}-${userId}`.split('-').sort().join('-');
-        
+
         const payload = { 
           type: "dm",
           invitedUserId: userId,
           name: channelName
         };
         console.log("[DM] Creating new channel with payload:", payload);
-        
-        const createResponse = await fetch("https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/api/channels", {
+
+        const createResponse = await fetch("/api/channels", {
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest",
           },
           credentials: "include",
           body: JSON.stringify(payload),
         });
-        
-        const responseText = await createResponse.text();
-        console.log("[DM] Create response:", {
-          status: createResponse.status,
-          headers: Object.fromEntries(createResponse.headers.entries()),
-          body: responseText
-        });
-        
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error("[DM] Failed to parse response:", e);
-          throw new Error("Server returned invalid JSON");
-        }
-        
+
         if (!createResponse.ok) {
-          throw new Error(data.error || "Failed to create channel");
+          const errorText = await createResponse.text();
+          throw new Error(errorText || "Failed to create channel");
         }
-        
-        return data;
+
+        return createResponse.json();
       } catch (error) {
         console.error("[DM] Request error:", error);
         throw error;
@@ -151,7 +129,6 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
     }
   });
 
-  // Sort users and ensure current user is first
   const sortedUsers = [...users].filter(Boolean);
   if (currentUser) {
     const currentUserIndex = sortedUsers.findIndex(u => u.id === currentUser.id);
@@ -182,7 +159,6 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
         <ScrollArea className="flex-1">
           <div className="space-y-1 px-2">
             {sortedUsers.map((user) => {
-              console.log("[DM] Rendering user:", user.id);
               const isOnline = isUserOnline(user.last_active);
               const isSelf = user.id === currentUser?.id;
               const existingChannel = dmChannels.find(
