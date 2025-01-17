@@ -168,11 +168,17 @@ export function registerRoutes(app: Express): Server {
         const timestamp = Date.now();
         const uniqueChannelName = `dm-${(req.user as User).id}-${invitedUserId}-${timestamp}`;
 
+        // Get or create LeewayDMs section
+        const systemSection = await db.query.sections.findFirst({
+          where: eq(sections.name, "LeewayDMs")
+        });
+        
         const [newChannel] = await db.insert(channels).values({
           name: uniqueChannelName,
           type: "dm",
           description: "Direct Message Channel",
           creator_id: (req.user as User).id,
+          section_id: systemSection?.id,
           order_index: 0,
         }).returning();
 

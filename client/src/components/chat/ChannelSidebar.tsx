@@ -64,6 +64,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
+    select: (sections) => sections?.filter(section => section.name !== "LeewayDMs"),
   });
 
   const { data: users } = useQuery<User[]>({
