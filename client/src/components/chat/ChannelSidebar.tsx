@@ -47,29 +47,50 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
 
-  const { data: channels } = useQuery<Channel[]>({
+  // const { data: channels } = useQuery<Channel[]>({
+  //   queryKey: ["/api/channels"],
+  //   select: (channels) => {
+  //     if (!channels) return [];
+      
+  //     // Only get regular channels
+  //     const regularChannels = channels.filter(channel => 
+  //       channel.type === 'channel' && 
+  //       !channel.name?.startsWith('dm-')
+  //     );
+      
+  //     if (!selectedChannel && regularChannels.length > 0) {
+  //       const lastChannel = localStorage.getItem('lastSelectedChannel');
+  //       const defaultChannel = regularChannels.find(c => c.id === lastChannel) || regularChannels[0];
+  //       onSelectChannel(defaultChannel.id);
+  //     }
+      
+  //     return regularChannels;
+  //   },
+  //   onError: (error) => {
+  //     console.error('Failed to fetch channels:', error);
+  //   }
+  // });
+  const { data: channels = [] } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-    select: (channels) => {
-      if (!channels) return [];
-      
-      // Only get regular channels
-      const regularChannels = channels.filter(channel => 
-        channel.type === 'channel' && 
-        !channel.name?.startsWith('dm-')
-      );
-      
-      if (!selectedChannel && regularChannels.length > 0) {
-        const lastChannel = localStorage.getItem('lastSelectedChannel');
-        const defaultChannel = regularChannels.find(c => c.id === lastChannel) || regularChannels[0];
-        onSelectChannel(defaultChannel.id);
-      }
-      
-      return regularChannels;
-    },
-    onError: (error) => {
-      console.error('Failed to fetch channels:', error);
-    }
   });
+  
+  // Assuming the API or state management already separates these, you should only be fetching regular channels here.
+  return (
+    <div>
+      {channels.map(channel => (
+        <ChannelItem
+          key={channel.id}
+          channel={channel}
+          isSelected={selectedChannel === channel.id}
+          onSelect={() => onSelectChannel(channel.id)}
+          onEdit={() => handleEditChannel(channel)}
+          onDelete={() => handleDeleteChannel(channel.id)}
+          isCreator={channel.creator_id === user?.id}
+        />
+      ))}
+    </div>
+  );
+
 
   const { data: sections } = useQuery<Section[]>({
     queryKey: ["/api/sections"],
