@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { messages, channels, users, sections, file_attachments } from "@db/schema";
-import { eq, and, or, desc, asc, ilike } from "drizzle-orm";
+import { eq, and, or, not, desc, asc, ilike } from "drizzle-orm";
 import { setupAuth } from "./auth";
 import { setupWebSocketServer } from "./websocket";
 import dmRoutes from "./routes/dm";

@@ -209,5 +209,33 @@ router.delete("/channels/:id", async (req, res) => {
   }
 });
 
+router.get("/api/dm/channels/:channelId", async (req, res) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const { channelId } = req.params;
+    if (!channelId) {
+      return res.status(400).json({ error: "Channel ID is required" });
+    }
+
+    try {
+      const channel = await db
+        .select()
+        .from(dm_channels)
+        .where(eq(dm_channels.id, channelId))
+        .leftJoin(channel_subscriptions, eq(dm_channels.id, channel_subscriptions.dm_channel_id))
+        .where(eq(channel_subscriptions.user_id, (req.user as User).id));
+
+      if (channel.length > 0) {
+        return res.json(channel[0]);
+      } else {
+        return res.status(404).json({ error: "Channel not found" });
+      }
+    } catch (error) {
+      console.error("[DM] Error fetching DM channel:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
 export default router;
