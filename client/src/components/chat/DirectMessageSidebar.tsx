@@ -12,70 +12,144 @@ import { useLocation } from "wouter";
 
 interface DirectMessageSidebarProps {
   selectedDM: string | null;
-  onSelectDM: (id: string) => void;
+  onSelectDM: (userId: string) => void;
 }
 
-export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
+// Update interface for DM Channel to match API response
+interface DMChannel {
+  id: string;
+  created_at: string;
+  members: {
+    user_id: string;
+    channel_id: string;
+    created_at: string;
+  }[];
+}
+
+function isUserOnline(lastActive: string | null) {
+  if (!lastActive) return false;
+  const lastActiveDate = new Date(lastActive);
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  return lastActiveDate > fiveMinutesAgo;
+}
+
+export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSidebarProps) {
+  console.log("[DM] DirectMessageSidebar rendering with props:", { selectedDM, onSelectDM });
   const [isExpanded, setIsExpanded] = useState(true);
   const { user: currentUser } = useUser();
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  const createDMMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const response = await fetch(`/api/dm/channels?userId=${userId}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          // If no existing channel, create a new one
-          const createResponse = await fetch("/api/dm/channels", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ userId }),
-          });
-
-          if (!createResponse.ok) {
-            throw new Error(await createResponse.text());
-          }
-
-          return createResponse.json();
-        }
-        throw new Error(await response.text());
-      }
-
-      return response.json();
-    },
+  const { data: dmChannels = [] } = useQuery<DMChannel[]>({
+    queryKey: ["/api/dm/channels"],
     onSuccess: (data) => {
-      if (data?.id) {
-        onSelectDM(data.id);
-        setLocation(`/dm/${data.id}`);
-      }
-      queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create or open chat",
-        variant: "destructive",
-      });
-    },
+      console.log('[DM] Channels response:', data);
+    }
   });
 
-  function isUserOnline(last_active: Date | null): boolean {
-    if (!last_active) return false;
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    return new Date(last_active) > fiveMinutesAgo;
-  }
+  const createDMMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      console.log("[DM] Starting mutation with userId:", userId);
+      
+      try {
+        // First check if DM channel exists
+        const checkResponse = await fetch(`https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/api/channels/dm/${userId}`, {
+          method: "GET",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          credentials: "include",
+        });
+        
+        console.log("[DM] Check response:", {
+          status: checkResponse.status,
+          headers: Object.fromEntries(checkResponse.headers.entries())
+        });
+        
+        const checkText = await checkResponse.text();
+        console.log("[DM] Check response text:", checkText);
+        
+        // If channel exists, parse and return it
+        if (checkResponse.ok && !checkText.startsWith('<!doctype')) {
+          try {
+            const existingChannel = JSON.parse(checkText);
+            console.log("[DM] Found existing channel:", existingChannel);
+            return existingChannel;
+          } catch (e) {
+            console.error("[DM] Failed to parse existing channel:", e);
+          }
+        }
+        
+        // If not found or invalid response, create new channel
+        const channelName = `dm-${currentUser?.id}-${userId}`.split('-').sort().join('-');
+        
+        const payload = { 
+          type: "dm",
+          invitedUserId: userId,
+          name: channelName
+        };
+        console.log("[DM] Creating new channel with payload:", payload);
+        
+        const createResponse = await fetch("https://44735494-6dfc-48b8-8b7b-57eeb25441a5-00-707pakz1pob.kirk.replit.dev/api/channels", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        
+        const responseText = await createResponse.text();
+        console.log("[DM] Create response:", {
+          status: createResponse.status,
+          headers: Object.fromEntries(createResponse.headers.entries()),
+          body: responseText
+        });
+        
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error("[DM] Failed to parse response:", e);
+          throw new Error("Server returned invalid JSON");
+        }
+        
+        if (!createResponse.ok) {
+          throw new Error(data.error || "Failed to create channel");
+        }
+        
+        return data;
+      } catch (error) {
+        console.error("[DM] Request error:", error);
+        throw error;
+      }
+    },
+    onSuccess: (data) => {
+      console.log("[DM] Success with data:", data);
+      if (data?.id) {
+        onSelectDM(data.id);
+        queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
+      } else {
+        console.error("[DM] Success but no channel ID in response:", data);
+      }
+    },
+    onError: (error: Error) => {
+      console.error("[DM] Error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create DM channel",
+        variant: "destructive",
+      });
+    }
+  });
 
   // Sort users and ensure current user is first
   const sortedUsers = [...users].filter(Boolean);
@@ -88,41 +162,52 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
   }
 
   return (
-    <ScrollArea className="flex-1">
-      <div className="p-2">
-        <div className="flex items-center px-2 mb-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-4 w-4 p-0"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            <ChevronDown className={cn(
-              "h-3 w-3 transition-transform",
-              !isExpanded && "-rotate-90"
-            )} />
-          </Button>
-          <span className="text-lg font-semibold ml-2">Direct Messages</span>
-        </div>
+    <div className="flex flex-col space-y-2">
+      <div className="flex items-center px-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-4 w-4 p-0"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <ChevronDown className={cn(
+            "h-3 w-3 transition-transform",
+            !isExpanded && "-rotate-90"
+          )} />
+        </Button>
+        <span className="text-lg font-semibold ml-2">Direct Messages</span>
+      </div>
 
-        {isExpanded && (
-          <div className="space-y-1">
+      {isExpanded && (
+        <ScrollArea className="flex-1">
+          <div className="space-y-1 px-2">
             {sortedUsers.map((user) => {
+              console.log("[DM] Rendering user:", user.id);
               const isOnline = isUserOnline(user.last_active);
               const isSelf = user.id === currentUser?.id;
+              const existingChannel = dmChannels.find(
+                (channel) => channel.members?.some((member) => member.user_id === user.id)
+              );
 
               return (
-                <div
+                <button
                   key={user.id}
-                  onClick={(e) => {
-                    e.preventDefault();
+                  type="button"
+                  onClick={() => {
+                    console.log("[DM] User clicked:", user.id);
                     if (!isSelf) {
-                      createDMMutation.mutate(user.id);
+                      if (existingChannel) {
+                        console.log("[DM] Using existing channel:", existingChannel.id);
+                        onSelectDM(existingChannel.id);
+                      } else {
+                        console.log("[DM] Creating new channel for user:", user.id);
+                        createDMMutation.mutate(user.id);
+                      }
                     }
                   }}
                   className={cn(
-                    "flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
-                    selectedDM === user.id && "bg-accent"
+                    "w-full text-left flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 group cursor-pointer",
+                    existingChannel && selectedDM === existingChannel.id && "bg-accent"
                   )}
                 >
                   <div className="flex items-center gap-2 flex-1">
@@ -150,24 +235,14 @@ export default function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectM
                     </div>
                   </div>
                   {!isSelf && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        createDMMutation.mutate(user.id);
-                      }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </Button>
+                    <MessageSquare className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
-        )}
-      </div>
-    </ScrollArea>
+        </ScrollArea>
+      )}
+    </div>
   );
 }

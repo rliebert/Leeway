@@ -94,9 +94,8 @@ export const file_attachments = pgTable("file_attachments", {
 
 export const dm_channels = pgTable("dm_channels", {
   id: uuid("id").defaultRandom().primaryKey(),
-  name: text("name").unique().notNull(),
-  description: text("description"),
-  creator_id: uuid("creator_id").references(() => users.id),
+  initiator_id: uuid("initiator_id").references(() => users.id),
+  invited_user_id: uuid("invited_user_id").references(() => users.id),
   created_at: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
   order_index: integer("order_index").notNull().default(0),
 });

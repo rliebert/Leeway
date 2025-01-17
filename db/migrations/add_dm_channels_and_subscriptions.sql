@@ -1,7 +1,9 @@
 -- Create DM channels table
 CREATE TABLE dm_channels (
     id SERIAL PRIMARY KEY,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    initiator_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    invited_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Create DM channel subscriptions table to manage participants

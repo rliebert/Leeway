@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -42,7 +42,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
-  const [isDMExpanded, setIsDMExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
 
@@ -66,22 +65,19 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
 
   const { data: users } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    select: (users) => {
+      console.log("Fetched users for Direct Messages:", users);
+      return users;
+    },
   });
 
-  const createDMMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const response = await fetch("/api/dm/channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({ description: "Direct message channel created" });
-    },
-  });
+  useEffect(() => {
+    if (users) {
+      console.log("Fetched users:", users);
+    } else {
+      console.log("Users data is undefined");
+    }
+  }, [users]);
 
   const [channelFormData, setChannelFormData] = useState<{
     name: string;
@@ -404,44 +400,6 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
               </div>
             </div>
           ))}
-
-          {/* Direct Messages Section */}
-          <div className="relative mt-8">
-            <div className="flex items-center justify-between h-10 group">
-              <div className="flex items-center flex-1 pl-[5px]">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6 p-0 hover:bg-transparent"
-                  onClick={() => setIsDMExpanded(!isDMExpanded)}
-                >
-                  <ChevronRightSquare className={`h-4 w-4 transition-transform ${isDMExpanded ? 'rotate-90' : ''}`} />
-                </Button>
-                <span className="text-lg font-semibold ml-2">Direct Messages</span>
-              </div>
-            </div>
-
-            {/* Users List */}
-            {isDMExpanded && (
-              <div className="ml-4 space-y-1">
-                {users?.filter(u => u.id !== user?.id).map((otherUser) => (
-                  <div
-                    key={otherUser.id}
-                    className="flex items-center px-3 h-8 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md"
-                    onClick={() => createDMMutation.mutate(otherUser.id)}
-                  >
-                    <Avatar className="h-6 w-6 mr-2">
-                      <AvatarImage src={otherUser.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {otherUser.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="flex-1 text-sm">{otherUser.username}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </ScrollArea>
     </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@/hooks/use-user";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Message, User as UserType } from "@db/schema";
 import MessageComponent from "./Message";
 import ChatInput from "./ChatInput";
@@ -29,8 +29,33 @@ interface DirectMessageViewProps {
 export default function DirectMessageView({ channelId }: DirectMessageViewProps) {
   const { user } = useUser();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { messages: wsMessages, send, subscribe, unsubscribe } = useWS();
+
+  const { data: dmChannels, refetch } = useQuery<DirectMessageChannel[]>({
+    queryKey: ["/api/dm/channels"],
+    enabled: !!user,
+  });
+
+  const createDMChannelMutation = useMutation({
+    mutationFn: async (invitedUserId: string) => {
+      const response = await fetch("/api/dm/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: invitedUserId }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ description: "Direct message channel created" });
+      refetch();
+    },
+  });
+
+  const handleCreateDMChannel = (invitedUserId: string) => {
+    createDMChannelMutation.mutate(invitedUserId);
+  };
 
   const { data: channel, isError, error } = useQuery<DirectMessageChannel>({
     queryKey: [`/api/dm/channels/${channelId}`],

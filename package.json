@@ -61,7 +61,7 @@
     "cookie": "^1.0.2",
     "cors": "^2.8.5",
     "date-fns": "^3.6.0",
-    "drizzle-orm": "^0.38.3",
+    "drizzle-orm": "^0.38.4",
     "drizzle-zod": "^0.6.1",
     "embla-carousel-react": "^8.3.0",
     "emoji-picker-react": "^4.12.0",

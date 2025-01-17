@@ -7,6 +7,8 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import AuthPage from "@/pages/auth-page";
 import DirectMessageView from "@/components/chat/DirectMessageView";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 
 function AuthenticatedApp() {
   const { user, isLoading } = useUser();
@@ -73,7 +75,9 @@ function NotFound() {
 }
 
 function App() {
-  return <AuthenticatedApp />;
+  return (
+    <AuthenticatedApp />
+  );
 }
 
 export default App;
