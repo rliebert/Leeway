@@ -204,12 +204,7 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/channels", requireAuth, async (_req, res) => {
     try {
       const result = await db.query.channels.findMany({
-        where: and(
-          eq(channels.type, "channel"),
-          not(eq(channels.section_id, (await db.query.sections.findFirst({
-            where: eq(sections.name, "LeewayDMs")
-          }))?.id))
-        ),
+        where: eq(channels.type, "channel"),
         with: {
           section: true,
           creator: true,
@@ -217,7 +212,13 @@ export function registerRoutes(app: Express): Server {
         orderBy: [asc(channels.order_index)]
       });
       
-      res.json(result);
+      // Filter out DM channels
+      const regularChannels = result.filter(channel => 
+        channel.type === "channel" && 
+        !channel.name?.startsWith("dm-")
+      );
+      
+      res.json(regularChannels);
     } catch (error) {
       console.error('Failed to fetch channels:', error);
       res.status(500).json({ error: "Failed to fetch channels" });

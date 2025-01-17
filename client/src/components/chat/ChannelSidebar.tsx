@@ -52,8 +52,10 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
     select: (channels) => {
       if (!channels) return [];
       
+      // Only get regular channels
       const regularChannels = channels.filter(channel => 
-        channel.type === 'channel' && !channel.name?.startsWith('dm-')
+        channel.type === 'channel' && 
+        !channel.name?.startsWith('dm-')
       );
       
       if (!selectedChannel && regularChannels.length > 0) {
@@ -61,7 +63,11 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
         const defaultChannel = regularChannels.find(c => c.id === lastChannel) || regularChannels[0];
         onSelectChannel(defaultChannel.id);
       }
+      
       return regularChannels;
+    },
+    onError: (error) => {
+      console.error('Failed to fetch channels:', error);
     }
   });
 
