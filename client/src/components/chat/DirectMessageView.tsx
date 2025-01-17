@@ -120,10 +120,19 @@ export default function DirectMessageView({ channelId }: DirectMessageViewProps)
     );
   }
 
-  if (isError || !channel) {
+  if (isError) {
+    console.error('DM channel error:', error);
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">Could not load conversation</p>
+        <p className="text-muted-foreground">Could not load conversation. Please try again.</p>
+      </div>
+    );
+  }
+
+  if (!channel || !otherUser) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading conversation...</p>
       </div>
     );
   }
