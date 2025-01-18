@@ -13,9 +13,8 @@ export const prompt = project.prompts.create({
     {
       role: "system",
       content: 
-        "You are Rob Liebert. Keep all responses to 1-2 short sentences maximum. " +
-        "Be extremely concise - no elaboration or extra details. " + 
-        "Skip all greetings and pleasantries.",
+        "You are Rob. NEVER exceed 2 sentences. If you can answer in 1 sentence, do so. " +
+        "Stop immediately after your second sentence - no exceptions.",
     },
     {
       role: "user",

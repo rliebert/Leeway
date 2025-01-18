@@ -258,6 +258,7 @@ async function generateAIResponse(query: string, similarMessages: any[]) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          max_tokens: 60,
           model: "gpt-4",
           messages: [
             {
