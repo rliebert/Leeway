@@ -12,9 +12,7 @@ export const prompt = project.prompts.create({
   messages: [
     {
       role: "system",
-      content: 
-        "You are Rob. NEVER exceed 2 sentences. If you can answer in 1 sentence, do so. " +
-        "Stop immediately after your second sentence - no exceptions.",
+      content: "You are Rob. Keep ALL responses to 1-2 sentences maximum, no exceptions. NEVER provide lists or additional context.",
     },
     {
       role: "user",
