@@ -50,7 +50,18 @@ interface ThreadModalProps {
   mode?: ThreadMode;
 }
 
-// Update the Message type to include tempId and proper author type
+// Add FileAttachment type definition
+type FileAttachment = {
+  id: string;
+  message_id: string;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  created_at: Date | null;
+};
+
+// Update MessageWithAuthor type to use FileAttachment
 type MessageWithAuthor = Message & {
   author?: {
     id: string;
@@ -65,10 +76,10 @@ type MessageWithAuthor = Message & {
     role: string;
     is_admin: boolean;
   };
-  attachments?: Array<{ url: string; originalName: string; mimetype: string }>;
+  attachments?: FileAttachment[];
   tempId?: string;
-  isOptimistic?: boolean;
   type?: string;
+  dm_channel_id: string | null;
 };
 
 export default function ThreadModal({
@@ -181,13 +192,25 @@ export default function ThreadModal({
           return;
         }
 
-        // Add the message to our map
-        const processedMsg = {
+        // Transform attachments to match required type
+        const processedAttachments = (msg.attachments || []).map(attachment => ({
+          id: attachment.id || crypto.randomUUID(),
+          message_id: msg.id,
+          file_url: attachment.url || '',
+          file_name: attachment.originalName || '',
+          file_type: attachment.mimetype || '',
+          file_size: attachment.size || 0,
+          created_at: new Date()
+        }));
+
+        // Add the message to our map with required fields
+        const processedMsg: MessageWithAuthor = {
           ...msg,
           tempId: msg.tempId,
           created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
           pinned_at: msg.pinned_at ? new Date(msg.pinned_at) : null,
-          attachments: msg.attachments || []
+          attachments: processedAttachments,
+          dm_channel_id: mode === 'dm' ? parentMessage.channel_id : null
         };
         messageMap.set(msg.id, processedMsg);
         if (msg.tempId) {
@@ -480,18 +503,18 @@ export default function ThreadModal({
                           <div className="mt-2 space-y-2">
                             <div className="flex flex-wrap gap-2">
                               {reply.attachments
-                                .filter(file => file.mimetype?.startsWith('image/'))
+                                .filter(file => file.file_type?.startsWith('image/'))
                                 .map((file, index) => (
                                   <div key={index} className="relative group">
                                     <a
-                                      href={file.url}
+                                      href={file.file_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="block hover:opacity-90 transition-opacity"
                                     >
                                       <img
-                                        src={file.url}
-                                        alt={file.originalName}
+                                        src={file.file_url}
+                                        alt={file.file_name}
                                         className="rounded-md max-h-48 object-cover"
                                       />
                                     </a>
@@ -500,18 +523,18 @@ export default function ThreadModal({
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {reply.attachments
-                                .filter(file => !file.mimetype?.startsWith('image/'))
+                                .filter(file => !file.file_type?.startsWith('image/'))
                                 .map((file, index) => (
                                   <div key={index} className="relative group">
                                     <a
-                                      href={file.url}
+                                      href={file.file_url}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center gap-2 text-sm text-primary hover:text-primary/90 bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-md transition-colors"
                                     >
                                       <PaperclipIcon className="h-4 w-4" />
                                       <span className="truncate max-w-[200px]">
-                                        {file.originalName}
+                                        {file.file_name}
                                       </span>
                                       <ExternalLink className="h-3 w-3" />
                                     </a>
