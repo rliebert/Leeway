@@ -50,6 +50,31 @@ interface ThreadModalProps {
   mode?: ThreadMode;
 }
 
+// Add WebSocketMessage type to handle incoming messages
+type WebSocketMessage = {
+  id: string;
+  content: string;
+  user_id: string;
+  channel_id: string;
+  parent_id?: string;
+  created_at?: string | Date;
+  pinned_at?: string | Date | null;
+  tempId?: string;
+  type?: string;
+  attachments?: Array<{
+    id?: string;
+    url: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+  }>;
+  author?: {
+    username: string;
+    avatar_url: string;
+    full_name?: string | null;
+  };
+};
+
 // Add FileAttachment type definition
 type FileAttachment = {
   id: string;
@@ -179,14 +204,14 @@ export default function ThreadModal({
     });
 
     // Process WebSocket messages
-    wsMessages
-      .filter(msg => {
+    (wsMessages as unknown as WebSocketMessage[])
+      .filter((msg) => {
         if (mode === 'dm') {
           return msg.channel_id === parentMessage.channel_id && msg.type !== 'message_deleted';
         }
         return msg.parent_id === parentMessage.id && msg.type !== 'message_deleted';
       })
-      .forEach(msg => {
+      .forEach((msg) => {
         // Skip if we already have this message (by id or tempId)
         if (messageMap.has(msg.id) || (msg.tempId && messageMap.has(msg.tempId))) {
           return;
@@ -196,22 +221,42 @@ export default function ThreadModal({
         const processedAttachments = (msg.attachments || []).map(attachment => ({
           id: attachment.id || crypto.randomUUID(),
           message_id: msg.id,
-          file_url: attachment.url || '',
-          file_name: attachment.originalName || '',
-          file_type: attachment.mimetype || '',
-          file_size: attachment.size || 0,
+          file_url: attachment.url,
+          file_name: attachment.originalName,
+          file_type: attachment.mimetype,
+          file_size: attachment.size,
           created_at: new Date()
         }));
 
         // Add the message to our map with required fields
         const processedMsg: MessageWithAuthor = {
-          ...msg,
-          tempId: msg.tempId,
-          created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
+          id: msg.id,
+          channel_id: msg.channel_id,
+          dm_channel_id: mode === 'dm' ? parentMessage.channel_id : null,
+          user_id: msg.user_id,
+          content: msg.content,
+          parent_id: msg.parent_id || null,
+          pinned_by: null,
           pinned_at: msg.pinned_at ? new Date(msg.pinned_at) : null,
+          created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
+          tempId: msg.tempId,
+          type: msg.type,
           attachments: processedAttachments,
-          dm_channel_id: mode === 'dm' ? parentMessage.channel_id : null
+          author: msg.author ? {
+            id: msg.user_id, // Use user_id as author id
+            username: msg.author.username,
+            avatar_url: msg.author.avatar_url,
+            email: '', // Required by type but not needed for display
+            password: '', // Required by type but not needed for display
+            full_name: msg.author.full_name || null,
+            status: null,
+            last_active: null,
+            created_at: null,
+            role: 'user',
+            is_admin: false
+          } : undefined
         };
+
         messageMap.set(msg.id, processedMsg);
         if (msg.tempId) {
           messageMap.set(msg.tempId, processedMsg);
