@@ -65,10 +65,13 @@ export function EditAIRobDialog({
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <AvatarUpload 
-            userId="ai-rob"
+            userId="ai.rob"
             currentAvatar="/uploads/ai-rob-avatar.png"
             username="ai.rob"
-            onAvatarUpdate={() => {}}
+            onAvatarUpdate={() => {
+              // Force refresh the page to show updated avatar
+              window.location.reload();
+            }}
           />
           <div className="grid gap-2">
             <label htmlFor="aiRobFullName">Full Name</label>
