@@ -99,7 +99,7 @@ const openai = new OpenAI({
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 async function main() {
-  const docsDir = path.join(__dirname, "docs/ai-agents/ai-rob");
+  const docsDir = path.join(__dirname, "../rag/docs/ai-agents/ai-rob");
   const markdownFiles = getAllMarkdownFiles(docsDir);
 
   const allSections: Section[] = [];
