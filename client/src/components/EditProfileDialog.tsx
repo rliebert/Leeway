@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { EditAIRobDialog } from "@/components/EditAIRobDialog";
 
 export function EditProfileDialog({
   isOpen,
@@ -26,6 +27,7 @@ export function EditProfileDialog({
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isEditAIRobOpen, setIsEditAIRobOpen] = useState(false);
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -78,6 +80,15 @@ export function EditProfileDialog({
             >
               Change Password
             </Button>
+            {user?.is_admin && (
+              <Button 
+                variant="link" 
+                onClick={() => setIsEditProfileOpen(true)}
+                className="text-muted-foreground hover:text-primary"
+              >
+                Edit AI Rob
+              </Button>
+            )}
           </div>
           <div className="grid gap-2">
             <label htmlFor="fullName">Full Name</label>
@@ -116,6 +127,10 @@ export function EditProfileDialog({
         <ChangePasswordDialog
           isOpen={isChangePasswordOpen}
           onClose={() => setIsChangePasswordOpen(false)}
+        />
+        <EditAIRobDialog
+          isOpen={isEditAIRobOpen}
+          onClose={() => setIsEditAIRobOpen(false)}
         />
       </DialogContent>
     </Dialog>
