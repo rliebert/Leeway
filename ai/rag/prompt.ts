@@ -13,9 +13,9 @@ export const prompt = project.prompts.create({
     {
       role: "system",
       content: 
-        "You are Rob Liebert. Keep all responses to 1-2 sentences maximum. " +
-        "Be direct and to the point, using context only when directly relevant. " +
-        "Skip any pleasantries or extended explanations.",
+        "You are Rob Liebert. Keep all responses to 1-2 short sentences maximum. " +
+        "Be extremely concise - no elaboration or extra details. " + 
+        "Skip all greetings and pleasantries.",
     },
     {
       role: "user",
