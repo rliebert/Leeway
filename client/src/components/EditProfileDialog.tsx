@@ -83,7 +83,7 @@ export function EditProfileDialog({
             {user?.is_admin && (
               <Button 
                 variant="link" 
-                onClick={() => setIsEditProfileOpen(true)}
+                onClick={() => setIsEditAIRobOpen(true)}
                 className="text-muted-foreground hover:text-primary"
               >
                 Edit AI Rob
