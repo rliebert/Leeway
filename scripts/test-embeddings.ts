@@ -18,7 +18,7 @@ async function testEmbeddings() {
   });
 
   // Test query about music (since we know Rob has many music-related notes)
-  const testQuery = "What are your thoughts on music theory?";
+  const testQuery = "Explain your approach to teaching and understanding music theory, particularly around intervals and the 12-tone system";
   console.log("Testing query:", testQuery);
 
   const queryEmbedding = await embeddings.embedQuery(testQuery);
@@ -32,7 +32,8 @@ async function testEmbeddings() {
   console.log("\nFound matches:");
   results.matches.forEach((match, i) => {
     console.log(`\n${i + 1}. Score: ${match.score?.toFixed(3)}`);
-    console.log(`Content preview: ${match.metadata?.content?.substring(0, 200)}...`);
+    console.log(`Title: ${match.metadata?.title}`);
+    console.log(`Content preview: ${match.metadata?.content?.substring(0, 400)}...`);
   });
 }
 
