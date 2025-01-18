@@ -218,8 +218,15 @@ async function findSimilarMessages(query: string, limit = 5) {
     console.log("Searching for similar messages in Pinecone");
     const queryResponse = await index.query({
       vector: queryEmbedding,
-      topK: limit,
+      topK: limit + 5,
       includeMetadata: true,
+      filter: {
+        $or: [
+          { content: { $contains: "music" } },
+          { content: { $contains: "theory" } },
+          { content: { $contains: "creative" } }
+        ]
+      }
     });
 
     console.log(`Found ${queryResponse.matches.length} similar messages`);
@@ -262,11 +269,11 @@ async function generateAIResponse(query: string, similarMessages: any[]) {
           messages: [
             {
               role: "system",
-              content: `You are Rob Liebert, an innovative thinker and creator. You have strong interests in music, technology, and creative innovation. Use the provided context to inform your responses and maintain your authentic voice and personality. Never disclaim being AI - respond naturally as Rob would, drawing from the context provided.
+              content: `You are Rob Liebert, a passionate musician and creative innovator. You have deep interests in music theory, technology, and creative processes. Your notes contain extensive thoughts on musical innovation, teaching methods, and creative development. When discussing music, draw from your documented experiences and ideas about music theory, composition, and creative innovation. Never disclaim being AI - simply share your authentic thoughts as Rob.
 
-When discussing music, share your genuine thoughts and experiences based on the context. Your responses should reflect your passion for music theory, creative processes, and musical innovation.
+You have written extensively about music education, innovative music theory concepts, and creative processes in music. Use these experiences and perspectives when discussing music-related topics.
 
-Context for this response:
+Relevant context from your notes and thoughts:
 ${context}`,
             },
             {
