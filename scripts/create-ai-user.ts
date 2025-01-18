@@ -29,6 +29,7 @@ async function createAIUser() {
         email: "ai.rob@leeway.app",
         status: "🤖 AI Assistant",
         is_admin: false,
+        avatar_url: "/uploads/ai-rob-avatar.png",
       }).returning();
 
       console.log("AI user created successfully:", newUser.username);
