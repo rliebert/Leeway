@@ -12,11 +12,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { FileUpload } from "./FileUpload";
+import { v4 as uuidv4 } from 'uuid';
 
 interface ChatInputProps {
   channelId: string;
   parentMessageId?: string;
-  onSend?: (content: string) => Promise<void>;
+  onSend?: (content: string, files: File[]) => Promise<void>;
   placeholder?: string;
 }
 
@@ -35,6 +36,7 @@ export default function ChatInput({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [files, setFiles] = useState<File[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputId = `file-upload-${channelId}-${parentMessageId || 'main'}`;
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -46,57 +48,52 @@ export default function ChatInput({
     const message = data?.message || "";
     if ((!message.trim() && files.length === 0) || !user || !channelId) return;
 
+    const tempId = uuidv4();
+
     try {
-      // Upload files if any
-      let attachments = [];
-      if (files.length > 0) {
-        const formData = new FormData();
-        files.forEach((file) => {
-          formData.append('files', file);
-        });
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'File upload failed');
-        }
-
-        attachments = await response.json();
-      }
-
       // If custom onSend handler is provided (for DMs), use it
       if (onSend) {
-        await onSend(message);
+        await onSend(message, files);
+        form.reset();
+        setFiles([]);
       } else {
         // Otherwise send through WebSocket for regular channels
+        // Upload files if any
+        let attachments = [];
+        if (files.length > 0) {
+          const formData = new FormData();
+          files.forEach((file) => {
+            formData.append('files', file);
+          });
+
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include',
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'File upload failed');
+          }
+
+          attachments = await response.json();
+        }
+
         send({
           type: "message",
           channelId: channelId.toString(),
           content: message.trim() || "(attachment)",
-          parentId: parentMessageId,
-          attachments: attachments.map((attachment: any) => ({
-            url: attachment.url,
-            originalName: attachment.originalName,
-            mimetype: attachment.mimetype,
-            file_size: attachment.size,
-            file_url: attachment.url,
-            file_type: attachment.mimetype
-          })),
+          tempId,
+          attachments,
+          parentId: parentMessageId
         });
-      }
 
-      // Reset form state
-      form.reset();
-      setFiles([]);
-      setShowEmojiPicker(false);
+        form.reset();
+        setFiles([]);
+      }
     } catch (error) {
-      console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      console.error("Error sending message:", error);
     }
   };
 
@@ -190,7 +187,7 @@ export default function ChatInput({
             <>
               <input
                 type="file"
-                id="file-upload"
+                id={fileInputId}
                 multiple
                 className="hidden"
                 onChange={(e) => {
@@ -204,7 +201,7 @@ export default function ChatInput({
                 variant="ghost"
                 size="icon"
                 className="h-11 w-11"
-                onClick={() => document.getElementById('file-upload')?.click()}
+                onClick={() => document.getElementById(fileInputId)?.click()}
               >
                 <PaperclipIcon className="h-5 w-5" />
               </Button>

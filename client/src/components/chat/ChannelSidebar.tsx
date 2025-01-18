@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import type { Channel, Section, User } from "@db/schema";
+import { sections, type Channel, type Section, type User } from "@db/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { ChevronRightSquare, ChevronRight, Hash, MoreVertical, Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
@@ -37,6 +37,12 @@ interface Props {
   onSelectChannel: (channelId: string) => void;
 }
 
+// Add interface for channelsBySection
+interface ChannelsBySection {
+  uncategorized: Channel[];
+  [key: string]: Channel[];
+}
+
 export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Props) {
   const { user } = useUser();
   const queryClient = useQueryClient();
@@ -44,206 +50,149 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
-
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [channelFormData, setChannelFormData] = useState<Partial<Channel>>({});
+  const [sectionName, setSectionName] = useState('');
+  const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
 
-  // const { data: channels } = useQuery<Channel[]>({
-  //   queryKey: ["/api/channels"],
-  //   select: (channels) => {
-  //     if (!channels) return [];
-      
-  //     // Only get regular channels
-  //     const regularChannels = channels.filter(channel => 
-  //       channel.type === 'channel' && 
-  //       !channel.name?.startsWith('dm-')
-  //     );
-      
-  //     if (!selectedChannel && regularChannels.length > 0) {
-  //       const lastChannel = localStorage.getItem('lastSelectedChannel');
-  //       const defaultChannel = regularChannels.find(c => c.id === lastChannel) || regularChannels[0];
-  //       onSelectChannel(defaultChannel.id);
-  //     }
-      
-  //     return regularChannels;
-  //   },
-  //   onError: (error) => {
-  //     console.error('Failed to fetch channels:', error);
-  //   }
-  // });
   const { data: channels = [] } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
-  });
-  
-  // Assuming the API or state management already separates these, you should only be fetching regular channels here.
-  return (
-    <div>
-      {channels.map(channel => (
-        <ChannelItem
-          key={channel.id}
-          channel={channel}
-          isSelected={selectedChannel === channel.id}
-          onSelect={() => onSelectChannel(channel.id)}
-          onEdit={() => handleEditChannel(channel)}
-          onDelete={() => handleDeleteChannel(channel.id)}
-          isCreator={channel.creator_id === user?.id}
-        />
-      ))}
-    </div>
-  );
-
-
-  const { data: sections } = useQuery<Section[]>({
-    queryKey: ["/api/sections"],
-    select: (sections) => sections?.filter(section => section.name !== "LeewayDMs"),
-  });
-
-  // Removed unnecessary user fetching since this is handled in DirectMessageSidebar
-
-  const [channelFormData, setChannelFormData] = useState<{
-    name: string;
-    description?: string;
-    section_id?: string | null;
-  }>({
-    name: "",
-  });
-
-  const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
-  const [sectionName, setSectionName] = useState("");
-
-  const createSectionMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const response = await fetch("/api/sections", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/sections"] });
-      toast({ description: "Section created successfully" });
-      setIsSectionDialogOpen(false);
-      setSectionName("");
-    },
-  });
-
-  const handleCreateSection = () => {
-    if (!sectionName.trim()) {
-      toast({ variant: "destructive", description: "Section name is required" });
-      return;
+    select: (channels) => {
+      if (!channels) return [];
+      // Only get regular channels
+      return channels.filter(channel => 
+        channel.type === 'channel' && 
+        !channel.name?.startsWith('dm-')
+      );
     }
-    createSectionMutation.mutate(sectionName);
-  };
+  });
 
-  // Reset form when dialog closes
-  const handleDialogChange = (open: boolean) => {
-    if (!open) {
-      setChannelFormData({ name: "" });
-      setEditingChannel(null);
+  useEffect(() => {
+    if (!selectedChannel && channels.length > 0) {
+      const lastChannel = localStorage.getItem('lastSelectedChannel');
+      const defaultChannel = channels.find(c => c.id === lastChannel) || channels[0];
+      onSelectChannel(defaultChannel.id);
     }
+  }, [selectedChannel, channels, onSelectChannel]);
+
+  function handleDialogChange(open: boolean) {
     setIsDialogOpen(open);
-  };
+    if (!open) {
+      setEditingChannel(null);
+      setChannelFormData({});
+    }
+  }
 
-  const handleEditChannel = (channel: Channel) => {
-    setEditingChannel(channel);
-    setChannelFormData({
-      name: channel.name,
-      description: channel.description || "",
-      section_id: channel.section_id,
+  function handleSaveChannel(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    // TODO: Implement channel save/update mutation
+    const isEditing = !!editingChannel;
+    const mutation = isEditing ? updateChannelMutation : createChannelMutation;
+    
+    mutation.mutate(channelFormData, {
+      onSuccess: () => {
+        setIsDialogOpen(false);
+        setChannelFormData({});
+        setEditingChannel(null);
+      }
     });
-    setIsDialogOpen(true);
-  };
+  }
 
-  const toggleSection = (sectionId: string) => {
+  function handleCreateSection(event: React.MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    // TODO: Implement section creation mutation
+    createSectionMutation.mutate({ name: sectionName }, {
+      onSuccess: () => {
+        setIsSectionDialogOpen(false);
+        setSectionName('');
+      }
+    });
+  }
+
+  function handleEditChannel(channel: Channel) {
+    setEditingChannel(channel);
+    setChannelFormData(() => ({ ...channel }));
+    setIsDialogOpen(true);
+  }
+
+  function handleDeleteChannel(id: string) {
+    // TODO: Implement delete mutation
+    if (confirm('Are you sure you want to delete this channel?')) {
+      deleteChannelMutation.mutate(id);
+    }
+  }
+
+  function toggleSection(id: string) {
     setExpandedSections(prev => ({
       ...prev,
-      [sectionId]: !prev[sectionId]
+      [id]: !prev[id]
     }));
-  };
+  }
 
-  const createChannelMutation = useMutation({
-    mutationFn: async (data: { name: string; description?: string; section_id?: string | null }) => {
-      const response = await fetch("/api/channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+  // Add mutations
+  const createChannelMutation = useMutation<Channel, Error, Partial<Channel>>({
+    mutationFn: async (data) => {
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-      toast({ description: "Channel created successfully" });
-      setIsDialogOpen(false);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/channels'] })
   });
 
-  const updateChannelMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<Channel> }) => {
-      const response = await fetch(`/api/channels/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+  const updateChannelMutation = useMutation<Channel, Error, Partial<Channel>>({
+    mutationFn: async (data) => {
+      const res = await fetch(`/api/channels/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
       });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-      toast({ description: "Channel updated successfully" });
-      setIsDialogOpen(false);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/channels'] })
   });
 
-  const deleteChannelMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/channels/${id}`, {
-        method: "DELETE",
+  const deleteChannelMutation = useMutation<void, Error, string>({
+    mutationFn: async (id) => {
+      const res = await fetch(`/api/channels/${id}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
       });
-      if (!response.ok) throw new Error(await response.text());
-      return response.json();
+      return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/channels"] });
-      toast({ description: "Channel deleted successfully" });
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/channels'] })
   });
 
-  const handleSaveChannel = () => {
-    if (!channelFormData.name.trim()) {
-      toast({ variant: "destructive", description: "Channel name is required" });
-      return;
-    }
-
-    if (editingChannel) {
-      updateChannelMutation.mutate({
-        id: editingChannel.id,
-        data: channelFormData,
+  const createSectionMutation = useMutation<Section, Error, { name: string }>({
+    mutationFn: async (data) => {
+      const res = await fetch('/api/sections', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
       });
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/sections'] })
+  });
+
+  // Add query for sections if not already present
+  const { data: sections } = useQuery<Section[]>({
+    queryKey: ['/api/sections']
+  });
+
+  // Add channelsBySection organization
+  const channelsBySection = channels?.reduce((acc: ChannelsBySection, channel: Channel) => {
+    if (!channel.section_id) {
+      acc.uncategorized = [...(acc.uncategorized || []), channel];
     } else {
-      createChannelMutation.mutate(channelFormData);
+      acc[channel.section_id] = [...(acc[channel.section_id] || []), channel];
     }
-  };
-
-  const handleDeleteChannel = (channelId: string) => {
-    if (window.confirm("Are you sure you want to delete this channel?")) {
-      deleteChannelMutation.mutate(channelId);
-      if (selectedChannel === channelId) {
-        onSelectChannel("");
-      }
-    }
-  };
-
-  const channelsBySection = channels?.reduce((acc: any, channel: Channel) => {
-    const sectionId = channel.section_id || 'uncategorized';
-    if (!acc[sectionId]) {
-      acc[sectionId] = [];
-    }
-    acc[sectionId].push(channel);
     return acc;
-  }, {} as Record<string | number, Channel[]>);
+  }, { uncategorized: [] });
 
+  // Assuming the API or state management already separates these, you should only be fetching regular channels here.
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
       <div className="relative">
@@ -300,7 +249,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 <Label htmlFor="name">Channel Name</Label>
                 <Input
                   id="name"
-                  value={channelFormData.name}
+                  value={channelFormData?.name || ''}
                   onChange={(e) => setChannelFormData(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="e.g. announcements"
                 />
@@ -309,7 +258,7 @@ export default function ChannelSidebar({ selectedChannel, onSelectChannel }: Pro
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  value={channelFormData.description || ''}
+                  value={channelFormData?.description || ''}
                   onChange={(e) => setChannelFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="What's this channel about?"
                 />

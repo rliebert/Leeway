@@ -54,3 +54,22 @@ export type WSContextType = {
   send: (data: WSMessage) => void;
   connectionQuality: number;
 };
+
+export interface Channel {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'channel' | 'dm';
+  creator_id: string;
+  section_id: string | null;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+}
+
+export interface ChannelsBySection {
+  uncategorized: Channel[];
+  [sectionId: string]: Channel[];
+}

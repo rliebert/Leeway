@@ -54,11 +54,8 @@ export const channels = pgTable("channels", {
 
 export const messages = pgTable("messages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  channel_id: uuid("channel_id")
-    .references(() => channels.id, {
-      onDelete: "cascade",
-    })
-    .notNull(),
+  channel_id: uuid("channel_id"),
+  dm_channel_id: uuid("dm_channel_id").references(() => dm_channels.id),
   user_id: uuid("user_id")
     .references(() => users.id)
     .notNull(),
@@ -121,6 +118,10 @@ export const messagesRelations = relations(messages, ({ one, many }) => ({
     fields: [messages.channel_id],
     references: [channels.id],
   }),
+  dm_channel: one(dm_channels, {
+    fields: [messages.dm_channel_id],
+    references: [dm_channels.id],
+  }),
   author: one(users, {
     fields: [messages.user_id],
     references: [users.id],
@@ -163,6 +164,16 @@ export const fileAttachmentsRelations = relations(
     }),
   }),
 );
+
+export const dmChannelsRelations = relations(dm_channels, ({ many }) => ({
+  subscriptions: many(channel_subscriptions),
+}));
+
+export const channelSubscriptionsRelations = relations(channel_subscriptions, ({ one }) => ({
+  dm_channel: one(dm_channels),
+  channel: one(channels),
+  user: one(users),
+}));
 
 // Export schemas for validation
 export const insertUserSchema = createInsertSchema(users);

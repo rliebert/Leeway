@@ -8,6 +8,8 @@ import type { User } from "@db/schema";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
+import ThreadModal from './ThreadModal';
+import { useWS } from "@/lib/ws";
 
 interface DirectMessageSidebarProps {
   selectedDM: string | null;
@@ -17,11 +19,38 @@ interface DirectMessageSidebarProps {
 interface DMChannel {
   id: string;
   created_at: string;
+  last_read?: string;
+  initiator_id: string;
+  invited_user_id: string;
+  order_index: number;
   members: {
     user_id: string;
     channel_id: string;
     created_at: string;
   }[];
+}
+
+interface DMChannelResponse {
+  dm_channels: {
+    id: string;
+    created_at: string;
+    last_read?: string;
+    initiator_id: string;
+    invited_user_id: string;
+    order_index: number;
+    members: {
+      user_id: string;
+      channel_id: string;
+      created_at: string;
+    }[];
+  };
+  channel_subscriptions: {
+    id: string;
+    user_id: string;
+    channel_id: string | null;
+    dm_channel_id: string;
+    subscribed_at: string;
+  };
 }
 
 function isUserOnline(lastActive: Date | string | null) {
@@ -36,18 +65,37 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
   const { user: currentUser } = useUser();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
+  const [currentChannelId, setCurrentChannelId] = useState<string | null>(null);
+  const { messages: wsMessages } = useWS();
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["/api/users"],
   });
 
-  const { data: dmChannels = [] } = useQuery<DMChannel[]>({
+  const { data: dmChannelsData = [] } = useQuery<DMChannelResponse[]>({
     queryKey: ["/api/dm/channels"],
+    select: (channels) => {
+      console.log('DM Channel Response:', JSON.stringify(channels, null, 2));
+      return channels;
+    }
   });
+
+  // Extract channels and map to the format we need
+  const dmChannels = dmChannelsData.map(data => data.dm_channels);
 
   const createDMMutation = useMutation({
     mutationFn: async (userId: string) => {
       try {
+        // First check if a channel already exists with this user
+        const existingChannel = dmChannels.find(channel =>
+          channel.members?.some(member => member.user_id === userId)
+        );
+
+        if (existingChannel) {
+          return existingChannel;
+        }
+
         // Create a new DM channel
         const createResponse = await fetch("/api/dm/channels", {
           method: "POST",
@@ -74,7 +122,7 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
     },
     onSuccess: (data) => {
       if (data?.id) {
-        onSelectDM(data.id);
+        handleSelectDM(data.id);
         queryClient.invalidateQueries({ queryKey: ["/api/dm/channels"] });
       }
     },
@@ -95,6 +143,54 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
       sortedUsers.unshift(user);
     }
   }
+
+  const handleSelectDM = (channelId: string) => {
+    console.log('Selecting DM channel:', {
+      channelId,
+      channel: dmChannels.find(c => c.id === channelId),
+      channelData: dmChannelsData.find(c => c.dm_channels.id === channelId)
+    });
+    setCurrentChannelId(channelId);
+    setIsThreadModalOpen(true);
+  };
+
+  // Get the other user's info for the selected channel
+  const getOtherUserFromChannel = (channelId: string | null) => {
+    if (!channelId) return undefined;
+    const channelData = dmChannelsData.find(c => c.dm_channels.id === channelId);
+    
+    if (!channelData) return undefined;
+    
+    // Get the ID of the other user (either initiator or invited user)
+    const otherUserId = channelData.dm_channels.initiator_id === currentUser?.id
+      ? channelData.dm_channels.invited_user_id
+      : channelData.dm_channels.initiator_id;
+    
+    // Look up the user info from the users list
+    const otherUser = users.find(u => u.id === otherUserId);
+    
+    console.log('Looking up other user:', {
+      channelId,
+      channelData,
+      otherUserId,
+      otherUser,
+      currentUserId: currentUser?.id
+    });
+    
+    return otherUser;
+  };
+
+  const otherUser = getOtherUserFromChannel(currentChannelId);
+  const channel = currentChannelId ? 
+    dmChannelsData.find(c => c.dm_channels.id === currentChannelId)?.dm_channels 
+    : null;
+
+  console.log('Channel lookup:', {
+    currentChannelId,
+    otherUser,
+    channel,
+    dmChannelsData
+  });
 
   return (
     <div className="flex flex-col space-y-2">
@@ -123,6 +219,13 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
                 (channel) => channel.members?.some((member) => member.user_id === user.id)
               );
 
+              // Check for unread messages in this channel
+              const hasUnreadMessages = wsMessages.some(msg => 
+                msg.channel_id === existingChannel?.id && 
+                msg.user_id !== currentUser?.id &&
+                new Date(msg.created_at) > new Date(existingChannel?.last_read || 0)
+              );
+
               return (
                 <button
                   key={user.id}
@@ -130,7 +233,7 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
                   onClick={() => {
                     if (!isSelf) {
                       if (existingChannel) {
-                        onSelectDM(existingChannel.id);
+                        handleSelectDM(existingChannel.id);
                       } else {
                         createDMMutation.mutate(user.id);
                       }
@@ -154,9 +257,12 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
                       )}
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-medium">
+                      <span className="font-medium flex items-center gap-2">
                         {user.username}
                         {isSelf && " (you)"}
+                        {hasUnreadMessages && (
+                          <span className="w-2 h-2 bg-primary rounded-full" />
+                        )}
                       </span>
                       {isSelf && (
                         <span className="text-xs text-muted-foreground">
@@ -174,6 +280,35 @@ export function DirectMessageSidebar({ selectedDM, onSelectDM }: DirectMessageSi
           </div>
         </ScrollArea>
       )}
+
+      <ThreadModal
+        open={isThreadModalOpen}
+        onOpenChange={setIsThreadModalOpen}
+        parentMessage={{
+          id: currentChannelId || '',
+          author: otherUser ? {
+            id: otherUser.id,
+            username: otherUser.username,
+            avatar_url: otherUser.avatar_url,
+            email: otherUser.email,
+            password: otherUser.password,
+            full_name: otherUser.full_name,
+            status: otherUser.status,
+            last_active: otherUser.last_active,
+            created_at: otherUser.created_at,
+            role: otherUser.role,
+            is_admin: otherUser.is_admin
+          } : undefined,
+          content: '', 
+          created_at: channel?.created_at ? new Date(channel.created_at) : new Date(),
+          channel_id: currentChannelId || '',
+          user_id: otherUser?.id || '',
+          pinned_by: null,
+          pinned_at: null,
+          parent_id: null
+        }}
+        mode="dm"
+      />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@db";
-import { eq, and, or } from "drizzle-orm";
-import { users, type User, dm_channels, channel_subscriptions } from "@db/schema";
+import { eq, and, or, asc } from "drizzle-orm";
+import type { User, Message } from "@db/schema";
+import { users, dm_channels, channel_subscriptions, messages, file_attachments } from "@db/schema";
 
 const router = Router();
 
@@ -184,13 +185,15 @@ router.delete("/channels/:id", async (req, res) => {
   const { id: channelId } = req.params;
 
   try {
+    // Remove any dm_ prefix from the channel ID
+    const cleanChannelId = channelId.replace(/^dm_/, '');
     // Check if the user is part of the channel
     const isParticipant = await db
       .select()
       .from(channel_subscriptions)
       .where(
         and(
-          eq(channel_subscriptions.dm_channel_id, channelId),
+          eq(channel_subscriptions.dm_channel_id, cleanChannelId),
           eq(channel_subscriptions.user_id, userId)
         )
       );
@@ -200,7 +203,7 @@ router.delete("/channels/:id", async (req, res) => {
     }
 
     // Delete the channel
-    await db.delete(dm_channels).where(eq(dm_channels.id, channelId));
+    await db.delete(dm_channels).where(eq(dm_channels.id, cleanChannelId));
 
     res.status(204).send();
   } catch (error) {
@@ -209,33 +212,118 @@ router.delete("/channels/:id", async (req, res) => {
   }
 });
 
-router.get("/api/dm/channels/:channelId", async (req, res) => {
-    if (!req.user) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
+router.get("/channels/:channelId", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
 
-    const { channelId } = req.params;
-    if (!channelId) {
-      return res.status(400).json({ error: "Channel ID is required" });
-    }
+  const { channelId } = req.params;
+  if (!channelId) {
+    return res.status(400).json({ error: "Channel ID is required" });
+  }
 
-    try {
-      const channel = await db
-        .select()
-        .from(dm_channels)
-        .where(eq(dm_channels.id, channelId))
-        .leftJoin(channel_subscriptions, eq(dm_channels.id, channel_subscriptions.dm_channel_id))
-        .where(eq(channel_subscriptions.user_id, (req.user as User).id));
-
-      if (channel.length > 0) {
-        return res.json(channel[0]);
-      } else {
-        return res.status(404).json({ error: "Channel not found" });
+  try {
+    // Remove any dm_ prefix from the channel ID
+    const cleanChannelId = channelId.replace(/^dm_/, '');
+    const channel = await db.query.dm_channels.findFirst({
+      where: eq(dm_channels.id, cleanChannelId),
+      with: {
+        subscriptions: true
       }
-    } catch (error) {
-      console.error("[DM] Error fetching DM channel:", error);
-      return res.status(500).json({ error: "Internal server error" });
+    });
+
+    if (!channel) {
+      return res.status(404).json({ error: "Channel not found" });
     }
-  });
+
+    // Check if the user is a participant in this DM channel
+    const isParticipant = channel.subscriptions.some(sub => sub.user_id === (req.user as User).id);
+    if (!isParticipant) {
+      return res.status(403).json({ error: "Not authorized to access this channel" });
+    }
+
+    return res.json(channel);
+  } catch (error) {
+    console.error("[DM] Error fetching DM channel:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/channels/:channelId/messages", async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const { channelId } = req.params;
+  if (!channelId) {
+    return res.status(400).json({ error: "Channel ID is required" });
+  }
+
+  try {
+    // Remove any dm_ prefix from the channel ID
+    const cleanChannelId = channelId.replace(/^dm_/, '');
+    
+    // First check if the user is a participant in this DM channel
+    const subscriptions = await db
+      .select()
+      .from(channel_subscriptions)
+      .where(
+        and(
+          eq(channel_subscriptions.dm_channel_id, cleanChannelId),
+          eq(channel_subscriptions.user_id, (req.user as User).id)
+        )
+      );
+
+    if (subscriptions.length === 0) {
+      return res.status(403).json({ error: "Not authorized to access this channel" });
+    }
+
+    // Fetch messages for this channel
+    const channelMessages = await db
+      .select({
+        message: messages,
+        author: users,
+        attachments: file_attachments
+      })
+      .from(messages)
+      .leftJoin(users, eq(messages.user_id, users.id))
+      .leftJoin(file_attachments, eq(messages.id, file_attachments.message_id))
+      .where(eq(messages.dm_channel_id, cleanChannelId))
+      .orderBy(asc(messages.created_at));
+
+    // Transform the results to match the expected format
+    const transformedMessages = channelMessages.reduce((acc: any[], row) => {
+      const existingMessage = acc.find(m => m.id === row.message.id);
+      if (existingMessage) {
+        if (row.attachments) {
+          existingMessage.attachments.push(row.attachments);
+        }
+      } else {
+        acc.push({
+          ...row.message,
+          author: row.author,
+          attachments: row.attachments ? [row.attachments] : []
+        });
+      }
+      return acc;
+    }, []);
+
+    console.log('[DM] Fetched messages:', {
+      channelId: cleanChannelId,
+      messageCount: transformedMessages.length,
+      messages: transformedMessages.map(m => ({
+        id: m.id,
+        content: m.content,
+        user_id: m.user_id,
+        created_at: m.created_at
+      }))
+    });
+
+    return res.json(transformedMessages);
+  } catch (error) {
+    console.error("[DM] Error fetching messages:", error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 export default router;

@@ -4,7 +4,7 @@ import { parse as parseCookie } from "cookie";
 import { WebSocketServer, WebSocket } from "ws";
 import { serverDebugLogger as debug } from "./debug";
 import { db } from "@db";
-import { sessions, messages, users, file_attachments } from "@db/schema";
+import { sessions, messages, users, file_attachments, dm_channels } from "@db/schema";
 import { eq, asc } from "drizzle-orm";
 import { handleAIResponse, isQuestion } from "./services/rag";
 
@@ -269,50 +269,57 @@ export function setupWebSocketServer(server: Server) {
 
         // Handle subscriptions first
         if (message.type === 'subscribe' && message.channelId) {
-          let subscribers = channelSubscriptions.get(message.channelId);
+          // Remove any dm_ prefix from the channel ID
+          const cleanChannelId = message.channelId.replace(/^dm_/, '');
+          let subscribers = channelSubscriptions.get(cleanChannelId);
           if (!subscribers) {
             subscribers = new Set();
-            channelSubscriptions.set(message.channelId, subscribers);
+            channelSubscriptions.set(cleanChannelId, subscribers);
           }
           subscribers.add(ws);
-          debug.info(`Client subscribed to channel ${message.channelId}`);
+          debug.info(`Client subscribed to channel ${cleanChannelId}`);
           return;
         }
 
         if (message.type === 'unsubscribe' && message.channelId) {
-          const subscribers = channelSubscriptions.get(message.channelId);
+          // Remove any dm_ prefix from the channel ID
+          const cleanChannelId = message.channelId.replace(/^dm_/, '');
+          const subscribers = channelSubscriptions.get(cleanChannelId);
           if (subscribers) {
             subscribers.delete(ws);
-            debug.info(`Client unsubscribed from channel ${message.channelId}`);
+            debug.info(`Client unsubscribed from channel ${cleanChannelId}`);
           }
           return;
         }
-        debug.info('Parsed WebSocket message:', {
-          type: message.type,
-          channelId: message.channelId,
-          tempId: message.tempId,
-          content: message.content?.substring(0, 50),
-          timestamp: new Date().toLocaleTimeString()
-        });
+
         switch (message.type) {
           case 'message': {
             if (!message.channelId || !message.content) {
               debug.warn('Invalid message data:', { channelId: message.channelId, hasContent: !!message.content });
               return;
             }
+
+            // Remove any dm_ prefix from the channel ID
+            const cleanChannelId = message.channelId.replace(/^dm_/, '');
             debug.info('WebSocket packet received:', {
               type: message.type,
               tempId: message.tempId,
               content: message.content,
-              channelId: message.channelId
+              channelId: cleanChannelId
             });
 
             try {
+              // Check if this is a DM channel
+              const dmChannel = await db.query.dm_channels.findFirst({
+                where: eq(dm_channels.id, cleanChannelId)
+              });
+
               // Create message and handle attachments
               const [newMessage] = await db.insert(messages)
                 .values({
                   content: message.content,
-                  channel_id: message.channelId,
+                  channel_id: dmChannel ? null : cleanChannelId,
+                  dm_channel_id: dmChannel ? cleanChannelId : null,
                   user_id: ws.userId,
                   parent_id: message.parentId || null,
                 })
@@ -342,7 +349,7 @@ export function setupWebSocketServer(server: Server) {
                 debug.info('Preparing broadcast message:', {
                   originalTempId: message.tempId,
                   messageId: messageWithAuthor.id,
-                  channelId: message.channelId
+                  channelId: cleanChannelId
                 });
                 const normalizedMessage = normalizeMessageForClient({
                   ...messageWithAuthor,
@@ -355,12 +362,12 @@ export function setupWebSocketServer(server: Server) {
                   message: normalizedMessage
                 };
                 debug.info('Broadcasting packet:', broadcastPacket);
-                broadcastToChannel(message.channelId, broadcastPacket);
+                broadcastToChannel(cleanChannelId, broadcastPacket);
 
                 // Check if the message is a question and trigger AI response
                 if (isQuestion(message.content)) {
                   debug.info('Question detected, generating AI response');
-                  await sendAIResponse(message.channelId, message.content);
+                  await sendAIResponse(cleanChannelId, message.content);
                 }
               }
             } catch (error) {

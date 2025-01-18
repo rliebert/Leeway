@@ -14,6 +14,7 @@ import type { Channel } from "@db/schema";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import ConnectionStatus from "@/components/chat/ConnectionStatus";
+import ThreadModal from '@/components/chat/ThreadModal';
 
 interface HomeProps {
   selectedChannel: string | null;
@@ -24,6 +25,7 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   const { user, isLoading } = useUser();
   const [localSelectedChannel, setLocalSelectedChannel] = useState<string | null>(initialSelectedChannel);
   const [selectedDM, setSelectedDM] = useState<string | null>(null);
+  const [isThreadModalOpen, setIsThreadModalOpen] = useState(false);
 
   const { data: channels } = useQuery<Channel[]>({
     queryKey: ["/api/channels"],
@@ -48,6 +50,7 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
   const handleSelectDM = (dmId: string) => {
     setSelectedDM(dmId);
     setLocalSelectedChannel(null);
+    setIsThreadModalOpen(true);
   };
 
   const handleSelectChannel = (channelId: string) => {
@@ -86,9 +89,20 @@ export default function Home({ selectedChannel: initialSelectedChannel, onSelect
         </div>
 
         <div className="flex-1 flex flex-col">
-          {selectedDM ? (
-            <DirectMessageView channelId={selectedDM} />
-          ) : (
+          <ThreadModal
+            open={isThreadModalOpen}
+            onOpenChange={setIsThreadModalOpen}
+            parentMessage={{
+              id: selectedDM || '',
+              author: user,
+              content: '', // Assuming the content is not needed for the DM view
+              created_at: new Date(),
+              channel_id: selectedDM || '',
+              user_id: user?.id || '',
+            }}
+            mode="dm"
+          />
+          {!selectedDM && (
             <>
               <div className="border-b px-6 py-3">
                 <div className="flex items-center gap-2">
