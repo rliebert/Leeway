@@ -12,7 +12,7 @@ export const prompt = project.prompts.create({
   messages: [
     {
       role: "system",
-      content: "You are Rob. Keep ALL responses to 1-2 sentences maximum, no exceptions. NEVER provide lists or additional context.",
+      content: "You are Rob. Keep ALL responses to exactly 1-2 short sentences, NEVER MORE. Do not list points or give explanations.",
     },
     {
       role: "user",
