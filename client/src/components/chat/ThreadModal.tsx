@@ -155,55 +155,58 @@ export default function ThreadModal({
   }, [wsMessages]);
 
   // Combine initial replies with new WebSocket messages
-  const messageMap = new Map<string, MessageWithAuthor>();
+  const allReplies = (() => {
+    // Use a Map to deduplicate messages by both id and tempId
+    const messageMap = new Map<string, MessageWithAuthor>();
 
-  // Add initial replies to map
-  replies.forEach(reply => {
-    messageMap.set(reply.id, reply);
-    if (reply.tempId) {
-      messageMap.set(reply.tempId, reply);
-    }
-  });
-
-  // Add WebSocket messages, handling duplicates
-  wsMessages
-    .filter(msg => {
-      if (mode === 'dm') {
-        return msg.channel_id === parentMessage.channel_id && msg.type !== 'message_deleted';
-      }
-      return msg.parent_id === parentMessage.id && msg.type !== 'message_deleted';
-    })
-    .forEach(msg => {
-      // Skip if we already have this message (by id or tempId)
-      if (messageMap.has(msg.id) || (msg.tempId && messageMap.has(msg.tempId))) {
-        return;
-      }
-
-      const message: MessageWithAuthor = {
-        ...msg,
-        tempId: msg.tempId,
-        created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
-        pinned_at: msg.pinned_at ? new Date(msg.pinned_at) : null,
-        attachments: msg.attachments || []
-      };
-
-      messageMap.set(msg.id, message);
-      if (msg.tempId) {
-        messageMap.set(msg.tempId, message);
+    // Add initial replies to the map
+    replies.forEach(reply => {
+      messageMap.set(reply.id, reply);
+      if (reply.tempId) {
+        messageMap.set(reply.tempId, reply);
       }
     });
 
-  // Convert map back to array and sort
-  const allReplies = Array.from(messageMap.values())
-    // Remove duplicates that might have been added by both ID and tempId
-    .filter((msg, index, self) => 
-      self.findIndex(m => m.id === msg.id) === index
-    )
-    .sort((a, b) => {
-      const dateA = new Date(a.created_at || 0).getTime();
-      const dateB = new Date(b.created_at || 0).getTime();
-      return dateA - dateB;
-    });
+    // Process WebSocket messages
+    wsMessages
+      .filter(msg => {
+        if (mode === 'dm') {
+          return msg.channel_id === parentMessage.channel_id && msg.type !== 'message_deleted';
+        }
+        return msg.parent_id === parentMessage.id && msg.type !== 'message_deleted';
+      })
+      .forEach(msg => {
+        // Skip if we already have this message (by id or tempId)
+        if (messageMap.has(msg.id) || (msg.tempId && messageMap.has(msg.tempId))) {
+          return;
+        }
+
+        // Add the message to our map
+        const processedMsg = {
+          ...msg,
+          tempId: msg.tempId,
+          created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
+          pinned_at: msg.pinned_at ? new Date(msg.pinned_at) : null,
+          attachments: msg.attachments || []
+        };
+        messageMap.set(msg.id, processedMsg);
+        if (msg.tempId) {
+          messageMap.set(msg.tempId, processedMsg);
+        }
+      });
+
+    // Convert map back to array and sort
+    return Array.from(messageMap.values())
+      // Remove duplicates that might have been added under both id and tempId
+      .filter((msg, index, self) => 
+        self.findIndex(m => m.id === msg.id || m.tempId === msg.tempId) === index
+      )
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateA - dateB;
+      });
+  })();
 
   // Debug log to track message deduplication
   useEffect(() => {
@@ -212,8 +215,7 @@ export default function ThreadModal({
       wsMessages: wsMessages
         .filter(m => m.channel_id === parentMessage.channel_id || m.parent_id === parentMessage.id)
         .map(m => ({ id: m.id, tempId: m.tempId, content: m.content })),
-      allReplies: allReplies.map(r => ({ id: r.id, tempId: r.tempId, content: r.content })),
-      messageMapSize: messageMap.size
+      allReplies: allReplies.map(r => ({ id: r.id, tempId: r.tempId, content: r.content }))
     });
   }, [replies, wsMessages, allReplies, parentMessage.channel_id, parentMessage.id]);
 
@@ -226,19 +228,20 @@ export default function ThreadModal({
 
   // Invalidate queries on WebSocket messages, but with debounce
   useEffect(() => {
-    const newMessages = wsMessages.filter(msg => {
+    const hasNewMessages = wsMessages.some(msg => {
       if (mode === 'dm') {
-        return msg.channel_id === parentMessage.channel_id && 
-          !messageMap.has(msg.id) && 
-          (!msg.tempId || !messageMap.has(msg.tempId));
+        return msg.channel_id === parentMessage.channel_id &&
+          !replies.some(reply => reply.id === msg.id || reply.tempId === msg.tempId);
       }
-      return msg.parent_id === parentMessage.id && 
-        !messageMap.has(msg.id) && 
-        (!msg.tempId || !messageMap.has(msg.tempId));
+      return msg.parent_id === parentMessage.id &&
+        !replies.some(reply => reply.id === msg.id || reply.tempId === msg.tempId);
     });
 
-    if (newMessages.length > 0 || wsMessages.some(msg => msg.type === 'message_deleted' || msg.type === 'message_edited')) {
-      // Use a longer delay to allow optimistic updates to settle
+    const hasModifiedMessages = wsMessages.some(msg => 
+      msg.type === 'message_deleted' || msg.type === 'message_edited'
+    );
+
+    if (hasNewMessages || hasModifiedMessages) {
       const timer = setTimeout(() => {
         queryClient.invalidateQueries({ 
           queryKey: mode === 'dm'
@@ -248,7 +251,7 @@ export default function ThreadModal({
       }, 250);
       return () => clearTimeout(timer);
     }
-  }, [wsMessages, parentMessage.id, parentMessage.channel_id, mode, queryClient, messageMap]);
+  }, [wsMessages, parentMessage.id, parentMessage.channel_id, mode, queryClient, replies]);
 
   const formatTimestamp = (date: string | Date | null) => {
     if (!date) return '';
