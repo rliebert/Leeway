@@ -23,6 +23,7 @@ export function EditAIRobDialog({
   const [aiRobUsername, setAiRobUsername] = useState("ai.rob");
   const [aiRobEmail, setAiRobEmail] = useState("ai.rob@leeway.app");
   const [aiRobStatus, setAiRobStatus] = useState("🤖 AI Assistant");
+  const [aiRobFullName, setAiRobFullName] = useState("AI Rob");
 
   const handleSubmit = async () => {
     setIsLoading(true);
@@ -34,6 +35,7 @@ export function EditAIRobDialog({
           username: aiRobUsername,
           email: aiRobEmail,
           status: aiRobStatus,
+          full_name: aiRobFullName,
         }),
       });
 
@@ -68,6 +70,14 @@ export function EditAIRobDialog({
             username="ai.rob"
             onAvatarUpdate={() => {}}
           />
+          <div className="grid gap-2">
+            <label htmlFor="aiRobFullName">Full Name</label>
+            <Input
+              id="aiRobFullName"
+              value={aiRobFullName}
+              onChange={(e) => setAiRobFullName(e.target.value)}
+            />
+          </div>
           <div className="grid gap-2">
             <label htmlFor="aiRobUsername">Username</label>
             <Input
