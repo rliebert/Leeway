@@ -215,21 +215,14 @@ async function findSimilarMessages(query: string, limit = 5) {
     console.log("Generating query embedding");
     const queryEmbedding = await embeddings.embedQuery(query);
 
-    console.log("Searching for similar messages in Pinecone");
+    console.log("Searching for similar documents in Pinecone");
     const queryResponse = await index.query({
       vector: queryEmbedding,
-      topK: limit + 5,
+      topK: limit,
       includeMetadata: true,
-      filter: {
-        $or: [
-          { content: { $contains: "music" } },
-          { content: { $contains: "theory" } },
-          { content: { $contains: "creative" } }
-        ]
-      }
     });
 
-    console.log(`Found ${queryResponse.matches.length} similar messages`);
+    console.log(`Found ${queryResponse.matches.length} similar documents`);
     return queryResponse.matches.map((match: PineconeMatch) => ({
       ...match.metadata,
       similarity: match.score,
