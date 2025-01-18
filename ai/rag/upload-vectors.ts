@@ -160,7 +160,7 @@ async function main() {
   await Promise.all(upserts);
 
   console.log(
-    `Uploaded ${allSections.length} documents in ${batches.length} batches.`,
+    `Uploaded ${allSections.length} documents in ${Math.ceil(allSections.length / UPLOAD_BATCH_SIZE)} batches.`,
   );
 }
 
