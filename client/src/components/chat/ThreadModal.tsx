@@ -155,56 +155,55 @@ export default function ThreadModal({
   }, [wsMessages]);
 
   // Combine initial replies with new WebSocket messages
-  const allReplies = [
-    ...replies,
-    ...wsMessages
-      .filter(msg => {
-        if (mode === 'dm') {
-          // For DMs, only include messages that:
-          // 1. Match the channel ID
-          // 2. Are not already in replies (by id or tempId)
-          // 3. Are not deleted messages
-          // 4. Are not optimistic updates that have been confirmed
-          return msg.channel_id === parentMessage.channel_id &&
-            msg.type !== 'message_deleted' &&
-            !msg.isOptimistic && // Don't include optimistic updates
-            !replies.some(reply => 
-              // Check all possible duplicate conditions
-              reply.id === msg.id || // Same ID
-              reply.tempId === msg.tempId || // Same tempId
-              (msg.tempId && reply.id === msg.tempId) || // Message was confirmed (tempId became real id)
-              (reply.tempId && msg.id === reply.tempId) // Reply was confirmed (tempId became real id)
-            );
-        }
-        
-        // For regular threads, only include messages that:
-        // 1. Match the parent message ID
-        // 2. Are not already in replies (by id or tempId)
-        // 3. Are not deleted messages
-        // 4. Are not optimistic updates that have been confirmed
-        return msg.parent_id === parentMessage.id &&
-          msg.type !== 'message_deleted' &&
-          !msg.isOptimistic && // Don't include optimistic updates
-          !replies.some(reply => 
-            // Check all possible duplicate conditions
-            reply.id === msg.id || // Same ID
-            reply.tempId === msg.tempId || // Same tempId
-            (msg.tempId && reply.id === msg.tempId) || // Message was confirmed (tempId became real id)
-            (reply.tempId && msg.id === reply.tempId) // Reply was confirmed (tempId became real id)
-          );
-      })
-      .map(msg => ({
+  const messageMap = new Map<string, MessageWithAuthor>();
+
+  // Add initial replies to map
+  replies.forEach(reply => {
+    messageMap.set(reply.id, reply);
+    if (reply.tempId) {
+      messageMap.set(reply.tempId, reply);
+    }
+  });
+
+  // Add WebSocket messages, handling duplicates
+  wsMessages
+    .filter(msg => {
+      if (mode === 'dm') {
+        return msg.channel_id === parentMessage.channel_id && msg.type !== 'message_deleted';
+      }
+      return msg.parent_id === parentMessage.id && msg.type !== 'message_deleted';
+    })
+    .forEach(msg => {
+      // Skip if we already have this message (by id or tempId)
+      if (messageMap.has(msg.id) || (msg.tempId && messageMap.has(msg.tempId))) {
+        return;
+      }
+
+      const message: MessageWithAuthor = {
         ...msg,
         tempId: msg.tempId,
         created_at: msg.created_at ? new Date(msg.created_at) : new Date(),
         pinned_at: msg.pinned_at ? new Date(msg.pinned_at) : null,
         attachments: msg.attachments || []
-      }))
-  ].sort((a, b) => {
-    const dateA = new Date(a.created_at || 0).getTime();
-    const dateB = new Date(b.created_at || 0).getTime();
-    return dateA - dateB;
-  });
+      };
+
+      messageMap.set(msg.id, message);
+      if (msg.tempId) {
+        messageMap.set(msg.tempId, message);
+      }
+    });
+
+  // Convert map back to array and sort
+  const allReplies = Array.from(messageMap.values())
+    // Remove duplicates that might have been added by both ID and tempId
+    .filter((msg, index, self) => 
+      self.findIndex(m => m.id === msg.id) === index
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateA - dateB;
+    });
 
   // Debug log to track message deduplication
   useEffect(() => {
@@ -213,7 +212,8 @@ export default function ThreadModal({
       wsMessages: wsMessages
         .filter(m => m.channel_id === parentMessage.channel_id || m.parent_id === parentMessage.id)
         .map(m => ({ id: m.id, tempId: m.tempId, content: m.content })),
-      allReplies: allReplies.map(r => ({ id: r.id, tempId: r.tempId, content: r.content }))
+      allReplies: allReplies.map(r => ({ id: r.id, tempId: r.tempId, content: r.content })),
+      messageMapSize: messageMap.size
     });
   }, [replies, wsMessages, allReplies, parentMessage.channel_id, parentMessage.id]);
 
@@ -224,27 +224,17 @@ export default function ThreadModal({
     }
   }, [open, allReplies.length]);
 
-  // Invalidate queries on WebSocket messages, but with debounce and better conditions
+  // Invalidate queries on WebSocket messages, but with debounce
   useEffect(() => {
     const newMessages = wsMessages.filter(msg => {
       if (mode === 'dm') {
         return msg.channel_id === parentMessage.channel_id && 
-          !msg.isOptimistic &&
-          !replies.some(reply => 
-            reply.id === msg.id || 
-            reply.tempId === msg.tempId ||
-            (msg.tempId && reply.id === msg.tempId) ||
-            (reply.tempId && msg.id === reply.tempId)
-          );
+          !messageMap.has(msg.id) && 
+          (!msg.tempId || !messageMap.has(msg.tempId));
       }
       return msg.parent_id === parentMessage.id && 
-        !msg.isOptimistic &&
-        !replies.some(reply => 
-          reply.id === msg.id || 
-          reply.tempId === msg.tempId ||
-          (msg.tempId && reply.id === msg.tempId) ||
-          (reply.tempId && msg.id === reply.tempId)
-        );
+        !messageMap.has(msg.id) && 
+        (!msg.tempId || !messageMap.has(msg.tempId));
     });
 
     if (newMessages.length > 0 || wsMessages.some(msg => msg.type === 'message_deleted' || msg.type === 'message_edited')) {
@@ -255,10 +245,10 @@ export default function ThreadModal({
             ? [`/api/dm/channels/${parentMessage.channel_id}/messages`, mode]
             : [`/api/messages/${parentMessage.id}/replies`, mode]
         });
-      }, 250); // Increased from 100ms to 250ms
+      }, 250);
       return () => clearTimeout(timer);
     }
-  }, [wsMessages, parentMessage.id, parentMessage.channel_id, mode, queryClient, replies]);
+  }, [wsMessages, parentMessage.id, parentMessage.channel_id, mode, queryClient, messageMap]);
 
   const formatTimestamp = (date: string | Date | null) => {
     if (!date) return '';
