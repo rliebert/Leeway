@@ -129,7 +129,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
 
   const normalizeFileUrl = (attachment: FileAttachment): string => {
     if (!attachment) return '';
-    
+
     if (attachment.file_url?.startsWith('http') || attachment.url?.startsWith('http')) {
       return attachment.file_url || attachment.url || '';
     }
@@ -306,7 +306,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
       >
         <div className="flex gap-4">
           <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
-            <AvatarImage src={message.author?.avatar_url || undefined} />
+            <AvatarImage src={message.author?.avatar_url || '/uploads/ai-rob-avatar.png'} />
             <AvatarFallback className="bg-primary/10">
               {message.author?.username?.[0]?.toUpperCase()}
             </AvatarFallback>
@@ -567,7 +567,7 @@ const Message = forwardRef<HTMLDivElement, MessageProps>(({ message }, ref) => {
                 {allReplies.map((reply) => (
                   <div key={reply.id} className="flex gap-4 mt-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={reply.author?.avatar_url || undefined} />
+                      <AvatarImage src={reply.author?.avatar_url || '/uploads/ai-rob-avatar.png'} />
                       <AvatarFallback className="bg-primary/10">
                         {reply.author?.username?.[0]?.toUpperCase()}
                       </AvatarFallback>
