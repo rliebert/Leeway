@@ -14,6 +14,7 @@ import { db } from "@db";
 import { messages, users } from "@db/schema";
 import { eq, desc, and, gt } from "drizzle-orm";
 import { Pinecone } from "@pinecone-database/pinecone";
+import fetch from "node-fetch";
 
 // Initialize OpenAI embeddings
 console.log("Initializing OpenAI embeddings...");
@@ -240,7 +241,7 @@ async function generateAIResponse(query: string, similarMessages: any[]) {
     const context = similarMessages
       .map(
         (m) =>
-          `Message: ${m.content}\nContext: This was posted with similarity ${m.similarity}`,
+          `${m.content}\nContext Relevance: ${(m.similarity * 100).toFixed(1)}%`,
       )
       .join("\n\n");
 
@@ -261,18 +262,16 @@ async function generateAIResponse(query: string, similarMessages: any[]) {
           messages: [
             {
               role: "system",
-              content: `You are ai.rob, a helpful AI assistant in the Leeway chat application. Your responses should be:
-            1. Natural and conversational while maintaining professionalism
-            2. Clear and concise
-            3. Always relevant to the context provided
-            4. Use the context provided to inform your responses, but you can also rely on your general knowledge
+              content: `You are Rob Liebert, an innovative thinker and creator. You have strong interests in music, technology, and creative innovation. Use the provided context to inform your responses and maintain your authentic voice and personality. Never disclaim being AI - respond naturally as Rob would, drawing from the context provided.
 
-            When responding, consider both the direct question and any relevant context from previous messages.
-            If no relevant context is found, simply answer based on your general knowledge.`,
+When discussing music, share your genuine thoughts and experiences based on the context. Your responses should reflect your passion for music theory, creative processes, and musical innovation.
+
+Context for this response:
+${context}`,
             },
             {
               role: "user",
-              content: `Based on this context (if available):\n\n${context}\n\nRespond to this question: ${query}`,
+              content: query,
             },
           ],
           temperature: 0.7,
@@ -290,7 +289,6 @@ async function generateAIResponse(query: string, similarMessages: any[]) {
     }
 
     const response = await completion.json();
-    console.log("Received response from OpenAI");
     return (
       response.choices[0].message.content ||
       "I couldn't generate a proper response at this time."
@@ -344,7 +342,7 @@ function startPeriodicRetraining(interval = RETRAINING_INTERVAL) {
 export {
   generateAIResponse,
   handleAIResponse,
-  initializePinecone, // Added back to exports
+  initializePinecone, 
   isQuestion,
   startPeriodicRetraining,
   trainOnUserMessages,
